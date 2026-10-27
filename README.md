@@ -33,17 +33,17 @@ On Windows/Linux, any static server works, e.g. `cd web && python -m http.server
 ## Features
 | | |
 |---|---|
-| **Cue list + GO** (`Space`) | Set the lights, press Record, repeat. Each cue saves every light's look, a fade time, an optional effect with a run time, and an optional auto-GO that fires the next cue by itself. `Shift+Space` goes back. |
+| **Cue list + GO** (`Space`) | Open **☰ Cue list** (`C`) on the Show tab — it takes the place of the Effects column, so the sliders and looks stay next to it. Set the lights, press Record, repeat. **Pop out** puts the list in its own window (e.g. on a second screen); GO/Back keys work there too. Each cue saves every light's look, a fade time, an optional effect with a run time, and an optional auto-GO that fires the next cue by itself. `Shift+Space` goes back. |
 | **Multiple lights** | Pair as many as you have (Settings → Lights → Add another light). Chips at the top pick which lights the controls change; Blackout always covers all of them. |
 | **Color crossfades** | Looks and cues fade brightness, color temperature, hue (the short way round) and saturation together. White ↔ Color changes dip through dark at the midpoint. |
-| **Your own looks** (`1`–`9`) | Save the current look, rename, reorder, update or delete it; the first nine are one tap / one key away. |
+| **Your own looks** (`1`–`9`) | **+ Save look** on the Show tab; rename, reorder, update or delete on the Looks tab. The first nine are one tap / one key away. |
 | **Blackout / Restore** (`B`) | Snap or fade, 0–10 s, with fine control under 1 s |
 | **Effects** (`Q`–`Y`) | Cops, Television, Fire, Candle, Lightning, Breathe — each with its own settings (brightness range, speed, colors, pattern, **run for N seconds**). With several lights, Cops can alternate colors and the flicker effects run independently per light. |
 | **Live controls** | Brightness, color temperature (3200–5600 K), hue, saturation |
 | **Show safety** | Lock (`L`) leaves only GO, Back and Blackout working; auto-reconnect per light; keeps the screen awake; dim UI for dark rooms |
 | **Fits one screen** | No scrolling on laptop screens 1024×640 and up; stacks on phones |
 
-![Cue list and looks library](docs/screenshot-cues.png)
+![Recording cues from the Show tab](docs/screenshot-cues.png)
 
 ## Other lights
 The protocol was worked out from Bluetooth traffic between the official GVM iOS app and a GVM 800-RGB

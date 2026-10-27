@@ -74,7 +74,11 @@ Web Bluetooth only works on `https://` or `http://localhost`.
   out in the old mode, switches at the midpoint and fades in with the new one.
 - Any manual control, Blackout, a new look/cue or Esc cancels a running fade.
 
-## Cue list (`show.js`, Cues tab)
+## Cue list (`show.js`; **☰ Cue list** panel on the Show tab, or popped out)
+- The panel replaces the Effects column (toggle: button or `C`) and has its own row of effect buttons, so a look, the
+  sliders and an effect can all be set and recorded without leaving the Show tab. Effect *settings* are in the Effects column.
+- **Pop out** opens the same editor in a separate window (same page, same lights — no second Bluetooth connection);
+  Space / Shift+Space / B / Esc work in it. **Dock** or closing the window brings the list back to the panel.
 - A cue = `{name, fade s, follow s | null, effect: {id, params, lightIds} | null, lights: {id: {power, mode, cct, hue, sat, bri}}}`,
   stored in `localStorage['gvm.cues']`.
 - **Record** saves every connected light after the selected cue. If an effect is running, the cue stores the effect (with its
@@ -84,7 +88,7 @@ Web Bluetooth only works on `https://` or `http://localhost`.
   **Back** (`Shift+Space`) runs the previous cue. Esc cancels a pending auto-GO, a running fade and the effect.
 - Lights in a cue that aren't connected are skipped (logged).
 
-## Looks library
+## Looks library (Looks tab)
 `localStorage['gvm.looks']`, seeded with the six defaults. Save current (from the first selected light), rename, update,
 reorder, delete, restore defaults. The first nine are on the Show tab with keys 1–9.
 

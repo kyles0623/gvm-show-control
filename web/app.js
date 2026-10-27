@@ -408,7 +408,7 @@ function saveCurrentLook() {
   const look = show.addLook(stateOf(p));
   fx.look = look.id;
   renderPresets();
-  toast({ level: 'ok', title: `Saved “${look.name}”`, body: 'Rename, reorder or delete it on the Cues tab.', actions: [{ label: 'Open Cues tab', fn: () => showTab('cues') }] });
+  toast({ level: 'ok', title: `Saved “${look.name}”`, body: 'Rename, reorder or delete it on the Looks tab.', actions: [{ label: 'Open Looks tab', fn: () => showTab('looks') }] });
 }
 
 // ---------- effects ----------
@@ -605,6 +605,7 @@ function renderPresets() {
   for (const b of document.querySelectorAll('#tab-show .tile')) b.disabled = !on;
   $('saveLookBtn').disabled = !on;
   if ($('fxSelect').options.length) $('fxRunning').textContent = fx.id && fx.id === fx.selected ? '● running' : '';
+  if (cuePanel.hosts.panel) updateCueTools();
 }
 
 // ---------- cues ----------
@@ -721,23 +722,136 @@ function updateCueProgress() {
 }
 setInterval(updateCueProgress, 100);
 
-// ----- Cues tab: cue list editor -----
+// ----- Cue list: panel on the Show tab (replaces the Effects column) or its own window -----
 
-function lightsSummary(lightsMap) {
-  const wrap = document.createElement('span');
+const cuePanel = { open: false, win: null, hosts: { panel: null, pop: null } };
+
+const isPopped = () => !!(cuePanel.win && !cuePanel.win.closed && cuePanel.hosts.pop);
+/** Where the cue list is drawn right now (pop-out window wins over the panel). */
+function cueHost() { return isPopped() ? cuePanel.hosts.pop : cuePanel.open ? cuePanel.hosts.panel : null; }
+
+/** Builds the cue editor (header, toolbar, effect buttons, list) inside `root` of document `d`. */
+function buildCueEditor(root, d, { popped = false } = {}) {
+  const mk = (tag, cls, text) => { const e = d.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
+  root.innerHTML = '';
+  const head = mk('div', 'row-between');
+  const title = mk('div', 'label', 'Cue list');
+  const hb = mk('div', 'row cue-head-btns');
+  const popBtn = mk('button', 'btn sm', popped ? 'Dock in main window' : 'Pop out ⧉');
+  popBtn.title = popped ? 'Close this window and show the list in the main window' : 'Open the cue list in its own window (e.g. on a second screen)';
+  popBtn.addEventListener('click', () => (popped ? dockCueList() : popOutCueList()));
+  hb.append(popBtn);
+  if (!popped) {
+    const back = mk('button', 'btn sm', 'Effects ▸');
+    back.title = 'Show the Effects column again (C)';
+    back.addEventListener('click', () => setCuePanel(false));
+    hb.append(back);
+  }
+  head.append(title, hb);
+
+  const tools = mk('div', 'row cue-tools');
+  const btn = (txt, cls, tip, fn) => { const b = mk('button', 'btn sm ' + cls, txt); b.title = tip; b.addEventListener('click', fn); tools.append(b); return b; };
+  const rec = btn('● Record', 'primary', 'Save every connected light’s current look as a new cue after the selected one', recordCue);
+  const upd = btn('Update', '', 'Replace the selected cue with the lights’ current looks', updateSelectedCue);
+  const up = btn('↑', '', 'Move the selected cue up', () => cue.selected && show.moveCue(cue.selected, -1));
+  const down = btn('↓', '', 'Move the selected cue down', () => cue.selected && show.moveCue(cue.selected, 1));
+  const del = btn('Delete', 'danger', 'Delete the selected cue', () => {});
+  confirmButton(del, 'Sure?', deleteSelectedCue);
+  const top = btn('Top', '', 'Next GO runs cue 1', () => { clearFollow(); cue.index = -1; renderCueBar(); renderCueList(); });
+
+  const strip = mk('div', 'cue-fx-strip');
+  strip.append(mk('span', 'hint', 'Effects'));
+  for (const e of EFFECTS) {
+    const b = mk('button', 'chip', e.name);
+    b.dataset.id = e.id;
+    b.title = `Start / stop ${e.name} on the selected light(s). Settings are in the Effects column.`;
+    b.addEventListener('click', () => toggleEffect(e));
+    strip.append(b);
+  }
+  const hint = mk('p', 'hint cue-hint', 'Set the lights (sliders, looks, an effect), then Record. A cue saves every connected light, a fade, an optional effect with a run time, and an optional auto-GO.');
+  const list = mk('div', 'cue-list' + (popped ? ' wide' : ''));
+  root.append(head, tools, strip, hint, list);
+  return { d, root, list, rec, upd, up, down, del, top, strip, popped };
+}
+
+function setCuePanel(open) {
+  if (open && isPopped()) { cuePanel.win.focus(); return; }
+  cuePanel.open = open;
+  prefs.set('cuePanel', open);
+  $('effectsCard').hidden = open;
+  $('cuePanel').hidden = !open;
+  $('cueListBtn').classList.toggle('on', open || isPopped());
+  $('cueListBtn').textContent = isPopped() ? '☰ Cue list ⧉' : open ? '☰ Cue list ✓' : '☰ Cue list';
+  renderCueList();
+}
+
+function popOutCueList() {
+  const w = window.open('', 'gvm-cue-list', 'width=820,height=860');
+  if (!w) { toast({ level: 'warn', title: 'Pop-out blocked', body: 'Allow pop-ups for this page in the address bar, then try again.' }); return; }
+  const css = new URL('styles.css', location.href).href;
+  w.document.open();
+  w.document.write(`<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Cue list · GVM Show Control</title><link rel="stylesheet" href="${css}"></head><body class="popout"><main class="cue-pop"><section id="popCues" class="group cue-panel"></section></main></body></html>`);
+  w.document.close();
+  cuePanel.win = w;
+  cuePanel.hosts.pop = buildCueEditor(w.document.getElementById('popCues'), w.document, { popped: true });
+  w.addEventListener('keydown', onKeyDown);
+  w.addEventListener('pagehide', () => setTimeout(() => { if (w.closed && cuePanel.win === w) dockCueList({ closeWin: false }); }, 50));
+  rig.logLine('Cue list popped out');
+  setCuePanel(false);
+  w.focus();
+}
+
+function dockCueList({ closeWin = true } = {}) {
+  const w = cuePanel.win;
+  cuePanel.win = null;
+  cuePanel.hosts.pop = null;
+  if (closeWin && w && !w.closed) w.close();
+  setCuePanel(true);
+}
+window.addEventListener('pagehide', () => { if (cuePanel.win && !cuePanel.win.closed) cuePanel.win.close(); });
+
+function recordCue() {
+  if (!rig.anyConnected) return;
+  const after = cue.selected ? show.cueIndex(cue.selected) : null;
+  const c = show.addCue({ lights: snapshotRig(), effect: runningEffectForCue(), fade: 2 }, after);
+  cue.selected = c.id;
+  rig.logLine(`RECORD cue ${show.cueIndex(c.id) + 1}`);
+  renderCueList();
+  toast({ level: 'ok', title: `Recorded cue ${show.cueIndex(c.id) + 1}`, body: `${Object.keys(c.lights).length} light(s)${c.effect ? ` + ${EFFECTS.find((e) => e.id === c.effect.id).name}` : ''}` });
+}
+
+function updateSelectedCue() {
+  const c = show.cues.find((x) => x.id === cue.selected);
+  if (!c || !rig.anyConnected) return;
+  show.updateCue(c.id, { lights: { ...c.lights, ...snapshotRig() } });
+  toast({ level: 'ok', title: `Updated cue ${show.cueIndex(c.id) + 1}`, body: 'Saved the current look of the connected lights.' });
+}
+
+function deleteSelectedCue() {
+  const i = show.cueIndex(cue.selected);
+  if (i < 0) return;
+  show.removeCue(cue.selected);
+  if (cue.index >= i) cue.index = Math.max(-1, cue.index - 1);
+  cue.selected = show.cues[Math.min(i, show.cues.length - 1)]?.id ?? null;
+  renderCueList();
+  renderCueBar();
+}
+
+function lightsSummary(d, lightsMap) {
+  const wrap = d.createElement('span');
   wrap.className = 'cue-lights';
   for (const [id, st] of Object.entries(lightsMap)) {
-    const sw = document.createElement('span');
+    const sw = d.createElement('span');
     sw.className = 'lsw';
     sw.style.background = stateColor(st);
-    sw.title = `${rig.get(id)?.label ?? 'unknown light'}: ${describeState(st)}`;
+    sw.title = `${rig.get(id)?.label ?? 'light not paired'}: ${describeState(st)}`;
     wrap.appendChild(sw);
   }
   return wrap;
 }
 
-function numInput(value, { min = 0, max = 600, step = 0.1, placeholder = '' }, onChange) {
-  const i = document.createElement('input');
+function numInput(d, value, { min = 0, max = 600, step = 0.1, placeholder = '' }, onChange) {
+  const i = d.createElement('input');
   i.type = 'number';
   Object.assign(i, { min, max, step, placeholder });
   i.value = value ?? '';
@@ -746,38 +860,41 @@ function numInput(value, { min = 0, max = 600, step = 0.1, placeholder = '' }, o
 }
 
 function renderCueList() {
-  const list = $('cueList');
+  const h = cueHost();
+  if (!h) return;
+  const { d, list } = h;
+  const keep = d.activeElement && list.contains(d.activeElement) ? d.activeElement.dataset.focus : null;
   list.innerHTML = '';
   if (!show.cues.length) {
-    const p = document.createElement('p');
+    const p = d.createElement('p');
     p.className = 'hint empty';
     p.textContent = rig.anyConnected
-      ? 'No cues yet. Set the lights how you want them, then press “Record new cue”.'
-      : 'No cues yet. Connect your light(s), set a look, then press “Record new cue”.';
+      ? 'No cues yet. Set the lights how you want them, then press Record.'
+      : 'No cues yet. Connect your light(s), set a look, then press Record.';
     list.appendChild(p);
   }
   show.cues.forEach((c, i) => {
-    const row = document.createElement('div');
+    const row = d.createElement('div');
     row.className = 'cue-row' + (c.id === cue.selected ? ' sel' : '') + (i === cue.index ? ' live' : '');
     row.dataset.id = c.id;
-    row.addEventListener('click', (e) => { if (e.target === row || e.target.classList.contains('cue-num')) { cue.selected = c.id; renderCueList(); } });
+    row.addEventListener('mousedown', () => { if (cue.selected !== c.id) { cue.selected = c.id; markSelected(); } });
 
-    const num = document.createElement('span'); num.className = 'cue-num'; num.textContent = i + 1;
-    const name = document.createElement('input');
+    const num = d.createElement('span'); num.className = 'cue-num'; num.textContent = i + 1;
+    const name = d.createElement('input');
     name.type = 'text'; name.value = c.name; name.placeholder = `Cue ${i + 1}`; name.className = 'cue-name';
-    name.addEventListener('focus', () => { if (cue.selected !== c.id) { cue.selected = c.id; markSelected(); } });
+    name.dataset.focus = `${c.id}:name`;
     name.addEventListener('change', () => { show.updateCue(c.id, { name: name.value.trim() }); renderCueBar(); });
-    const fade = numInput(c.fade, { min: 0, max: 60, step: 0.5 }, (v) => show.updateCue(c.id, { fade: v ?? 0 }));
+    const fade = numInput(d, c.fade, { min: 0, max: 60, step: 0.5 }, (v) => show.updateCue(c.id, { fade: v ?? 0 }));
     fade.title = 'Fade time (s)';
-    const follow = numInput(c.follow, { min: 0, max: 600, step: 0.5, placeholder: 'manual' }, (v) => show.updateCue(c.id, { follow: v }));
-    follow.title = 'Auto-GO the next cue this many seconds after this cue starts (blank = wait for GO)';
+    const follow = numInput(d, c.follow, { min: 0, max: 600, step: 0.5, placeholder: '—' }, (v) => show.updateCue(c.id, { follow: v }));
+    follow.title = 'Auto-GO: run the next cue this many seconds after this one starts (blank = wait for GO)';
 
-    const effSel = document.createElement('select');
+    const effSel = d.createElement('select');
     effSel.className = 'cue-fx';
-    effSel.add(new Option('No effect', ''));
-    for (const e of EFFECTS) effSel.add(new Option(e.name, e.id));
+    effSel.add(new (d.defaultView.Option)('No effect', ''));
+    for (const e of EFFECTS) effSel.add(new (d.defaultView.Option)(e.name, e.id));
     effSel.value = c.effect?.id ?? '';
-    const dur = numInput(c.effect?.params?.duration ?? 0, { min: 0, max: 600, step: 1, placeholder: '∞' }, (v) => {
+    const dur = numInput(d, c.effect?.params?.duration ?? 0, { min: 0, max: 600, step: 1, placeholder: '∞' }, (v) => {
       if (!c.effect) return;
       show.updateCue(c.id, { effect: { ...c.effect, params: { ...c.effect.params, duration: v ?? 0 } } });
     });
@@ -786,29 +903,43 @@ function renderCueList() {
     effSel.addEventListener('change', () => {
       const id = effSel.value;
       show.updateCue(c.id, { effect: id ? { id, params: { ...fx.params[id] }, lightIds: Object.keys(c.lights) } : null });
-      renderCueList();
     });
 
-    const go = document.createElement('button');
-    go.className = 'btn sm'; go.textContent = 'GO'; go.title = 'Run this cue now';
+    const go = d.createElement('button');
+    go.className = 'btn sm cue-go'; go.textContent = 'GO'; go.title = 'Run this cue now';
     go.disabled = !rig.anyConnected;
     go.addEventListener('click', () => goCue(i));
 
-    const cell = (label, el) => { const w = document.createElement('label'); w.className = 'cue-cell'; const s = document.createElement('span'); s.textContent = label; w.append(s, el); return w; };
-    row.append(num, name, cell('Fade s', fade), cell('Auto-GO s', follow), cell('Effect', effSel), cell('Run s', dur), lightsSummary(c.lights), go);
+    const cell = (label, el, cls) => { const w = d.createElement('label'); w.className = 'cue-cell ' + (cls ?? ''); const s = d.createElement('span'); s.textContent = label; w.append(s, el); return w; };
+    const line1 = d.createElement('div'); line1.className = 'cue-line1';
+    line1.append(num, name, lightsSummary(d, c.lights), go);
+    const line2 = d.createElement('div'); line2.className = 'cue-line2';
+    line2.append(cell('Fade s', fade), cell('Auto-GO s', follow), cell('Effect', effSel, 'grow'), cell('Run s', dur));
+    row.append(line1, line2);
     list.appendChild(row);
   });
-  const sel = show.cues.find((c) => c.id === cue.selected);
-  for (const id of ['cueUpdate', 'cueDelete', 'cueUp', 'cueDown']) $(id).disabled = !sel;
-  $('cueRecord').disabled = !rig.anyConnected;
-  $('cueUpdate').disabled = !sel || !rig.anyConnected;
+  if (keep) list.querySelector(`[data-focus="${keep}"]`)?.focus();
+  updateCueTools();
+}
+
+function updateCueTools() {
+  const h = cueHost();
+  if (!h) return;
+  const sel = !!show.cues.find((c) => c.id === cue.selected);
+  h.rec.disabled = !rig.anyConnected;
+  h.upd.disabled = !sel || !rig.anyConnected;
+  h.up.disabled = h.down.disabled = h.del.disabled = !sel;
+  for (const b of h.strip.querySelectorAll('.chip')) {
+    b.disabled = !rig.anyConnected;
+    b.classList.toggle('running', b.dataset.id === fx.id);
+  }
 }
 
 function markSelected() {
-  for (const r of $('cueList').children) r.classList?.toggle('sel', r.dataset.id === cue.selected);
-  const sel = !!show.cues.find((c) => c.id === cue.selected);
-  for (const id of ['cueDelete', 'cueUp', 'cueDown']) $(id).disabled = !sel;
-  $('cueUpdate').disabled = !sel || !rig.anyConnected;
+  const h = cueHost();
+  if (!h) return;
+  for (const r of h.list.children) r.classList?.toggle('sel', r.dataset.id === cue.selected);
+  updateCueTools();
 }
 
 function runningEffectForCue() {
@@ -819,39 +950,17 @@ function runningEffectForCue() {
 function initCues() {
   $('cueGo').addEventListener('click', goNext);
   $('cueBack').addEventListener('click', goBack);
-  $('cueRecord').addEventListener('click', () => {
-    if (!rig.anyConnected) return;
-    const after = cue.selected ? show.cueIndex(cue.selected) : null;
-    const c = show.addCue({ lights: snapshotRig(), effect: runningEffectForCue(), fade: 2 }, after);
-    cue.selected = c.id;
-    rig.logLine(`RECORD cue ${show.cueIndex(c.id) + 1}`);
-    toast({ level: 'ok', title: `Recorded cue ${show.cueIndex(c.id) + 1}`, body: `${Object.keys(c.lights).length} light(s)${c.effect ? ` + ${EFFECTS.find((e) => e.id === c.effect.id).name}` : ''}` });
-  });
-  $('cueUpdate').addEventListener('click', () => {
-    const c = show.cues.find((x) => x.id === cue.selected);
-    if (!c || !rig.anyConnected) return;
-    show.updateCue(c.id, { lights: { ...c.lights, ...snapshotRig() } });
-    toast({ level: 'ok', title: `Updated cue ${show.cueIndex(c.id) + 1}`, body: 'Saved the current look of the connected lights.' });
-  });
-  confirmButton($('cueDelete'), 'Click again to delete', () => {
-    const i = show.cueIndex(cue.selected);
-    if (i < 0) return;
-    show.removeCue(cue.selected);
-    if (cue.index >= i) cue.index = Math.max(-1, cue.index - 1);
-    cue.selected = show.cues[Math.min(i, show.cues.length - 1)]?.id ?? null;
-  });
-  $('cueUp').addEventListener('click', () => { if (cue.selected) show.moveCue(cue.selected, -1); });
-  $('cueDown').addEventListener('click', () => { if (cue.selected) show.moveCue(cue.selected, 1); });
-  $('cueReset').addEventListener('click', () => { clearFollow(); cue.index = -1; renderCueBar(); renderCueList(); });
+  $('cueListBtn').addEventListener('click', () => setCuePanel(!cuePanel.open));
+  cuePanel.hosts.panel = buildCueEditor($('cuePanel'), document);
   show.addEventListener('change', (e) => {
     if (e.detail.what === 'cues') { renderCueList(); renderCueBar(); }
     else { renderPresets(); renderLookList(); }
   });
-  renderCueList();
+  setCuePanel(prefs.get('cuePanel', false));
   renderCueBar();
 }
 
-// ----- Cues tab: looks library -----
+// ----- Looks tab: looks library -----
 
 function renderLookList() {
   const list = $('lookList');
@@ -911,7 +1020,7 @@ function nudgeBrightness(delta) {
   nudgeTimer = setTimeout(() => el.dispatchEvent(new Event('change')), 350);
 }
 
-document.addEventListener('keydown', (e) => {
+function onKeyDown(e) {
   const t = e.target;
   if (t.matches?.('input:not([type=range]):not([type=checkbox]), textarea, select')) return;
   if (e.metaKey || e.ctrlKey || e.altKey) return;
@@ -924,6 +1033,7 @@ document.addEventListener('keydown', (e) => {
   if (k === 'b') { e.preventDefault(); toggleBlackout(); return; }
   if (k === 'escape') { e.preventDefault(); clearFollow(); cancelFade(); stopEffect(true); return; }
   if (k === 'l') { e.preventDefault(); setLocked(!ui.locked); return; }
+  if (k === 'c') { e.preventDefault(); if (isPopped()) cuePanel.win.focus(); else { if ($('tab-show').hidden) showTab('show'); setCuePanel(!cuePanel.open); } return; }
   if ($('tab-show').hidden || ui.locked) return;
   if (LOOK_KEYS.includes(k)) { const look = show.looks[LOOK_KEYS.indexOf(k)]; if (look) { e.preventDefault(); applyLook(look); } }
   else if (EFFECT_KEYS.includes(k)) { e.preventDefault(); toggleEffect(EFFECTS[EFFECT_KEYS.indexOf(k)]); }
@@ -931,7 +1041,8 @@ document.addEventListener('keydown', (e) => {
     e.preventDefault();
     nudgeBrightness((k === 'arrowup' ? 1 : -1) * (e.shiftKey ? 1 : 5));
   }
-});
+}
+document.addEventListener('keydown', onKeyDown);
 
 let wakeLock = null;
 async function updateWakeLock() {
@@ -1298,14 +1409,14 @@ function initHelp() {
 
 function showTab(name) {
   if (name === 'debug' && !prefs.get('showDebug', false)) name = 'show';
-  if (!['show', 'cues', 'debug'].includes(name)) name = 'show';
+  if (!['show', 'looks', 'debug'].includes(name)) name = 'show';
   for (const t of document.querySelectorAll('.tab')) t.classList.toggle('active', t.dataset.tab === name);
   $('tab-show').hidden = name !== 'show';
-  $('tab-cues').hidden = name !== 'cues';
+  $('tab-looks').hidden = name !== 'looks';
   $('tab-debug').hidden = name !== 'debug';
   prefs.set('tab', name);
   if (name === 'debug') { renderLog(); renderGatt(); renderWriteTargets(); }
-  if (name === 'cues') { renderCueList(); renderLookList(); }
+  if (name === 'looks') renderLookList();
 }
 
 function init() {
@@ -1321,7 +1432,8 @@ function init() {
   rig.addEventListener('status', () => {
     if (!rig.anyConnected && fx.id) { fx.token++; fx.id = null; renderPresets(); }
     renderPresets();
-    if (!$('tab-cues').hidden) { renderCueList(); renderLookList(); }
+    renderCueList();
+    if (!$('tab-looks').hidden) renderLookList();
   });
 
   $('connectBtn').addEventListener('click', onConnectClick);

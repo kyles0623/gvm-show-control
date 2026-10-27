@@ -354,7 +354,7 @@ details[open] summary { margin-bottom: 4px; }
 
 /* ---------- cue bar (show tab) ---------- */
 .cuebar {
-  grid-column: 1 / -1; display: grid; grid-template-columns: auto minmax(0, 1fr) minmax(0, 1.1fr) minmax(0, 1fr) auto;
+  grid-column: 1 / -1; display: grid; grid-template-columns: auto auto minmax(0, 1fr) minmax(0, 1.1fr) minmax(0, 1fr) auto;
   gap: var(--gap); align-items: center;
   background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: calc(var(--pad) * .6) var(--pad);
 }
@@ -377,39 +377,59 @@ details[open] summary { margin-bottom: 4px; }
 .add-tile { justify-content: center; border-style: dashed; color: var(--muted); }
 .add-tile .nm { font-weight: 600; }
 
-/* ---------- cues tab ---------- */
-#tab-cues {
-  display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(320px, 1fr); gap: var(--gap); padding: var(--gap);
-  overflow: hidden;
-}
-.cues-card, .looks-lib { display: flex; flex-direction: column; min-height: 0; }
-.cue-tools { margin-top: 10px; }
-.cue-list, .look-list { flex: 1; min-height: 0; overflow-y: auto; margin-top: 8px; display: flex; flex-direction: column; gap: 6px; }
-.cue-list .empty { padding: 24px 6px; }
+/* ---------- cue list panel (Show tab right column) & pop-out window ---------- */
+.cue-panel { display: flex; flex-direction: column; min-height: 0; flex: 1 1 auto; }
+.cue-head-btns { margin: 0; gap: 6px; flex-wrap: nowrap; }
+.cue-tools { margin-top: calc(var(--gap) * .7); gap: 6px; }
+.cue-tools .btn { padding: 4px 9px; }
+.cue-fx-strip { display: flex; gap: 4px; flex-wrap: wrap; align-items: center; margin-top: calc(var(--gap) * .7); }
+.cue-fx-strip .hint { margin-right: 2px; }
+.cue-fx-strip .chip { padding: 2px 9px; font-size: 12px; }
+.cue-fx-strip .chip.running { border-color: var(--accent); color: var(--accent); animation: pulse 1.2s infinite; }
+.cue-hint { margin: 6px 0 0; font-size: 11px; }
+.cue-list { flex: 1; min-height: 0; overflow-y: auto; margin-top: 8px; display: flex; flex-direction: column; gap: 6px; padding-right: 2px; }
+.cue-list .empty { padding: 18px 4px; }
 .cue-row {
-  display: grid; grid-template-columns: 30px minmax(110px, 1fr) 72px 84px 120px 70px minmax(40px, auto) auto;
-  gap: 8px; align-items: end; padding: 8px 10px; border: 1px solid var(--border); border-radius: 10px; background: var(--panel-2);
-  cursor: pointer;
+  display: flex; flex-direction: column; gap: 6px; padding: 7px 8px; flex: none;
+  border: 1px solid var(--border); border-radius: 10px; background: var(--panel-2); cursor: pointer;
 }
 .cue-row.sel { border-color: var(--accent); }
 .cue-row.live { box-shadow: inset 4px 0 0 var(--ok); }
-.cue-num { font: 700 16px var(--mono); align-self: center; text-align: center; }
+.cue-line1 { display: grid; grid-template-columns: 26px minmax(0, 1fr) auto auto; gap: 6px; align-items: center; }
+.cue-line2 { display: grid; grid-template-columns: 58px 70px minmax(0, 1fr) 54px; gap: 6px; align-items: end; }
+.cue-num { font: 700 15px var(--mono); text-align: center; }
 .cue-row input, .cue-row select, .look-row input {
   width: 100%; margin: 0; background: var(--bg); color: var(--text); border: 1px solid var(--border);
-  border-radius: 6px; padding: 5px 7px; font: 13px -apple-system, BlinkMacSystemFont, sans-serif; user-select: text;
+  border-radius: 6px; padding: 4px 6px; font: 13px -apple-system, BlinkMacSystemFont, sans-serif; user-select: text;
 }
 .cue-row input[type=number] { font-family: var(--mono); }
 .cue-row input:disabled, .cue-row select:disabled { opacity: .45; }
-.cue-cell { display: flex; flex-direction: column; align-items: stretch; gap: 2px; font-size: 11px; color: var(--muted); }
-.cue-lights { display: flex; gap: 3px; flex-wrap: wrap; align-self: center; }
+.cue-cell { display: flex; flex-direction: column; align-items: stretch; gap: 2px; font-size: 10px; color: var(--muted); min-width: 0; }
+.cue-lights { display: flex; gap: 3px; flex-wrap: nowrap; }
+.cue-go { padding: 3px 10px; }
+/* wide list (pop-out window): one line per cue */
+.cue-list.wide .cue-row { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1.4fr); align-items: end; gap: 10px; }
+.cue-list.wide .cue-line2 { grid-template-columns: 70px 84px minmax(0, 1fr) 64px; }
+.cue-list.wide .cue-line1 { align-self: end; }
+
+body.popout { overflow: hidden; height: 100vh; }
+.cue-pop { height: 100vh; padding: 12px; display: flex; }
+.cue-pop .cue-panel { flex: 1; }
+
+/* ---------- looks tab ---------- */
+#tab-looks { display: flex; justify-content: center; padding: var(--gap); overflow: hidden; }
+.looks-lib { display: flex; flex-direction: column; min-height: 0; width: min(900px, 100%); }
+.look-list { flex: 1; min-height: 0; overflow-y: auto; margin-top: 8px; display: flex; flex-direction: column; gap: 6px; }
 .look-row {
-  display: grid; grid-template-columns: 26px 14px minmax(90px, 1fr) minmax(0, 1fr) auto; gap: 8px; align-items: center;
+  display: grid; grid-template-columns: 26px 14px minmax(120px, 1fr) minmax(0, 1fr) auto; gap: 8px; align-items: center;
   padding: 6px 8px; border: 1px solid var(--border); border-radius: 10px; background: var(--panel-2);
 }
 .look-key { font: 600 11px var(--mono); color: var(--muted); text-align: center; }
-.look-desc { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-family: var(--mono); font-size: 11px; }
+.look-desc { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-family: var(--mono); font-size: 12px; }
 .look-btns { margin: 0; gap: 4px; flex-wrap: nowrap; }
-.look-btns .btn { padding: 3px 7px; }
+.look-btns .btn { padding: 3px 8px; }
+
+.cue-listbtn { white-space: nowrap; height: clamp(36px, 5.4vh, 48px); }
 
 /* ---------- settings: lights ---------- */
 .light-list { display: flex; flex-direction: column; gap: 6px; }
@@ -421,13 +441,20 @@ details[open] summary { margin-bottom: 4px; }
   .fx-param .range { height: 20px; }
   .fx-param .label { font-size: 10px; }
 }
-@media (max-width: 1100px) {
-  .cue-row { grid-template-columns: 30px minmax(110px, 1fr) 70px 80px; }
-  .cue-row .cue-lights, .cue-row > .btn { grid-column: auto; }
-}
 @media (max-width: 959px) {
-  #tab-cues { grid-template-columns: 1fr; overflow: visible; }
-  .cuebar { grid-template-columns: auto minmax(0, 1fr) auto; }
+  #tab-looks { overflow: visible; }
+  .cuebar { grid-template-columns: auto auto minmax(0, 1fr) auto; }
   .cuebar .cue-mid, .cuebar .cue-slot:nth-of-type(3) { display: none; }
+  .cue-panel { min-height: 420px; }
   .lchips { max-width: 100%; order: 3; flex-basis: 100%; }
 }
+
+/* compact cue panel on smaller screens: rows get the space */
+@media (max-width: 1100px), (max-height: 760px) {
+  .cue-panel:not(.popout .cue-panel) .cue-hint { display: none; }
+}
+@media (max-width: 1100px) {
+  .cue-fx-strip .hint { display: none; }
+  .cue-fx-strip .chip { padding: 2px 7px; font-size: 11px; }
+}
+.bar .btn { white-space: nowrap; }
