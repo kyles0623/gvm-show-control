@@ -16,7 +16,7 @@ install, works offline, and no account.
 - Close the GVM phone app first — the light accepts only one connection at a time.
 
 ## Use it
-1. Open the hosted app in Chrome or Edge: **`https://<your-username>.github.io/<repo-name>/`**
+1. Open the hosted app in Chrome or Edge: **`https://kyles0623.github.io/gvm-show-control/`**
    (or run it locally, below).
 2. Follow the first-run setup: it checks your browser and Bluetooth and walks you through pairing.
 3. Optional: install it (Chrome address bar → install icon) for its own window and offline use.
