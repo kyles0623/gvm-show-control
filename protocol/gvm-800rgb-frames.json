@@ -1,0 +1,1974 @@
+{
+  "description": "GVM 800-RGB BLE control traffic between the official iOS app and the light, extracted from an Apple PacketLogger trace. Only ATT Write Command / Notification payloads on the control characteristic are included; no device addresses or other Bluetooth traffic.",
+  "light": {
+    "model": "GVM 800-RGB",
+    "advertisedName": "BT_LED",
+    "module": "Ai-Thinker SPP (from the characteristic user description)",
+    "service": "00010203-0405-0607-0809-0a0b0c0d1910",
+    "controlCharacteristic": "00010203-0405-0607-0809-0a0b0c0d2b10",
+    "properties": [
+      "read",
+      "writeWithoutResponse",
+      "notify"
+    ]
+  },
+  "captureSequence": [
+    "connect",
+    "power off",
+    "power on",
+    "CCT mode brightness 10%",
+    "brightness ~50%",
+    "brightness 100%",
+    "brightness 50% (repeat)",
+    "CCT min",
+    "CCT ~5600K",
+    "CCT max",
+    "HSI mode, hue red",
+    "hue green",
+    "hue blue",
+    "saturation 100%",
+    "saturation 0%",
+    "hue red (repeat)"
+  ],
+  "frames": [
+    {
+      "t": 0,
+      "dir": "app→light",
+      "hex": "4C 54 09 00 00 53 00 00 01 00 94 74",
+      "crcOk": true,
+      "decoded": "handshake reply addr=0x0 data=01 00"
+    },
+    {
+      "t": 0.047,
+      "dir": "light→app",
+      "hex": "4C 54 0A 00 30 53 00 00 02 20 38 2B 19",
+      "crcOk": true,
+      "decoded": "handshake reply addr=0x30 data=02 20 38"
+    },
+    {
+      "t": 5.535,
+      "dir": "light→app",
+      "hex": "4C 54 0E 00 30 03 01 02 40 20 2C 44 02 08 1B A3 AA",
+      "crcOk": true,
+      "decoded": "status power=on p1=0x02 brightness=64% cct=3200K hue=220° saturation=68% mode=HSI p7=0x08 p8=0x1b"
+    },
+    {
+      "t": 5.536,
+      "dir": "app→light",
+      "hex": "4C 54 0E 00 30 48 01 02 40 20 2C 44 02 08 1B 2A 34",
+      "crcOk": true,
+      "decoded": "cmd=0x48"
+    },
+    {
+      "t": 6.658,
+      "dir": "app→light",
+      "hex": "4C 54 09 00 30 57 00 06 01 01 90 7F",
+      "crcOk": true,
+      "decoded": "set mode=CCT"
+    },
+    {
+      "t": 6.736,
+      "dir": "light→app",
+      "hex": "4C 54 08 00 30 02 00 06 01 E6 6C",
+      "crcOk": true,
+      "decoded": "ack mode=CCT"
+    },
+    {
+      "t": 7.708,
+      "dir": "app→light",
+      "hex": "4C 54 09 00 30 57 00 00 01 00 32 FE",
+      "crcOk": true,
+      "decoded": "set power=off"
+    },
+    {
+      "t": 7.787,
+      "dir": "light→app",
+      "hex": "4C 54 08 00 30 02 00 00 00 5C EB",
+      "crcOk": true,
+      "decoded": "ack power=off"
+    },
+    {
+      "t": 10.576,
+      "dir": "light→app",
+      "hex": "4C 54 0E 00 30 03 00 02 40 20 2C 44 01 08 1B 11 D9",
+      "crcOk": true,
+      "decoded": "status power=off p1=0x02 brightness=64% cct=3200K hue=220° saturation=68% mode=CCT p7=0x08 p8=0x1b"
+    },
+    {
+      "t": 10.578,
+      "dir": "app→light",
+      "hex": "4C 54 0E 00 30 48 00 02 40 20 2C 44 01 08 1B 98 47",
+      "crcOk": true,
+      "decoded": "cmd=0x48"
+    },
+    {
+      "t": 15.616,
+      "dir": "light→app",
+      "hex": "4C 54 0E 00 30 03 00 02 40 20 2C 44 01 08 1B 11 D9",
+      "crcOk": true,
+      "decoded": "status power=off p1=0x02 brightness=64% cct=3200K hue=220° saturation=68% mode=CCT p7=0x08 p8=0x1b"
+    },
+    {
+      "t": 15.618,
+      "dir": "app→light",
+      "hex": "4C 54 0E 00 30 48 00 02 40 20 2C 44 01 08 1B 98 47",
+      "crcOk": true,
+      "decoded": "cmd=0x48"
+    },
+    {
+      "t": 19.377,
+      "dir": "app→light",
+      "hex": "4C 54 09 00 30 57 00 00 01 01 22 DF",
+      "crcOk": true,
+      "decoded": "set power=on"
+    },
+    {
+      "t": 19.457,
+      "dir": "light→app",
+      "hex": "4C 54 08 00 30 02 00 00 01 4C CA",
+      "crcOk": true,
+      "decoded": "ack power=on"
+    },
+    {
+      "t": 20.626,
+      "dir": "light→app",
+      "hex": "4C 54 0E 00 30 03 01 02 40 20 2C 44 01 08 1B FA FA",
+      "crcOk": true,
+      "decoded": "status power=on p1=0x02 brightness=64% cct=3200K hue=220° saturation=68% mode=CCT p7=0x08 p8=0x1b"
+    },
+    {
+      "t": 20.628,
+      "dir": "app→light",
+      "hex": "4C 54 0E 00 30 48 01 02 40 20 2C 44 01 08 1B 73 64",
+      "crcOk": true,
+      "decoded": "cmd=0x48"
+    },
+    {
+      "t": 25.666,
+      "dir": "light→app",
+      "hex": "4C 54 0E 00 30 03 01 02 40 20 2C 44 01 08 1B FA FA",
+      "crcOk": true,
+      "decoded": "status power=on p1=0x02 brightness=64% cct=3200K hue=220° saturation=68% mode=CCT p7=0x08 p8=0x1b"
+    },
+    {
+      "t": 25.667,
+      "dir": "app→light",
+      "hex": "4C 54 0E 00 30 48 01 02 40 20 2C 44 01 08 1B 73 64",
+      "crcOk": true,
+      "decoded": "cmd=0x48"
+    },
+    {
+      "t": 30.706,
+      "dir": "light→app",
+      "hex": "4C 54 0E 00 30 03 01 02 40 20 2C 44 01 08 1B FA FA",
+      "crcOk": true,
+      "decoded": "status power=on p1=0x02 brightness=64% cct=3200K hue=220° saturation=68% mode=CCT p7=0x08 p8=0x1b"
+    },
+    {
+      "t": 30.708,
+      "dir": "app→light",
+      "hex": "4C 54 0E 00 30 48 01 02 40 20 2C 44 01 08 1B 73 64",
+      "crcOk": true,
+      "decoded": "cmd=0x48"
+    },
+    {
+      "t": 31.65,
+      "dir": "app→light",
+      "hex": "4C 54 09 00 30 57 00 02 01 37 1A 2A",
+      "crcOk": true,
+      "decoded": "set brightness=55%"
+    },
+    {
+      "t": 31.726,
+      "dir": "light→app",
+      "hex": "4C 54 08 00 30 02 00 02 37 7C 3D",
+      "crcOk": true,
+      "decoded": "ack brightness=55%"
+    },
+    {
+      "t": 31.949,
+      "dir": "app→light",
+      "hex": "4C 54 09 00 30 57 00 02 01 22 58 BE",
+      "crcOk": true,
+      "decoded": "set brightness=34%"
+    },
+    {
+      "t": 32.026,
+      "dir": "light→app",
+      "hex": "4C 54 08 00 30 02 00 02 22 3E A9",
+      "crcOk": true,
+      "decoded": "ack brightness=34%"
+    },
+    {
+      "t": 32.249,
+      "dir": "app→light",
+      "hex": "4C 54 09 00 30 57 00 02 01 1A EF E5",
+      "crcOk": true,
+      "decoded": "set brightness=26%"
+    },
+    {
+      "t": 32.326,
+      "dir": "light→app",
+      "hex": "4C 54 08 00 30 02 00 02 1A 89 F2",
+      "crcOk": true,
+      "decoded": "ack brightness=26%"
+    },
+    {
+      "t": 32.549,
+      "dir": "app→light",
+      "hex": "4C 54 09 00 30 57 00 02 01 14 0E 2B",
+      "crcOk": true,
+      "decoded": "set brightness=20%"
+    },
+    {
+      "t": 32.626,
+      "dir": "light→app",
+      "hex": "4C 54 08 00 30 02 00 02 14 68 3C",
+      "crcOk": true,
+      "decoded": "ack brightness=20%"
+    },
+    {
+      "t": 32.85,
+      "dir": "app→light",
+      "hex": "4C 54 09 00 30 57 00 02 01 11 5E 8E",
+      "crcOk": true,
+      "decoded": "set brightness=17%"
+    },
+    {
+      "t": 32.926,
+      "dir": "light→app",
+      "hex": "4C 54 08 00 30 02 00 02 11 38 99",
+      "crcOk": true,
+      "decoded": "ack brightness=17%"
+    },
+    {
+      "t": 33.148,
+      "dir": "app→light",
+      "hex": "4C 54 09 00 30 57 00 02 01 0D 8D 33",
+      "crcOk": true,
+      "decoded": "set brightness=13%"
+    },
+    {
+      "t": 33.226,
+      "dir": "light→app",
+      "hex": "4C 54 08 00 30 02 00 02 0D EB 24",
+      "crcOk": true,
+      "decoded": "ack brightness=13%"
+    },
+    {
+      "t": 33.449,
+      "dir": "app→light",
+      "hex": "4C 54 09 00 30 57 00 02 01 0B ED F5",
+      "crcOk": true,
+      "decoded": "set brightness=11%"
+    },
+    {
+      "t": 33.526,
+      "dir": "light→app",
+      "hex": "4C 54 08 00 30 02 00 02 0B 8B E2",
+      "crcOk": true,
+      "decoded": "ack brightness=11%"
+    },
+    {
+      "t": 34.047,
+      "dir": "app→light",
+      "hex": "4C 54 09 00 30 57 00 02 01 0A FD D4",
+      "crcOk": true,
+      "decoded": "set brightness=10%"
+    },
+    {
+      "t": 34.099,
+      "dir": "light→app",
+      "hex": "4C 54 08 00 30 02 00 02 0A 9B C3",
+      "crcOk": true,
+      "decoded": "ack brightness=10%"
+    },
+    {
+      "t": 34.347,
+      "dir": "app→light",
+      "hex": "4C 54 09 00 30 57 00 02 01 0A FD D4",
+      "crcOk": true,
+      "decoded": "set brightness=10%"
+    },
+    {
+      "t": 34.48,
+      "dir": "app→light",
+      "hex": "4C 54 09 00 30 57 00 02 01 0A FD D4",
+      "crcOk": true,
+      "decoded": "set brightness=10%"
+    },
+    {
+      "t": 35.746,
+      "dir": "light→app",
+      "hex": "4C 54 0E 00 30 03 01 02 0A 20 2C 44 01 08 1B D4 58",
+      "crcOk": true,
+      "decoded": "status power=on p1=0x02 brightness=10% cct=3200K hue=220° saturation=68% mode=CCT p7=0x08 p8=0x1b"
+    },
+    {
+      "t": 35.748,
+      "dir": "app→light",
+      "hex": "4C 54 0E 00 30 48 01 02 0A 20 2C 44 01 08 1B 5D C6",
+      "crcOk": true,
+      "decoded": "cmd=0x48"
+    },
+    {
+      "t": 40.786,
+      "dir": "light→app",
+      "hex": "4C 54 0E 00 30 03 01 02 0A 20 2C 44 01 08 1B D4 58",
+      "crcOk": true,
+      "decoded": "status power=on p1=0x02 brightness=10% cct=3200K hue=220° saturation=68% mode=CCT p7=0x08 p8=0x1b"
+    },
+    {
+      "t": 40.787,
+      "dir": "app→light",
+      "hex": "4C 54 0E 00 30 48 01 02 0A 20 2C 44 01 08 1B 5D C6",
+      "crcOk": true,
+      "decoded": "cmd=0x48"
+    },
+    {
+      "t": 45.826,
+      "dir": "light→app",
+      "hex": "4C 54 0E 00 30 03 01 02 0A 20 2C 44 01 08 1B D4 58",
+      "crcOk": true,
+      "decoded": "status power=on p1=0x02 brightness=10% cct=3200K hue=220° saturation=68% mode=CCT p7=0x08 p8=0x1b"
+    },
+    {
+      "t": 45.827,
+      "dir": "app→light",
+      "hex": "4C 54 0E 00 30 48 01 02 0A 20 2C 44 01 08 1B 5D C6",
+      "crcOk": true,
+      "decoded": "cmd=0x48"
+    },
+    {
+      "t": 46.553,
+      "dir": "app→light",
+      "hex": "4C 54 09 00 30 57 00 02 01 0C 9D 12",
+      "crcOk": true,
+      "decoded": "set brightness=12%"
+    },
+    {
+      "t": 46.637,
+      "dir": "light→app",
+      "hex": "4C 54 08 00 30 02 00 02 0C FB 05",
+      "crcOk": true,
+      "decoded": "ack brightness=12%"
+    },
+    {
+      "t": 46.852,
+      "dir": "app→light",
+      "hex": "4C 54 09 00 30 57 00 02 01 16 2E 69",
+      "crcOk": true,
+      "decoded": "set brightness=22%"
+    },
+    {
+      "t": 46.937,
+      "dir": "light→app",
+      "hex": "4C 54 08 00 30 02 00 02 16 48 7E",
+      "crcOk": true,
+      "decoded": "ack brightness=22%"
+    },
+    {
+      "t": 47.152,
+      "dir": "app→light",
+      "hex": "4C 54 09 00 30 57 00 02 01 1C 8F 23",
+      "crcOk": true,
+      "decoded": "set brightness=28%"
+    },
+    {
+      "t": 47.237,
+      "dir": "light→app",
+      "hex": "4C 54 08 00 30 02 00 02 1C E9 34",
+      "crcOk": true,
+      "decoded": "ack brightness=28%"
+    },
+    {
+      "t": 47.451,
+      "dir": "app→light",
+      "hex": "4C 54 09 00 30 57 00 02 01 20 78 FC",
+      "crcOk": true,
+      "decoded": "set brightness=32%"
+    },
+    {
+      "t": 47.536,
+      "dir": "light→app",
+      "hex": "4C 54 08 00 30 02 00 02 20 1E EB",
+      "crcOk": true,
+      "decoded": "ack brightness=32%"
+    },
+    {
+      "t": 47.753,
+      "dir": "app→light",
+      "hex": "4C 54 09 00 30 57 00 02 01 25 28 59",
+      "crcOk": true,
+      "decoded": "set brightness=37%"
+    },
+    {
+      "t": 47.836,
+      "dir": "light→app",
+      "hex": "4C 54 08 00 30 02 00 02 25 4E 4E",
+      "crcOk": true,
+      "decoded": "ack brightness=37%"
+    },
+    {
+      "t": 48.053,
+      "dir": "app→light",
+      "hex": "4C 54 09 00 30 57 00 02 01 29 E9 D5",
+      "crcOk": true,
+      "decoded": "set brightness=41%"
+    },
+    {
+      "t": 48.137,
+      "dir": "light→app",
+      "hex": "4C 54 08 00 30 02 00 02 29 8F C2",
+      "crcOk": true,
+      "decoded": "ack brightness=41%"
+    },
+    {
+      "t": 48.352,
+      "dir": "app→light",
+      "hex": "4C 54 09 00 30 57 00 02 01 2F 89 13",
+      "crcOk": true,
+      "decoded": "set brightness=47%"
+    },
+    {
+      "t": 48.437,
+      "dir": "light→app",
+      "hex": "4C 54 08 00 30 02 00 02 2F EF 04",
+      "crcOk": true,
+      "decoded": "ack brightness=47%"
+    },
+    {
+      "t": 48.652,
+      "dir": "app→light",
+      "hex": "4C 54 09 00 30 57 00 02 01 31 7A EC",
+      "crcOk": true,
+      "decoded": "set brightness=49%"
+    },
+    {
+      "t": 48.737,
+      "dir": "light→app",
+      "hex": "4C 54 08 00 30 02 00 02 31 1C FB",
+      "crcOk": true,
+      "decoded": "ack brightness=49%"
+    },
+    {
+      "t": 48.951,
+      "dir": "app→light",
+      "hex": "4C 54 09 00 30 57 00 02 01 33 5A AE",
+      "crcOk": true,
+      "decoded": "set brightness=51%"
+    },
+    {
+      "t": 49.037,
+      "dir": "light→app",
+      "hex": "4C 54 08 00 30 02 00 02 33 3C B9",
+      "crcOk": true,
+      "decoded": "ack brightness=51%"
+    },
+    {
+      "t": 49.252,
+      "dir": "app→light",
+      "hex": "4C 54 09 00 30 57 00 02 01 31 7A EC",
+      "crcOk": true,
+      "decoded": "set brightness=49%"
+    },
+    {
+      "t": 49.336,
+      "dir": "light→app",
+      "hex": "4C 54 08 00 30 02 00 02 31 1C FB",
+      "crcOk": true,
+      "decoded": "ack brightness=49%"
+    },
+    {
+      "t": 49.851,
+      "dir": "app→light",
+      "hex": "4C 54 09 00 30 57 00 02 01 2F 89 13",
+      "crcOk": true,
+      "decoded": "set brightness=47%"
+    },
+    {
+      "t": 49.907,
+      "dir": "light→app",
+      "hex": "4C 54 08 00 30 02 00 02 2F EF 04",
+      "crcOk": true,
+      "decoded": "ack brightness=47%"
+    },
+    {
+      "t": 50.152,
+      "dir": "app→light",
+      "hex": "4C 54 09 00 30 57 00 02 01 30 6A CD",
+      "crcOk": true,
+      "decoded": "set brightness=48%"
+    },
+    {
+      "t": 50.207,
+      "dir": "light→app",
+      "hex": "4C 54 08 00 30 02 00 02 30 0C DA",
+      "crcOk": true,
+      "decoded": "ack brightness=48%"
+    },
+    {
+      "t": 50.452,
+      "dir": "app→light",
+      "hex": "4C 54 09 00 30 57 00 02 01 33 5A AE",
+      "crcOk": true,
+      "decoded": "set brightness=51%"
+    },
+    {
+      "t": 50.507,
+      "dir": "light→app",
+      "hex": "4C 54 08 00 30 02 00 02 33 3C B9",
+      "crcOk": true,
+      "decoded": "ack brightness=51%"
+    },
+    {
+      "t": 50.717,
+      "dir": "app→light",
+      "hex": "4C 54 09 00 30 57 00 02 01 33 5A AE",
+      "crcOk": true,
+      "decoded": "set brightness=51%"
+    },
+    {
+      "t": 50.867,
+      "dir": "light→app",
+      "hex": "4C 54 0E 00 30 03 01 02 33 20 2C 44 01 08 1B A6 19",
+      "crcOk": true,
+      "decoded": "status power=on p1=0x02 brightness=51% cct=3200K hue=220° saturation=68% mode=CCT p7=0x08 p8=0x1b"
+    },
+    {
+      "t": 50.869,
+      "dir": "app→light",
+      "hex": "4C 54 0E 00 30 48 01 02 33 20 2C 44 01 08 1B 2F 87",
+      "crcOk": true,
+      "decoded": "cmd=0x48"
+    },
+    {
+      "t": 55.907,
+      "dir": "light→app",
+      "hex": "4C 54 0E 00 30 03 01 02 33 20 2C 44 01 08 1B A6 19",
+      "crcOk": true,
+      "decoded": "status power=on p1=0x02 brightness=51% cct=3200K hue=220° saturation=68% mode=CCT p7=0x08 p8=0x1b"
+    },
+    {
+      "t": 55.908,
+      "dir": "app→light",
+      "hex": "4C 54 0E 00 30 48 01 02 33 20 2C 44 01 08 1B 2F 87",
+      "crcOk": true,
+      "decoded": "cmd=0x48"
+    },
+    {
+      "t": 60.917,
+      "dir": "light→app",
+      "hex": "4C 54 0E 00 30 03 01 02 33 20 2C 44 01 08 1B A6 19",
+      "crcOk": true,
+      "decoded": "status power=on p1=0x02 brightness=51% cct=3200K hue=220° saturation=68% mode=CCT p7=0x08 p8=0x1b"
+    },
+    {
+      "t": 60.918,
+      "dir": "app→light",
+      "hex": "4C 54 0E 00 30 48 01 02 33 20 2C 44 01 08 1B 2F 87",
+      "crcOk": true,
+      "decoded": "cmd=0x48"
+    },
+    {
+      "t": 63.424,
+      "dir": "app→light",
+      "hex": "4C 54 09 00 30 57 00 02 01 33 5A AE",
+      "crcOk": true,
+      "decoded": "set brightness=51%"
+    },
+    {
+      "t": 63.723,
+      "dir": "app→light",
+      "hex": "4C 54 09 00 30 57 00 02 01 49 85 73",
+      "crcOk": true,
+      "decoded": "set brightness=73%"
+    },
+    {
+      "t": 63.797,
+      "dir": "light→app",
+      "hex": "4C 54 08 00 30 02 00 02 49 E3 64",
+      "crcOk": true,
+      "decoded": "ack brightness=73%"
+    },
+    {
+      "t": 64.023,
+      "dir": "app→light",
+      "hex": "4C 54 09 00 30 57 00 02 01 64 70 BC",
+      "crcOk": true,
+      "decoded": "set brightness=100%"
+    },
+    {
+      "t": 64.097,
+      "dir": "light→app",
+      "hex": "4C 54 08 00 30 02 00 02 64 16 AB",
+      "crcOk": true,
+      "decoded": "ack brightness=100%"
+    },
+    {
+      "t": 64.27,
+      "dir": "app→light",
+      "hex": "4C 54 09 00 30 57 00 02 01 64 70 BC",
+      "crcOk": true,
+      "decoded": "set brightness=100%"
+    },
+    {
+      "t": 65.957,
+      "dir": "light→app",
+      "hex": "4C 54 0E 00 30 03 01 02 64 20 2C 44 01 08 1B 55 CA",
+      "crcOk": true,
+      "decoded": "status power=on p1=0x02 brightness=100% cct=3200K hue=220° saturation=68% mode=CCT p7=0x08 p8=0x1b"
+    },
+    {
+      "t": 65.958,
+      "dir": "app→light",
+      "hex": "4C 54 0E 00 30 48 01 02 64 20 2C 44 01 08 1B DC 54",
+      "crcOk": true,
+      "decoded": "cmd=0x48"
+    },
+    {
+      "t": 70.997,
+      "dir": "light→app",
+      "hex": "4C 54 0E 00 30 03 01 02 64 20 2C 44 01 08 1B 55 CA",
+      "crcOk": true,
+      "decoded": "status power=on p1=0x02 brightness=100% cct=3200K hue=220° saturation=68% mode=CCT p7=0x08 p8=0x1b"
+    },
+    {
+      "t": 70.998,
+      "dir": "app→light",
+      "hex": "4C 54 0E 00 30 48 01 02 64 20 2C 44 01 08 1B DC 54",
+      "crcOk": true,
+      "decoded": "cmd=0x48"
+    },
+    {
+      "t": 76.037,
+      "dir": "light→app",
+      "hex": "4C 54 0E 00 30 03 01 02 64 20 2C 44 01 08 1B 55 CA",
+      "crcOk": true,
+      "decoded": "status power=on p1=0x02 brightness=100% cct=3200K hue=220° saturation=68% mode=CCT p7=0x08 p8=0x1b"
+    },
+    {
+      "t": 76.039,
+      "dir": "app→light",
+      "hex": "4C 54 0E 00 30 48 01 02 64 20 2C 44 01 08 1B DC 54",
+      "crcOk": true,
+      "decoded": "cmd=0x48"
+    },
+    {
+      "t": 77.794,
+      "dir": "app→light",
+      "hex": "4C 54 09 00 30 57 00 02 01 61 20 19",
+      "crcOk": true,
+      "decoded": "set brightness=97%"
+    },
+    {
+      "t": 77.867,
+      "dir": "light→app",
+      "hex": "4C 54 08 00 30 02 00 02 61 46 0E",
+      "crcOk": true,
+      "decoded": "ack brightness=97%"
+    },
+    {
+      "t": 78.093,
+      "dir": "app→light",
+      "hex": "4C 54 09 00 30 57 00 02 01 4C D5 D6",
+      "crcOk": true,
+      "decoded": "set brightness=76%"
+    },
+    {
+      "t": 78.166,
+      "dir": "light→app",
+      "hex": "4C 54 08 00 30 02 00 02 4C B3 C1",
+      "crcOk": true,
+      "decoded": "ack brightness=76%"
+    },
+    {
+      "t": 78.392,
+      "dir": "app→light",
+      "hex": "4C 54 09 00 30 57 00 02 01 40 14 5A",
+      "crcOk": true,
+      "decoded": "set brightness=64%"
+    },
+    {
+      "t": 78.466,
+      "dir": "light→app",
+      "hex": "4C 54 08 00 30 02 00 02 40 72 4D",
+      "crcOk": true,
+      "decoded": "ack brightness=64%"
+    },
+    {
+      "t": 78.692,
+      "dir": "app→light",
+      "hex": "4C 54 09 00 30 57 00 02 01 38 EB C5",
+      "crcOk": true,
+      "decoded": "set brightness=56%"
+    },
+    {
+      "t": 78.766,
+      "dir": "light→app",
+      "hex": "4C 54 08 00 30 02 00 02 38 8D D2",
+      "crcOk": true,
+      "decoded": "ack brightness=56%"
+    },
+    {
+      "t": 78.993,
+      "dir": "app→light",
+      "hex": "4C 54 09 00 30 57 00 02 01 2E 99 32",
+      "crcOk": true,
+      "decoded": "set brightness=46%"
+    },
+    {
+      "t": 79.067,
+      "dir": "light→app",
+      "hex": "4C 54 08 00 30 02 00 02 2E FF 25",
+      "crcOk": true,
+      "decoded": "ack brightness=46%"
+    },
+    {
+      "t": 79.292,
+      "dir": "app→light",
+      "hex": "4C 54 09 00 30 57 00 02 01 2C B9 70",
+      "crcOk": true,
+      "decoded": "set brightness=44%"
+    },
+    {
+      "t": 79.366,
+      "dir": "light→app",
+      "hex": "4C 54 08 00 30 02 00 02 2C DF 67",
+      "crcOk": true,
+      "decoded": "ack brightness=44%"
+    },
+    {
+      "t": 79.592,
+      "dir": "app→light",
+      "hex": "4C 54 09 00 30 57 00 02 01 30 6A CD",
+      "crcOk": true,
+      "decoded": "set brightness=48%"
+    },
+    {
+      "t": 79.666,
+      "dir": "light→app",
+      "hex": "4C 54 08 00 30 02 00 02 30 0C DA",
+      "crcOk": true,
+      "decoded": "ack brightness=48%"
+    },
+    {
+      "t": 79.891,
+      "dir": "app→light",
+      "hex": "4C 54 09 00 30 57 00 02 01 32 4A 8F",
+      "crcOk": true,
+      "decoded": "set brightness=50%"
+    },
+    {
+      "t": 79.967,
+      "dir": "light→app",
+      "hex": "4C 54 08 00 30 02 00 02 32 2C 98",
+      "crcOk": true,
+      "decoded": "ack brightness=50%"
+    },
+    {
+      "t": 80.406,
+      "dir": "app→light",
+      "hex": "4C 54 09 00 30 57 00 02 01 32 4A 8F",
+      "crcOk": true,
+      "decoded": "set brightness=50%"
+    },
+    {
+      "t": 81.078,
+      "dir": "light→app",
+      "hex": "4C 54 0E 00 30 03 01 02 32 20 2C 44 01 08 1B 1E 78",
+      "crcOk": true,
+      "decoded": "status power=on p1=0x02 brightness=50% cct=3200K hue=220° saturation=68% mode=CCT p7=0x08 p8=0x1b"
+    },
+    {
+      "t": 81.079,
+      "dir": "app→light",
+      "hex": "4C 54 0E 00 30 48 01 02 32 20 2C 44 01 08 1B 97 E6",
+      "crcOk": true,
+      "decoded": "cmd=0x48"
+    },
+    {
+      "t": 86.117,
+      "dir": "light→app",
+      "hex": "4C 54 0E 00 30 03 01 02 32 20 2C 44 01 08 1B 1E 78",
+      "crcOk": true,
+      "decoded": "status power=on p1=0x02 brightness=50% cct=3200K hue=220° saturation=68% mode=CCT p7=0x08 p8=0x1b"
+    },
+    {
+      "t": 86.119,
+      "dir": "app→light",
+      "hex": "4C 54 0E 00 30 48 01 02 32 20 2C 44 01 08 1B 97 E6",
+      "crcOk": true,
+      "decoded": "cmd=0x48"
+    },
+    {
+      "t": 90.912,
+      "dir": "app→light",
+      "hex": "4C 54 09 00 30 57 00 03 01 20 4F CC",
+      "crcOk": true,
+      "decoded": "set cct=3200K"
+    },
+    {
+      "t": 91.007,
+      "dir": "light→app",
+      "hex": "4C 54 08 00 30 02 00 03 20 2D DA",
+      "crcOk": true,
+      "decoded": "ack cct=3200K"
+    },
+    {
+      "t": 91.157,
+      "dir": "light→app",
+      "hex": "4C 54 0E 00 30 03 01 02 32 20 2C 44 01 08 1B 1E 78",
+      "crcOk": true,
+      "decoded": "status power=on p1=0x02 brightness=50% cct=3200K hue=220° saturation=68% mode=CCT p7=0x08 p8=0x1b"
+    },
+    {
+      "t": 91.161,
+      "dir": "app→light",
+      "hex": "4C 54 0E 00 30 48 01 02 32 20 2C 44 01 08 1B 97 E6",
+      "crcOk": true,
+      "decoded": "cmd=0x48"
+    },
+    {
+      "t": 91.212,
+      "dir": "app→light",
+      "hex": "4C 54 09 00 30 57 00 03 01 20 4F CC",
+      "crcOk": true,
+      "decoded": "set cct=3200K"
+    },
+    {
+      "t": 91.51,
+      "dir": "app→light",
+      "hex": "4C 54 09 00 30 57 00 03 01 20 4F CC",
+      "crcOk": true,
+      "decoded": "set cct=3200K"
+    },
+    {
+      "t": 91.742,
+      "dir": "app→light",
+      "hex": "4C 54 09 00 30 57 00 03 01 20 4F CC",
+      "crcOk": true,
+      "decoded": "set cct=3200K"
+    },
+    {
+      "t": 96.197,
+      "dir": "light→app",
+      "hex": "4C 54 0E 00 30 03 01 02 32 20 2C 44 01 08 1B 1E 78",
+      "crcOk": true,
+      "decoded": "status power=on p1=0x02 brightness=50% cct=3200K hue=220° saturation=68% mode=CCT p7=0x08 p8=0x1b"
+    },
+    {
+      "t": 96.198,
+      "dir": "app→light",
+      "hex": "4C 54 0E 00 30 48 01 02 32 20 2C 44 01 08 1B 97 E6",
+      "crcOk": true,
+      "decoded": "cmd=0x48"
+    },
+    {
+      "t": 101.208,
+      "dir": "light→app",
+      "hex": "4C 54 0E 00 30 03 01 02 32 20 2C 44 01 08 1B 1E 78",
+      "crcOk": true,
+      "decoded": "status power=on p1=0x02 brightness=50% cct=3200K hue=220° saturation=68% mode=CCT p7=0x08 p8=0x1b"
+    },
+    {
+      "t": 101.209,
+      "dir": "app→light",
+      "hex": "4C 54 0E 00 30 48 01 02 32 20 2C 44 01 08 1B 97 E6",
+      "crcOk": true,
+      "decoded": "cmd=0x48"
+    },
+    {
+      "t": 105.298,
+      "dir": "app→light",
+      "hex": "4C 54 09 00 30 57 00 03 01 21 5F ED",
+      "crcOk": true,
+      "decoded": "set cct=3300K"
+    },
+    {
+      "t": 105.347,
+      "dir": "light→app",
+      "hex": "4C 54 08 00 30 02 00 03 21 3D FB",
+      "crcOk": true,
+      "decoded": "ack cct=3300K"
+    },
+    {
+      "t": 105.597,
+      "dir": "app→light",
+      "hex": "4C 54 09 00 30 57 00 03 01 26 2F 0A",
+      "crcOk": true,
+      "decoded": "set cct=3800K"
+    },
+    {
+      "t": 105.647,
+      "dir": "light→app",
+      "hex": "4C 54 08 00 30 02 00 03 26 4D 1C",
+      "crcOk": true,
+      "decoded": "ack cct=3800K"
+    },
+    {
+      "t": 105.897,
+      "dir": "app→light",
+      "hex": "4C 54 09 00 30 57 00 03 01 28 CE C4",
+      "crcOk": true,
+      "decoded": "set cct=4000K"
+    },
+    {
+      "t": 105.947,
+      "dir": "light→app",
+      "hex": "4C 54 08 00 30 02 00 03 28 AC D2",
+      "crcOk": true,
+      "decoded": "ack cct=4000K"
+    },
+    {
+      "t": 106.197,
+      "dir": "app→light",
+      "hex": "4C 54 09 00 30 57 00 03 01 2A EE 86",
+      "crcOk": true,
+      "decoded": "set cct=4200K"
+    },
+    {
+      "t": 106.247,
+      "dir": "light→app",
+      "hex": "4C 54 08 00 30 02 00 03 2A 8C 90",
+      "crcOk": true,
+      "decoded": "ack cct=4200K"
+    },
+    {
+      "t": 106.247,
+      "dir": "light→app",
+      "hex": "4C 54 0E 00 30 03 01 02 32 2A 2C 44 01 08 1B 98 7A",
+      "crcOk": true,
+      "decoded": "status power=on p1=0x02 brightness=50% cct=4200K hue=220° saturation=68% mode=CCT p7=0x08 p8=0x1b"
+    },
+    {
+      "t": 106.498,
+      "dir": "app→light",
+      "hex": "4C 54 09 00 30 57 00 03 01 2C 8E 40",
+      "crcOk": true,
+      "decoded": "set cct=4400K"
+    },
+    {
+      "t": 106.547,
+      "dir": "light→app",
+      "hex": "4C 54 08 00 30 02 00 03 2C EC 56",
+      "crcOk": true,
+      "decoded": "ack cct=4400K"
+    },
+    {
+      "t": 106.799,
+      "dir": "app→light",
+      "hex": "4C 54 09 00 30 57 00 03 01 2D 9E 61",
+      "crcOk": true,
+      "decoded": "set cct=4500K"
+    },
+    {
+      "t": 106.848,
+      "dir": "light→app",
+      "hex": "4C 54 08 00 30 02 00 03 2D FC 77",
+      "crcOk": true,
+      "decoded": "ack cct=4500K"
+    },
+    {
+      "t": 107.098,
+      "dir": "app→light",
+      "hex": "4C 54 09 00 30 57 00 03 01 30 5D FD",
+      "crcOk": true,
+      "decoded": "set cct=4800K"
+    },
+    {
+      "t": 107.178,
+      "dir": "light→app",
+      "hex": "4C 54 08 00 30 02 00 03 30 3F EB",
+      "crcOk": true,
+      "decoded": "ack cct=4800K"
+    },
+    {
+      "t": 107.396,
+      "dir": "app→light",
+      "hex": "4C 54 09 00 30 57 00 03 01 36 3D 3B",
+      "crcOk": true,
+      "decoded": "set cct=5400K"
+    },
+    {
+      "t": 107.478,
+      "dir": "light→app",
+      "hex": "4C 54 08 00 30 02 00 03 36 5F 2D",
+      "crcOk": true,
+      "decoded": "ack cct=5400K"
+    },
+    {
+      "t": 107.698,
+      "dir": "app→light",
+      "hex": "4C 54 09 00 30 57 00 03 01 38 DC F5",
+      "crcOk": true,
+      "decoded": "set cct=5600K"
+    },
+    {
+      "t": 107.777,
+      "dir": "light→app",
+      "hex": "4C 54 08 00 30 02 00 03 38 BE E3",
+      "crcOk": true,
+      "decoded": "ack cct=5600K"
+    },
+    {
+      "t": 107.978,
+      "dir": "app→light",
+      "hex": "4C 54 09 00 30 57 00 03 01 38 DC F5",
+      "crcOk": true,
+      "decoded": "set cct=5600K"
+    },
+    {
+      "t": 111.288,
+      "dir": "light→app",
+      "hex": "4C 54 0E 00 30 03 01 02 32 38 2C 44 01 08 1B 09 BE",
+      "crcOk": true,
+      "decoded": "status power=on p1=0x02 brightness=50% cct=5600K hue=220° saturation=68% mode=CCT p7=0x08 p8=0x1b"
+    },
+    {
+      "t": 111.289,
+      "dir": "app→light",
+      "hex": "4C 54 0E 00 30 48 01 02 32 38 2C 44 01 08 1B 80 20",
+      "crcOk": true,
+      "decoded": "cmd=0x48"
+    },
+    {
+      "t": 116.328,
+      "dir": "light→app",
+      "hex": "4C 54 0E 00 30 03 01 02 32 38 2C 44 01 08 1B 09 BE",
+      "crcOk": true,
+      "decoded": "status power=on p1=0x02 brightness=50% cct=5600K hue=220° saturation=68% mode=CCT p7=0x08 p8=0x1b"
+    },
+    {
+      "t": 116.329,
+      "dir": "app→light",
+      "hex": "4C 54 0E 00 30 48 01 02 32 38 2C 44 01 08 1B 80 20",
+      "crcOk": true,
+      "decoded": "cmd=0x48"
+    },
+    {
+      "t": 121.367,
+      "dir": "light→app",
+      "hex": "4C 54 0E 00 30 03 01 02 32 38 2C 44 01 08 1B 09 BE",
+      "crcOk": true,
+      "decoded": "status power=on p1=0x02 brightness=50% cct=5600K hue=220° saturation=68% mode=CCT p7=0x08 p8=0x1b"
+    },
+    {
+      "t": 121.369,
+      "dir": "app→light",
+      "hex": "4C 54 0E 00 30 48 01 02 32 38 2C 44 01 08 1B 80 20",
+      "crcOk": true,
+      "decoded": "cmd=0x48"
+    },
+    {
+      "t": 123.554,
+      "dir": "app→light",
+      "hex": "4C 54 09 00 30 57 00 03 01 37 2D 1A",
+      "crcOk": true,
+      "decoded": "set cct=5500K"
+    },
+    {
+      "t": 123.618,
+      "dir": "light→app",
+      "hex": "4C 54 08 00 30 02 00 03 37 4F 0C",
+      "crcOk": true,
+      "decoded": "ack cct=5500K"
+    },
+    {
+      "t": 123.851,
+      "dir": "app→light",
+      "hex": "4C 54 09 00 30 57 00 03 01 2D 9E 61",
+      "crcOk": true,
+      "decoded": "set cct=4500K"
+    },
+    {
+      "t": 123.888,
+      "dir": "light→app",
+      "hex": "4C 54 08 00 30 02 00 03 2D FC 77",
+      "crcOk": true,
+      "decoded": "ack cct=4500K"
+    },
+    {
+      "t": 124.151,
+      "dir": "app→light",
+      "hex": "4C 54 09 00 30 57 00 03 01 2A EE 86",
+      "crcOk": true,
+      "decoded": "set cct=4200K"
+    },
+    {
+      "t": 124.248,
+      "dir": "light→app",
+      "hex": "4C 54 08 00 30 02 00 03 2A 8C 90",
+      "crcOk": true,
+      "decoded": "ack cct=4200K"
+    },
+    {
+      "t": 124.452,
+      "dir": "app→light",
+      "hex": "4C 54 09 00 30 57 00 03 01 27 3F 2B",
+      "crcOk": true,
+      "decoded": "set cct=3900K"
+    },
+    {
+      "t": 124.548,
+      "dir": "light→app",
+      "hex": "4C 54 08 00 30 02 00 03 27 5D 3D",
+      "crcOk": true,
+      "decoded": "ack cct=3900K"
+    },
+    {
+      "t": 124.752,
+      "dir": "app→light",
+      "hex": "4C 54 09 00 30 57 00 03 01 24 0F 48",
+      "crcOk": true,
+      "decoded": "set cct=3600K"
+    },
+    {
+      "t": 124.877,
+      "dir": "light→app",
+      "hex": "4C 54 08 00 30 02 00 03 24 6D 5E",
+      "crcOk": true,
+      "decoded": "ack cct=3600K"
+    },
+    {
+      "t": 125.051,
+      "dir": "app→light",
+      "hex": "4C 54 09 00 30 57 00 03 01 20 4F CC",
+      "crcOk": true,
+      "decoded": "set cct=3200K"
+    },
+    {
+      "t": 125.088,
+      "dir": "light→app",
+      "hex": "4C 54 08 00 30 02 00 03 20 2D DA",
+      "crcOk": true,
+      "decoded": "ack cct=3200K"
+    },
+    {
+      "t": 125.149,
+      "dir": "app→light",
+      "hex": "4C 54 09 00 30 57 00 03 01 20 4F CC",
+      "crcOk": true,
+      "decoded": "set cct=3200K"
+    },
+    {
+      "t": 126.408,
+      "dir": "light→app",
+      "hex": "4C 54 0E 00 30 03 01 02 32 20 2C 44 01 08 1B 1E 78",
+      "crcOk": true,
+      "decoded": "status power=on p1=0x02 brightness=50% cct=3200K hue=220° saturation=68% mode=CCT p7=0x08 p8=0x1b"
+    },
+    {
+      "t": 126.409,
+      "dir": "app→light",
+      "hex": "4C 54 0E 00 30 48 01 02 32 20 2C 44 01 08 1B 97 E6",
+      "crcOk": true,
+      "decoded": "cmd=0x48"
+    },
+    {
+      "t": 131.447,
+      "dir": "light→app",
+      "hex": "4C 54 0E 00 30 03 01 02 32 20 2C 44 01 08 1B 1E 78",
+      "crcOk": true,
+      "decoded": "status power=on p1=0x02 brightness=50% cct=3200K hue=220° saturation=68% mode=CCT p7=0x08 p8=0x1b"
+    },
+    {
+      "t": 131.449,
+      "dir": "app→light",
+      "hex": "4C 54 0E 00 30 48 01 02 32 20 2C 44 01 08 1B 97 E6",
+      "crcOk": true,
+      "decoded": "cmd=0x48"
+    },
+    {
+      "t": 136.487,
+      "dir": "light→app",
+      "hex": "4C 54 0E 00 30 03 01 02 32 20 2C 44 01 08 1B 1E 78",
+      "crcOk": true,
+      "decoded": "status power=on p1=0x02 brightness=50% cct=3200K hue=220° saturation=68% mode=CCT p7=0x08 p8=0x1b"
+    },
+    {
+      "t": 136.489,
+      "dir": "app→light",
+      "hex": "4C 54 0E 00 30 48 01 02 32 20 2C 44 01 08 1B 97 E6",
+      "crcOk": true,
+      "decoded": "cmd=0x48"
+    },
+    {
+      "t": 138.369,
+      "dir": "app→light",
+      "hex": "4C 54 09 00 30 57 00 06 01 02 A0 1C",
+      "crcOk": true,
+      "decoded": "set mode=HSI"
+    },
+    {
+      "t": 138.438,
+      "dir": "light→app",
+      "hex": "4C 54 08 00 30 02 00 06 02 D6 0F",
+      "crcOk": true,
+      "decoded": "ack mode=HSI"
+    },
+    {
+      "t": 141.497,
+      "dir": "light→app",
+      "hex": "4C 54 0E 00 30 03 01 02 32 20 2C 44 02 08 1B 47 28",
+      "crcOk": true,
+      "decoded": "status power=on p1=0x02 brightness=50% cct=3200K hue=220° saturation=68% mode=HSI p7=0x08 p8=0x1b"
+    },
+    {
+      "t": 141.499,
+      "dir": "app→light",
+      "hex": "4C 54 0E 00 30 48 01 02 32 20 2C 44 02 08 1B CE B6",
+      "crcOk": true,
+      "decoded": "cmd=0x48"
+    },
+    {
+      "t": 144.058,
+      "dir": "app→light",
+      "hex": "4C 54 09 00 30 57 00 04 01 01 FE 1F",
+      "crcOk": true,
+      "decoded": "set hue=5°"
+    },
+    {
+      "t": 144.138,
+      "dir": "light→app",
+      "hex": "4C 54 08 00 30 02 00 04 01 80 0E",
+      "crcOk": true,
+      "decoded": "ack hue=5°"
+    },
+    {
+      "t": 144.354,
+      "dir": "app→light",
+      "hex": "4C 54 09 00 30 57 00 04 01 05 BE 9B",
+      "crcOk": true,
+      "decoded": "set hue=25°"
+    },
+    {
+      "t": 144.437,
+      "dir": "light→app",
+      "hex": "4C 54 08 00 30 02 00 04 05 C0 8A",
+      "crcOk": true,
+      "decoded": "ack hue=25°"
+    },
+    {
+      "t": 144.654,
+      "dir": "app→light",
+      "hex": "4C 54 09 00 30 57 00 04 01 00 EE 3E",
+      "crcOk": true,
+      "decoded": "set hue=0°"
+    },
+    {
+      "t": 144.738,
+      "dir": "light→app",
+      "hex": "4C 54 08 00 30 02 00 04 00 90 2F",
+      "crcOk": true,
+      "decoded": "ack hue=0°"
+    },
+    {
+      "t": 144.955,
+      "dir": "app→light",
+      "hex": "4C 54 09 00 30 57 00 04 01 47 D6 1D",
+      "crcOk": true,
+      "decoded": "set hue=355°"
+    },
+    {
+      "t": 145.068,
+      "dir": "light→app",
+      "hex": "4C 54 08 00 30 02 00 04 47 A8 0C",
+      "crcOk": true,
+      "decoded": "ack hue=355°"
+    },
+    {
+      "t": 145.256,
+      "dir": "app→light",
+      "hex": "4C 54 09 00 30 57 00 04 01 01 FE 1F",
+      "crcOk": true,
+      "decoded": "set hue=5°"
+    },
+    {
+      "t": 145.368,
+      "dir": "light→app",
+      "hex": "4C 54 08 00 30 02 00 04 01 80 0E",
+      "crcOk": true,
+      "decoded": "ack hue=5°"
+    },
+    {
+      "t": 145.554,
+      "dir": "app→light",
+      "hex": "4C 54 09 00 30 57 00 04 01 01 FE 1F",
+      "crcOk": true,
+      "decoded": "set hue=5°"
+    },
+    {
+      "t": 145.854,
+      "dir": "app→light",
+      "hex": "4C 54 09 00 30 57 00 04 01 00 EE 3E",
+      "crcOk": true,
+      "decoded": "set hue=0°"
+    },
+    {
+      "t": 145.938,
+      "dir": "light→app",
+      "hex": "4C 54 08 00 30 02 00 04 00 90 2F",
+      "crcOk": true,
+      "decoded": "ack hue=0°"
+    },
+    {
+      "t": 146.053,
+      "dir": "app→light",
+      "hex": "4C 54 09 00 30 57 00 04 01 00 EE 3E",
+      "crcOk": true,
+      "decoded": "set hue=0°"
+    },
+    {
+      "t": 146.538,
+      "dir": "light→app",
+      "hex": "4C 54 0E 00 30 03 01 02 32 20 00 44 02 08 1B C4 B7",
+      "crcOk": true,
+      "decoded": "status power=on p1=0x02 brightness=50% cct=3200K hue=0° saturation=68% mode=HSI p7=0x08 p8=0x1b"
+    },
+    {
+      "t": 146.539,
+      "dir": "app→light",
+      "hex": "4C 54 0E 00 30 48 01 02 32 20 00 44 02 08 1B 4D 29",
+      "crcOk": true,
+      "decoded": "cmd=0x48"
+    },
+    {
+      "t": 151.578,
+      "dir": "light→app",
+      "hex": "4C 54 0E 00 30 03 01 02 32 20 00 44 02 08 1B C4 B7",
+      "crcOk": true,
+      "decoded": "status power=on p1=0x02 brightness=50% cct=3200K hue=0° saturation=68% mode=HSI p7=0x08 p8=0x1b"
+    },
+    {
+      "t": 151.579,
+      "dir": "app→light",
+      "hex": "4C 54 0E 00 30 48 01 02 32 20 00 44 02 08 1B 4D 29",
+      "crcOk": true,
+      "decoded": "cmd=0x48"
+    },
+    {
+      "t": 156.618,
+      "dir": "light→app",
+      "hex": "4C 54 0E 00 30 03 01 02 32 20 00 44 02 08 1B C4 B7",
+      "crcOk": true,
+      "decoded": "status power=on p1=0x02 brightness=50% cct=3200K hue=0° saturation=68% mode=HSI p7=0x08 p8=0x1b"
+    },
+    {
+      "t": 156.619,
+      "dir": "app→light",
+      "hex": "4C 54 0E 00 30 48 01 02 32 20 00 44 02 08 1B 4D 29",
+      "crcOk": true,
+      "decoded": "cmd=0x48"
+    },
+    {
+      "t": 161.658,
+      "dir": "light→app",
+      "hex": "4C 54 0E 00 30 03 01 02 32 20 00 44 02 08 1B C4 B7",
+      "crcOk": true,
+      "decoded": "status power=on p1=0x02 brightness=50% cct=3200K hue=0° saturation=68% mode=HSI p7=0x08 p8=0x1b"
+    },
+    {
+      "t": 161.66,
+      "dir": "app→light",
+      "hex": "4C 54 0E 00 30 48 01 02 32 20 00 44 02 08 1B 4D 29",
+      "crcOk": true,
+      "decoded": "cmd=0x48"
+    },
+    {
+      "t": 161.677,
+      "dir": "app→light",
+      "hex": "4C 54 09 00 30 57 00 04 01 02 CE 7C",
+      "crcOk": true,
+      "decoded": "set hue=10°"
+    },
+    {
+      "t": 161.778,
+      "dir": "light→app",
+      "hex": "4C 54 08 00 30 02 00 04 02 B0 6D",
+      "crcOk": true,
+      "decoded": "ack hue=10°"
+    },
+    {
+      "t": 161.976,
+      "dir": "app→light",
+      "hex": "4C 54 09 00 30 57 00 04 01 0D 3F 93",
+      "crcOk": true,
+      "decoded": "set hue=65°"
+    },
+    {
+      "t": 162.018,
+      "dir": "light→app",
+      "hex": "4C 54 08 00 30 02 00 04 0D 41 82",
+      "crcOk": true,
+      "decoded": "ack hue=65°"
+    },
+    {
+      "t": 162.277,
+      "dir": "app→light",
+      "hex": "4C 54 09 00 30 57 00 04 01 11 EC 2E",
+      "crcOk": true,
+      "decoded": "set hue=85°"
+    },
+    {
+      "t": 162.317,
+      "dir": "light→app",
+      "hex": "4C 54 08 00 30 02 00 04 11 92 3F",
+      "crcOk": true,
+      "decoded": "ack hue=85°"
+    },
+    {
+      "t": 162.576,
+      "dir": "app→light",
+      "hex": "4C 54 09 00 30 57 00 04 01 12 DC 4D",
+      "crcOk": true,
+      "decoded": "set hue=90°"
+    },
+    {
+      "t": 162.618,
+      "dir": "light→app",
+      "hex": "4C 54 08 00 30 02 00 04 12 A2 5C",
+      "crcOk": true,
+      "decoded": "ack hue=90°"
+    },
+    {
+      "t": 162.876,
+      "dir": "app→light",
+      "hex": "4C 54 09 00 30 57 00 04 01 16 9C C9",
+      "crcOk": true,
+      "decoded": "set hue=110°"
+    },
+    {
+      "t": 162.948,
+      "dir": "light→app",
+      "hex": "4C 54 08 00 30 02 00 04 16 E2 D8",
+      "crcOk": true,
+      "decoded": "ack hue=110°"
+    },
+    {
+      "t": 163.176,
+      "dir": "app→light",
+      "hex": "4C 54 09 00 30 57 00 04 01 17 8C E8",
+      "crcOk": true,
+      "decoded": "set hue=115°"
+    },
+    {
+      "t": 163.218,
+      "dir": "light→app",
+      "hex": "4C 54 08 00 30 02 00 04 17 F2 F9",
+      "crcOk": true,
+      "decoded": "ack hue=115°"
+    },
+    {
+      "t": 163.475,
+      "dir": "app→light",
+      "hex": "4C 54 09 00 30 57 00 04 01 18 7D 07",
+      "crcOk": true,
+      "decoded": "set hue=120°"
+    },
+    {
+      "t": 163.518,
+      "dir": "light→app",
+      "hex": "4C 54 08 00 30 02 00 04 18 03 16",
+      "crcOk": true,
+      "decoded": "ack hue=120°"
+    },
+    {
+      "t": 163.723,
+      "dir": "app→light",
+      "hex": "4C 54 09 00 30 57 00 04 01 18 7D 07",
+      "crcOk": true,
+      "decoded": "set hue=120°"
+    },
+    {
+      "t": 166.699,
+      "dir": "light→app",
+      "hex": "4C 54 0E 00 30 03 01 02 32 20 18 44 02 08 1B C2 C0",
+      "crcOk": true,
+      "decoded": "status power=on p1=0x02 brightness=50% cct=3200K hue=120° saturation=68% mode=HSI p7=0x08 p8=0x1b"
+    },
+    {
+      "t": 166.759,
+      "dir": "app→light",
+      "hex": "4C 54 0E 00 30 48 01 02 32 20 18 44 02 08 1B 4B 5E",
+      "crcOk": true,
+      "decoded": "cmd=0x48"
+    },
+    {
+      "t": 171.738,
+      "dir": "light→app",
+      "hex": "4C 54 0E 00 30 03 01 02 32 20 18 44 02 08 1B C2 C0",
+      "crcOk": true,
+      "decoded": "status power=on p1=0x02 brightness=50% cct=3200K hue=120° saturation=68% mode=HSI p7=0x08 p8=0x1b"
+    },
+    {
+      "t": 171.74,
+      "dir": "app→light",
+      "hex": "4C 54 0E 00 30 48 01 02 32 20 18 44 02 08 1B 4B 5E",
+      "crcOk": true,
+      "decoded": "cmd=0x48"
+    },
+    {
+      "t": 175.547,
+      "dir": "app→light",
+      "hex": "4C 54 09 00 30 57 00 04 01 1A 5D 45",
+      "crcOk": true,
+      "decoded": "set hue=130°"
+    },
+    {
+      "t": 175.609,
+      "dir": "light→app",
+      "hex": "4C 54 08 00 30 02 00 04 1A 23 54",
+      "crcOk": true,
+      "decoded": "ack hue=130°"
+    },
+    {
+      "t": 175.845,
+      "dir": "app→light",
+      "hex": "4C 54 09 00 30 57 00 04 01 24 8A D8",
+      "crcOk": true,
+      "decoded": "set hue=180°"
+    },
+    {
+      "t": 175.908,
+      "dir": "light→app",
+      "hex": "4C 54 08 00 30 02 00 04 24 F4 C9",
+      "crcOk": true,
+      "decoded": "ack hue=180°"
+    },
+    {
+      "t": 176.146,
+      "dir": "app→light",
+      "hex": "4C 54 09 00 30 57 00 04 01 2A 6B 16",
+      "crcOk": true,
+      "decoded": "set hue=210°"
+    },
+    {
+      "t": 176.209,
+      "dir": "light→app",
+      "hex": "4C 54 08 00 30 02 00 04 2A 15 07",
+      "crcOk": true,
+      "decoded": "ack hue=210°"
+    },
+    {
+      "t": 176.446,
+      "dir": "app→light",
+      "hex": "4C 54 09 00 30 57 00 04 01 2C 0B D0",
+      "crcOk": true,
+      "decoded": "set hue=220°"
+    },
+    {
+      "t": 176.508,
+      "dir": "light→app",
+      "hex": "4C 54 08 00 30 02 00 04 2C 75 C1",
+      "crcOk": true,
+      "decoded": "ack hue=220°"
+    },
+    {
+      "t": 176.746,
+      "dir": "app→light",
+      "hex": "4C 54 09 00 30 57 00 04 01 2F 3B B3",
+      "crcOk": true,
+      "decoded": "set hue=235°"
+    },
+    {
+      "t": 176.779,
+      "dir": "light→app",
+      "hex": "4C 54 0E 00 30 03 01 02 32 20 2C 44 02 08 1B 47 28",
+      "crcOk": true,
+      "decoded": "status power=on p1=0x02 brightness=50% cct=3200K hue=220° saturation=68% mode=HSI p7=0x08 p8=0x1b"
+    },
+    {
+      "t": 176.781,
+      "dir": "app→light",
+      "hex": "4C 54 0E 00 30 48 01 02 32 20 2C 44 02 08 1B CE B6",
+      "crcOk": true,
+      "decoded": "cmd=0x48"
+    },
+    {
+      "t": 176.811,
+      "dir": "light→app",
+      "hex": "4C 54 08 00 30 02 00 04 2F 45 A2",
+      "crcOk": true,
+      "decoded": "ack hue=235°"
+    },
+    {
+      "t": 177.045,
+      "dir": "app→light",
+      "hex": "4C 54 09 00 30 57 00 04 01 2F 3B B3",
+      "crcOk": true,
+      "decoded": "set hue=235°"
+    },
+    {
+      "t": 177.345,
+      "dir": "app→light",
+      "hex": "4C 54 09 00 30 57 00 04 01 31 C8 4C",
+      "crcOk": true,
+      "decoded": "set hue=245°"
+    },
+    {
+      "t": 177.408,
+      "dir": "light→app",
+      "hex": "4C 54 08 00 30 02 00 04 31 B6 5D",
+      "crcOk": true,
+      "decoded": "ack hue=245°"
+    },
+    {
+      "t": 177.644,
+      "dir": "app→light",
+      "hex": "4C 54 09 00 30 57 00 04 01 30 D8 6D",
+      "crcOk": true,
+      "decoded": "set hue=240°"
+    },
+    {
+      "t": 177.738,
+      "dir": "light→app",
+      "hex": "4C 54 08 00 30 02 00 04 30 A6 7C",
+      "crcOk": true,
+      "decoded": "ack hue=240°"
+    },
+    {
+      "t": 177.945,
+      "dir": "app→light",
+      "hex": "4C 54 09 00 30 57 00 04 01 30 D8 6D",
+      "crcOk": true,
+      "decoded": "set hue=240°"
+    },
+    {
+      "t": 178.226,
+      "dir": "app→light",
+      "hex": "4C 54 09 00 30 57 00 04 01 30 D8 6D",
+      "crcOk": true,
+      "decoded": "set hue=240°"
+    },
+    {
+      "t": 181.819,
+      "dir": "light→app",
+      "hex": "4C 54 0E 00 30 03 01 02 32 20 30 44 02 08 1B C8 59",
+      "crcOk": true,
+      "decoded": "status power=on p1=0x02 brightness=50% cct=3200K hue=240° saturation=68% mode=HSI p7=0x08 p8=0x1b"
+    },
+    {
+      "t": 181.82,
+      "dir": "app→light",
+      "hex": "4C 54 0E 00 30 48 01 02 32 20 30 44 02 08 1B 41 C7",
+      "crcOk": true,
+      "decoded": "cmd=0x48"
+    },
+    {
+      "t": 186.828,
+      "dir": "light→app",
+      "hex": "4C 54 0E 00 30 03 01 02 32 20 30 44 02 08 1B C8 59",
+      "crcOk": true,
+      "decoded": "status power=on p1=0x02 brightness=50% cct=3200K hue=240° saturation=68% mode=HSI p7=0x08 p8=0x1b"
+    },
+    {
+      "t": 186.856,
+      "dir": "app→light",
+      "hex": "4C 54 0E 00 30 48 01 02 32 20 30 44 02 08 1B 41 C7",
+      "crcOk": true,
+      "decoded": "cmd=0x48"
+    },
+    {
+      "t": 190.57,
+      "dir": "app→light",
+      "hex": "4C 54 09 00 30 57 00 05 01 44 D1 4E",
+      "crcOk": true,
+      "decoded": "set saturation=68%"
+    },
+    {
+      "t": 190.608,
+      "dir": "light→app",
+      "hex": "4C 54 08 00 30 02 00 05 44 AB 5E",
+      "crcOk": true,
+      "decoded": "ack saturation=68%"
+    },
+    {
+      "t": 190.871,
+      "dir": "app→light",
+      "hex": "4C 54 09 00 30 57 00 05 01 64 F5 2C",
+      "crcOk": true,
+      "decoded": "set saturation=100%"
+    },
+    {
+      "t": 190.946,
+      "dir": "app→light",
+      "hex": "4C 54 09 00 30 57 00 05 01 64 F5 2C",
+      "crcOk": true,
+      "decoded": "set saturation=100%"
+    },
+    {
+      "t": 190.971,
+      "dir": "light→app",
+      "hex": "4C 54 08 00 30 02 00 05 64 8F 3C",
+      "crcOk": true,
+      "decoded": "ack saturation=100%"
+    },
+    {
+      "t": 191.868,
+      "dir": "light→app",
+      "hex": "4C 54 0E 00 30 03 01 02 32 20 30 64 02 08 1B FF 17",
+      "crcOk": true,
+      "decoded": "status power=on p1=0x02 brightness=50% cct=3200K hue=240° saturation=100% mode=HSI p7=0x08 p8=0x1b"
+    },
+    {
+      "t": 191.869,
+      "dir": "app→light",
+      "hex": "4C 54 0E 00 30 48 01 02 32 20 30 64 02 08 1B 76 89",
+      "crcOk": true,
+      "decoded": "cmd=0x48"
+    },
+    {
+      "t": 196.909,
+      "dir": "light→app",
+      "hex": "4C 54 0E 00 30 03 01 02 32 20 30 64 02 08 1B FF 17",
+      "crcOk": true,
+      "decoded": "status power=on p1=0x02 brightness=50% cct=3200K hue=240° saturation=100% mode=HSI p7=0x08 p8=0x1b"
+    },
+    {
+      "t": 196.911,
+      "dir": "app→light",
+      "hex": "4C 54 0E 00 30 48 01 02 32 20 30 64 02 08 1B 76 89",
+      "crcOk": true,
+      "decoded": "cmd=0x48"
+    },
+    {
+      "t": 201.948,
+      "dir": "light→app",
+      "hex": "4C 54 0E 00 30 03 01 02 32 20 30 64 02 08 1B FF 17",
+      "crcOk": true,
+      "decoded": "status power=on p1=0x02 brightness=50% cct=3200K hue=240° saturation=100% mode=HSI p7=0x08 p8=0x1b"
+    },
+    {
+      "t": 201.95,
+      "dir": "app→light",
+      "hex": "4C 54 0E 00 30 48 01 02 32 20 30 64 02 08 1B 76 89",
+      "crcOk": true,
+      "decoded": "cmd=0x48"
+    },
+    {
+      "t": 205.668,
+      "dir": "app→light",
+      "hex": "4C 54 09 00 30 57 00 05 01 00 D9 0E",
+      "crcOk": true,
+      "decoded": "set saturation=0%"
+    },
+    {
+      "t": 205.716,
+      "dir": "app→light",
+      "hex": "4C 54 09 00 30 57 00 05 01 00 D9 0E",
+      "crcOk": true,
+      "decoded": "set saturation=0%"
+    },
+    {
+      "t": 205.731,
+      "dir": "light→app",
+      "hex": "4C 54 08 00 30 02 00 05 00 A3 1E",
+      "crcOk": true,
+      "decoded": "ack saturation=0%"
+    },
+    {
+      "t": 206.988,
+      "dir": "light→app",
+      "hex": "4C 54 0E 00 30 03 01 02 32 20 30 00 02 08 1B 6C 34",
+      "crcOk": true,
+      "decoded": "status power=on p1=0x02 brightness=50% cct=3200K hue=240° saturation=0% mode=HSI p7=0x08 p8=0x1b"
+    },
+    {
+      "t": 206.99,
+      "dir": "app→light",
+      "hex": "4C 54 0E 00 30 48 01 02 32 20 30 00 02 08 1B E5 AA",
+      "crcOk": true,
+      "decoded": "cmd=0x48"
+    },
+    {
+      "t": 212.03,
+      "dir": "light→app",
+      "hex": "4C 54 0E 00 30 03 01 02 32 20 30 00 02 08 1B 6C 34",
+      "crcOk": true,
+      "decoded": "status power=on p1=0x02 brightness=50% cct=3200K hue=240° saturation=0% mode=HSI p7=0x08 p8=0x1b"
+    },
+    {
+      "t": 212.031,
+      "dir": "app→light",
+      "hex": "4C 54 0E 00 30 48 01 02 32 20 30 00 02 08 1B E5 AA",
+      "crcOk": true,
+      "decoded": "cmd=0x48"
+    },
+    {
+      "t": 217.068,
+      "dir": "light→app",
+      "hex": "4C 54 0E 00 30 03 01 02 32 20 30 00 02 08 1B 6C 34",
+      "crcOk": true,
+      "decoded": "status power=on p1=0x02 brightness=50% cct=3200K hue=240° saturation=0% mode=HSI p7=0x08 p8=0x1b"
+    },
+    {
+      "t": 217.07,
+      "dir": "app→light",
+      "hex": "4C 54 0E 00 30 48 01 02 32 20 30 00 02 08 1B E5 AA",
+      "crcOk": true,
+      "decoded": "cmd=0x48"
+    },
+    {
+      "t": 222.108,
+      "dir": "light→app",
+      "hex": "4C 54 0E 00 30 03 01 02 32 20 30 00 02 08 1B 6C 34",
+      "crcOk": true,
+      "decoded": "status power=on p1=0x02 brightness=50% cct=3200K hue=240° saturation=0% mode=HSI p7=0x08 p8=0x1b"
+    },
+    {
+      "t": 222.11,
+      "dir": "app→light",
+      "hex": "4C 54 0E 00 30 48 01 02 32 20 30 00 02 08 1B E5 AA",
+      "crcOk": true,
+      "decoded": "cmd=0x48"
+    },
+    {
+      "t": 227.119,
+      "dir": "light→app",
+      "hex": "4C 54 0E 00 30 03 01 02 32 20 30 00 02 08 1B 6C 34",
+      "crcOk": true,
+      "decoded": "status power=on p1=0x02 brightness=50% cct=3200K hue=240° saturation=0% mode=HSI p7=0x08 p8=0x1b"
+    },
+    {
+      "t": 227.12,
+      "dir": "app→light",
+      "hex": "4C 54 0E 00 30 48 01 02 32 20 30 00 02 08 1B E5 AA",
+      "crcOk": true,
+      "decoded": "cmd=0x48"
+    },
+    {
+      "t": 230.176,
+      "dir": "app→light",
+      "hex": "4C 54 09 00 30 57 00 04 01 37 A8 8A",
+      "crcOk": true,
+      "decoded": "set hue=275°"
+    },
+    {
+      "t": 230.239,
+      "dir": "light→app",
+      "hex": "4C 54 08 00 30 02 00 04 37 D6 9B",
+      "crcOk": true,
+      "decoded": "ack hue=275°"
+    },
+    {
+      "t": 230.475,
+      "dir": "app→light",
+      "hex": "4C 54 09 00 30 57 00 04 01 44 E6 7E",
+      "crcOk": true,
+      "decoded": "set hue=340°"
+    },
+    {
+      "t": 230.569,
+      "dir": "light→app",
+      "hex": "4C 54 08 00 30 02 00 04 44 98 6F",
+      "crcOk": true,
+      "decoded": "ack hue=340°"
+    },
+    {
+      "t": 230.772,
+      "dir": "app→light",
+      "hex": "4C 54 09 00 30 57 00 04 01 47 D6 1D",
+      "crcOk": true,
+      "decoded": "set hue=355°"
+    },
+    {
+      "t": 230.809,
+      "dir": "light→app",
+      "hex": "4C 54 08 00 30 02 00 04 47 A8 0C",
+      "crcOk": true,
+      "decoded": "ack hue=355°"
+    },
+    {
+      "t": 231.074,
+      "dir": "app→light",
+      "hex": "4C 54 09 00 30 57 00 04 01 48 27 F2",
+      "crcOk": true,
+      "decoded": "set hue=360°"
+    },
+    {
+      "t": 231.168,
+      "dir": "light→app",
+      "hex": "4C 54 08 00 30 02 00 04 48 59 E3",
+      "crcOk": true,
+      "decoded": "ack hue=360°"
+    },
+    {
+      "t": 231.372,
+      "dir": "app→light",
+      "hex": "4C 54 09 00 30 57 00 04 01 00 EE 3E",
+      "crcOk": true,
+      "decoded": "set hue=0°"
+    },
+    {
+      "t": 231.409,
+      "dir": "light→app",
+      "hex": "4C 54 08 00 30 02 00 04 00 90 2F",
+      "crcOk": true,
+      "decoded": "ack hue=0°"
+    },
+    {
+      "t": 231.62,
+      "dir": "app→light",
+      "hex": "4C 54 09 00 30 57 00 04 01 00 EE 3E",
+      "crcOk": true,
+      "decoded": "set hue=0°"
+    },
+    {
+      "t": 232.159,
+      "dir": "light→app",
+      "hex": "4C 54 0E 00 30 03 01 02 32 20 00 00 02 08 1B 60 DA",
+      "crcOk": true,
+      "decoded": "status power=on p1=0x02 brightness=50% cct=3200K hue=0° saturation=0% mode=HSI p7=0x08 p8=0x1b"
+    },
+    {
+      "t": 232.16,
+      "dir": "app→light",
+      "hex": "4C 54 0E 00 30 48 01 02 32 20 00 00 02 08 1B E9 44",
+      "crcOk": true,
+      "decoded": "cmd=0x48"
+    },
+    {
+      "t": 237.199,
+      "dir": "light→app",
+      "hex": "4C 54 0E 00 30 03 01 02 32 20 00 00 02 08 1B 60 DA",
+      "crcOk": true,
+      "decoded": "status power=on p1=0x02 brightness=50% cct=3200K hue=0° saturation=0% mode=HSI p7=0x08 p8=0x1b"
+    },
+    {
+      "t": 237.201,
+      "dir": "app→light",
+      "hex": "4C 54 0E 00 30 48 01 02 32 20 00 00 02 08 1B E9 44",
+      "crcOk": true,
+      "decoded": "cmd=0x48"
+    },
+    {
+      "t": 242.238,
+      "dir": "light→app",
+      "hex": "4C 54 0E 00 30 03 01 02 32 20 00 00 02 08 1B 60 DA",
+      "crcOk": true,
+      "decoded": "status power=on p1=0x02 brightness=50% cct=3200K hue=0° saturation=0% mode=HSI p7=0x08 p8=0x1b"
+    },
+    {
+      "t": 242.24,
+      "dir": "app→light",
+      "hex": "4C 54 0E 00 30 48 01 02 32 20 00 00 02 08 1B E9 44",
+      "crcOk": true,
+      "decoded": "cmd=0x48"
+    },
+    {
+      "t": 247.279,
+      "dir": "light→app",
+      "hex": "4C 54 0E 00 30 03 01 02 32 20 00 00 02 08 1B 60 DA",
+      "crcOk": true,
+      "decoded": "status power=on p1=0x02 brightness=50% cct=3200K hue=0° saturation=0% mode=HSI p7=0x08 p8=0x1b"
+    },
+    {
+      "t": 247.281,
+      "dir": "app→light",
+      "hex": "4C 54 0E 00 30 48 01 02 32 20 00 00 02 08 1B E9 44",
+      "crcOk": true,
+      "decoded": "cmd=0x48"
+    }
+  ]
+}

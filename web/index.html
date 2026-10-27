@@ -1,0 +1,338 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#0b0b0c">
+<title>GVM Show Control</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header class="bar">
+  <div class="conn">
+    <span id="connDot" class="dot"></span>
+    <div>
+      <div id="connText" class="conn-text">Not connected</div>
+      <div id="connSub" class="conn-sub">—</div>
+    </div>
+    <button id="connectBtn" class="btn">Connect</button>
+  </div>
+  <nav class="tabs" role="tablist">
+    <button class="tab active" data-tab="show" role="tab">Show</button>
+    <button id="debugTabBtn" class="tab" data-tab="debug" role="tab" hidden>Debug</button>
+  </nav>
+  <div id="stagingPill" class="staging-pill" role="status" hidden
+       title="The light is dark. Brightness, color and looks you set now are held and appear when you press Restore. Starting an effect turns the light on.">
+    <span class="rec"></span> Blackout · editing behind the scenes
+  </div>
+  <div class="bar-right">
+    <button id="lockBtn" class="btn toggle" title="L">Lock</button>
+    <button id="dimBtn" class="btn toggle" title="Dims this screen, not the light">Dim UI</button>
+    <button id="helpBtn" class="btn" title="Help (?)">Help</button>
+    <button id="settingsBtn" class="btn" title="Settings">Settings</button>
+  </div>
+</header>
+
+<main id="tab-show" class="tab-panel">
+  <!-- Column A: live show controls -->
+  <section class="col col-a">
+    <button id="powerBtn" class="power" disabled>
+      <span class="power-label">POWER</span>
+      <span id="powerState" class="power-state">—</span>
+    </button>
+
+    <button id="blackoutBtn" class="blackout" disabled title="B">
+      <span id="blackoutLabel">BLACKOUT</span>
+      <span id="blackoutSub" class="blackout-sub"></span>
+      <span class="key">B</span>
+    </button>
+
+    <div class="group">
+      <div id="fadeCtl">
+        <div class="row-between">
+          <div class="label">Fade time</div>
+          <div class="big-value fade-value"><span id="fadeVal">Snap</span><small id="fadeUnit"></small></div>
+        </div>
+        <input id="fadeSlider" class="range fade" type="range" min="0" max="100" step="1" value="0"
+               aria-label="Fade time for blackout and restore" title="Fade time for Blackout / Restore">
+        <div class="chips fade-chips">
+          <button data-ms="0" class="chip">Snap</button>
+          <button data-ms="250" class="chip">¼s</button>
+          <button data-ms="500" class="chip">½s</button>
+          <button data-ms="1000" class="chip">1s</button>
+          <button data-ms="3000" class="chip">3s</button>
+          <button data-ms="5000" class="chip">5s</button>
+          <button data-ms="10000" class="chip">10s</button>
+        </div>
+      </div>
+      <div id="fadeStatus" class="hint fade-status"></div>
+    </div>
+
+    <div class="group status-card">
+      <div id="preview" class="preview" title="Approximate on-screen preview of the requested color"></div>
+      <div class="status-text">
+        <div id="readoutLabel" class="label">Light reports</div>
+        <div id="readout" class="readout">—</div>
+        <div id="readoutAge" class="hint"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Column B: level, color, looks -->
+  <section class="col col-b">
+    <div class="group">
+      <div class="row-between">
+        <div class="label">Brightness</div>
+        <div class="big-value"><span id="briVal">—</span><small>%</small></div>
+      </div>
+      <input id="bri" class="range bri" type="range" min="0" max="100" step="1" value="50" disabled aria-label="Brightness">
+    </div>
+
+    <div class="group color-card">
+      <div id="modeSeg" class="seg mode">
+        <button data-mode="cct">White (CCT)</button>
+        <button data-mode="hsi">Color (HSI)</button>
+      </div>
+
+      <div id="cctPanel" class="color-panel">
+        <div class="row-between">
+          <div class="label">Color temperature</div>
+          <div class="big-value"><span id="cctVal">—</span><small>K</small></div>
+        </div>
+        <input id="cct" class="range cct" type="range" min="3200" max="5600" step="100" value="5600" disabled aria-label="Color temperature">
+        <div class="chips">
+          <button data-k="3200" class="chip">3200 Tungsten</button>
+          <button data-k="4300" class="chip">4300</button>
+          <button data-k="5600" class="chip">5600 Daylight</button>
+        </div>
+      </div>
+
+      <div id="hsiPanel" class="color-panel" hidden>
+        <div class="row-between">
+          <div class="label">Hue</div>
+          <div class="big-value"><span id="hueVal">—</span><small>°</small></div>
+        </div>
+        <input id="hue" class="range hue" type="range" min="0" max="360" step="5" value="0" disabled aria-label="Hue">
+        <div class="row-between">
+          <div class="label">Saturation</div>
+          <div class="big-value"><span id="satVal">—</span><small>%</small></div>
+        </div>
+        <input id="sat" class="range sat" type="range" min="0" max="100" step="1" value="100" disabled aria-label="Saturation">
+        <div class="chips swatches">
+          <button data-h="0" title="Red" style="--c:hsl(0 100% 50%)"></button>
+          <button data-h="30" title="Orange" style="--c:hsl(30 100% 50%)"></button>
+          <button data-h="55" title="Yellow" style="--c:hsl(55 100% 50%)"></button>
+          <button data-h="120" title="Green" style="--c:hsl(120 100% 45%)"></button>
+          <button data-h="180" title="Cyan" style="--c:hsl(180 100% 45%)"></button>
+          <button data-h="240" title="Blue" style="--c:hsl(240 100% 60%)"></button>
+          <button data-h="285" title="Purple" style="--c:hsl(285 100% 55%)"></button>
+          <button data-h="320" title="Magenta" style="--c:hsl(320 100% 55%)"></button>
+        </div>
+      </div>
+    </div>
+
+    <div class="group looks-card lockable">
+      <div class="row-between">
+        <div class="label">Looks</div>
+        <span class="hint" title="A look picked during blackout is revealed by Restore">tap to set</span>
+      </div>
+      <div id="looks" class="tiles"></div>
+    </div>
+  </section>
+
+  <!-- Column C: effects -->
+  <section class="col col-c">
+    <div class="group effects-card lockable">
+      <div class="row-between">
+        <div class="label">Effects</div>
+        <span class="hint">tap again or Esc to stop</span>
+      </div>
+      <div id="effects" class="tiles"></div>
+      <div class="fx-settings">
+        <div class="row-between">
+          <div class="row fx-head">
+            <div class="label">Settings</div>
+            <select id="fxSelect" class="fx-select" aria-label="Effect to edit"></select>
+            <span id="fxRunning" class="hint"></span>
+          </div>
+          <button id="fxReset" class="btn sm" title="Restore this effect’s default settings">Reset</button>
+        </div>
+        <div id="fxParams" class="fx-params"></div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<main id="tab-debug" class="tab-panel debug" hidden>
+  <section class="dcol">
+    <div class="group">
+      <div class="label">Raw write</div>
+      <select id="writeTarget"></select>
+      <div class="row">
+        <input id="hexInput" type="text" placeholder="4C 54 09 00 30 57 00 00 01 01 22 DF" spellcheck="false">
+        <button id="sendHexBtn" class="btn">Send</button>
+      </div>
+      <div class="row">
+        <button id="handshakeBtn" class="btn">Handshake</button>
+        <label><input id="echoChk" type="checkbox" checked> Echo status frames</label>
+        <label><input id="quietChk" type="checkbox" checked> Hide status lines</label>
+      </div>
+    </div>
+    <div class="group">
+      <div class="label">Explorer pairing (any device)</div>
+      <textarea id="extraServices" spellcheck="false" placeholder="extra optionalServices, one per line"></textarea>
+      <div class="row">
+        <button id="pairAnyBtn" class="btn">Choose any device…</button>
+        <button id="disconnectBtn" class="btn">Disconnect</button>
+        <button id="forgetBtn" class="btn">Forget light</button>
+      </div>
+    </div>
+    <div class="group grow">
+      <div class="row-between"><div class="label">GATT</div><button id="copyGattBtn" class="btn sm">Copy</button></div>
+      <pre id="gatt">(not connected)</pre>
+    </div>
+  </section>
+  <section class="dcol grow">
+    <div class="group grow">
+      <div class="row-between">
+        <div id="logTitle" class="label">Log</div>
+        <div class="row">
+          <button id="copyLogBtn" class="btn sm">Copy</button>
+          <button id="downloadLogBtn" class="btn sm">Download</button>
+          <button id="clearLogBtn" class="btn sm">Clear</button>
+        </div>
+      </div>
+      <pre id="log"></pre>
+    </div>
+  </section>
+</main>
+
+<!-- Unsupported browser / OS -->
+<div id="blocker" class="overlay" hidden>
+  <div class="sheet">
+    <div class="sheet-icon">⚠︎</div>
+    <h1 id="blockTitle"></h1>
+    <p id="blockBody"></p>
+    <ul id="blockSteps" class="steps"></ul>
+    <div class="row">
+      <button id="copyLinkBtn" class="btn primary">Copy link</button>
+      <button id="blockDismiss" class="btn">Look around anyway</button>
+    </div>
+    <p class="hint">Works in Google Chrome or Microsoft Edge on macOS, Windows, ChromeOS and Android.</p>
+  </div>
+</div>
+
+<!-- First-run setup -->
+<div id="setup" class="overlay" hidden>
+  <div class="sheet wide">
+    <h1>Set up your light</h1>
+    <p class="hint">This only takes a minute. The app remembers your light afterwards.</p>
+    <ol class="checklist">
+      <li id="chkBrowser"><div class="chk-head"><span class="mark"></span><b>Browser</b></div><div class="chk-body"></div></li>
+      <li id="chkBt"><div class="chk-head"><span class="mark"></span><b>Bluetooth</b></div><div class="chk-body"></div></li>
+      <li id="chkLight"><div class="chk-head"><span class="mark">3</span><b>Get the light ready</b></div><ul class="steps chk-body"></ul></li>
+      <li id="chkPair"><div class="chk-head"><span class="mark">4</span><b>Pair</b></div>
+        <div class="chk-body">
+          <p>Press the button, then choose <b>BT_LED</b> in the list your browser shows.</p>
+          <button id="setupPairBtn" class="btn primary big">Find my light</button>
+          <div id="setupMsg" class="setup-msg"></div>
+        </div>
+      </li>
+    </ol>
+    <div class="row-between">
+      <button id="setupSkip" class="btn">Skip for now</button>
+      <span class="hint">You can run this again from Help.</span>
+    </div>
+  </div>
+</div>
+
+<!-- Settings -->
+<dialog id="settingsDlg" class="dlg">
+  <div class="dlg-head"><h2>Settings</h2><button class="btn sm" data-close>Done</button></div>
+  <section>
+    <h3>Light</h3>
+    <label class="field">Display name <input id="setName" type="text" maxlength="24" placeholder="BT_LED"></label>
+    <label class="switch"><input id="setAuto" type="checkbox"> Connect automatically when the app opens</label>
+    <div class="row">
+      <button id="setReconnect" class="btn">Reconnect</button>
+      <button id="setForget" class="btn danger">Forget this light</button>
+    </div>
+    <p class="hint" id="setLightInfo"></p>
+  </section>
+  <section>
+    <h3>During the show</h3>
+    <label class="switch"><input id="wakeChk" type="checkbox"> Keep the screen awake while connected</label>
+    <label class="switch"><input id="setConfirm" type="checkbox"> Warn before closing the app while connected</label>
+    <label class="switch"><input id="setDim" type="checkbox"> Dim the interface (for a dark booth)</label>
+  </section>
+  <section>
+    <h3>Looks &amp; effects</h3>
+    <button id="setResetFx" class="btn">Reset all effect settings</button>
+  </section>
+  <section>
+    <h3>Advanced</h3>
+    <label class="switch"><input id="setDebug" type="checkbox"> Show the Debug tab (raw commands and log)</label>
+    <button id="setResetAll" class="btn danger">Reset all app settings</button>
+  </section>
+  <section class="about">
+    <h3>About</h3>
+    <p><b>GVM Show Control</b> <span id="appVersion"></span> · <span id="envInfo"></span></p>
+    <p class="hint">Unofficial controller, not affiliated with or endorsed by GVM. Runs entirely in your browser:
+      nothing is sent anywhere except Bluetooth commands to your light. Works offline once installed.</p>
+  </section>
+</dialog>
+
+<!-- Help -->
+<dialog id="helpDlg" class="dlg">
+  <div class="dlg-head"><h2>Help</h2><button class="btn sm" data-close>Close</button></div>
+  <section>
+    <h3>Quick start</h3>
+    <ol class="steps">
+      <li>Turn the light on and close the GVM phone app.</li>
+      <li>Press <b>Pair light</b> (top left) and choose <b>BT_LED</b>.</li>
+      <li>Use the sliders, or tap a <b>Look</b> or <b>Effect</b>.</li>
+      <li><b>Blackout</b> (or <kbd>B</kbd>) takes the light out; press again to restore. Set a fade time to fade instead of snapping.</li>
+      <li>While blacked out you can set up the next look behind the scenes: brightness, color and Looks change only the preview (marked <b>NEXT</b>) — the light stays dark until you press <b>Restore</b>, then comes up in that look. Starting an effect turns the light on.</li>
+      <li>Press <b>Lock</b> before the show so nothing changes by accident — Blackout still works.</li>
+    </ol>
+    <button id="helpSetupBtn" class="btn">Run setup again</button>
+  </section>
+  <section>
+    <h3>Keyboard shortcuts</h3>
+    <table class="keys-table">
+      <tr><td><kbd>B</kbd></td><td>Blackout / restore</td></tr>
+      <tr><td><kbd>↑</kbd> <kbd>↓</kbd></td><td>Brightness ±5 (hold <kbd>⇧</kbd> for ±1)</td></tr>
+      <tr><td><kbd>1</kbd>–<kbd>6</kbd></td><td>Looks</td></tr>
+      <tr><td><kbd>Q</kbd>–<kbd>Y</kbd></td><td>Start / stop effects</td></tr>
+      <tr><td><kbd>Esc</kbd></td><td>Stop effect and return to the previous look</td></tr>
+      <tr><td><kbd>L</kbd></td><td>Lock / unlock</td></tr>
+      <tr><td><kbd>?</kbd></td><td>This help</td></tr>
+    </table>
+  </section>
+  <section>
+    <h3>Troubleshooting</h3>
+    <details><summary>The light doesn’t appear in the list</summary><ul id="helpLight" class="steps"></ul></details>
+    <details><summary>“Bluetooth is off or blocked”</summary><ul id="helpBt" class="steps"></ul></details>
+    <details><summary>It connects, then drops — or won’t connect at all</summary><ul class="steps">
+      <li>The phone app is the usual cause: the light accepts one connection. Close the GVM app or turn the phone’s Bluetooth off.</li>
+      <li>Power-cycle the light, then press Connect.</li>
+      <li>Move closer; walls and bodies reduce range.</li></ul></details>
+    <details><summary>The app asks me to pick the light every time</summary><ul class="steps">
+      <li>Remembering a light needs a recent Chrome or Edge. Update the browser.</li>
+      <li>If it still forgets, open <code>chrome://flags/#enable-web-bluetooth-new-permissions-backend</code>, enable it and relaunch.</li>
+      <li>Clearing browsing data for this site also clears the permission.</li></ul></details>
+    <details><summary>Effects stutter or skip</summary><ul class="steps">
+      <li>Lower the effect’s Speed.</li>
+      <li>Keep the light closer to the computer.</li></ul></details>
+    <details><summary>Changes don’t show up after an update</summary><ul class="steps">
+      <li>Reload with <kbd>⌘</kbd>/<kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>R</kbd>, or close and reopen the installed app.</li></ul></details>
+  </section>
+</dialog>
+
+<div id="toasts" class="toasts" aria-live="polite"></div>
+
+<script type="module" src="app.js"></script>
+</body>
+</html>
