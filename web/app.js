@@ -164,6 +164,19 @@ function renderStaging() {
   renderValues();
 }
 
+/** After a restore, compare the light's next status with what was sent; correct once if needed. */
+function checkExpected(ev) {
+  const ex = ui.expect;
+  if (!ex || ev?.detail?.source !== 'status' || ui.restoring) return;
+  if (Date.now() > ex.until || ex.fixed || fx.id || ui.staged || ui.fading) { ui.expect = null; return; }
+  const target = { ...ex.state, bri: conn.light.brightness };   // brightness may have been faded/changed since
+  const items = diffItems(target);
+  ui.expect = null;
+  if (!items.length) return;
+  conn.logLine(`RESTORE check: light reports a different look; resending ${items.map((i) => i[1]).join(', ')}`);
+  (async () => { for (const [f, label] of items) await conn.sendConfirmed(f, `fix ${label}`); })();
+}
+
 function syncFromLight() {
   const L = conn.light;
   if (isDark() && !ui.staged && !ui.restoring) enterStaging();
@@ -299,6 +312,18 @@ async function blackout() {
  * Frames that move the light from its last known state to `st` (mode first, brightness last).
  * Only differing params are included, so an unchanged look adds no delay.
  */
+/** Same as diffFrames, but one frame per param (for acknowledged sends). */
+function diffItems(st) {
+  const L = conn.light, out = [];
+  if (st.mode !== L.mode) out.push([P.mode(st.mode)[0], `mode ${st.mode}`]);
+  if (st.mode === 'hsi') {
+    if (st.hue !== L.hue) out.push([P.hue(st.hue)[0], `hue ${st.hue}°`]);
+    if (st.sat !== L.saturation) out.push([P.saturation(st.sat)[0], `saturation ${st.sat}%`]);
+  } else if (st.cct !== L.cct) out.push([P.cct(st.cct)[0], `cct ${st.cct}K`]);
+  if (st.bri != null && st.bri !== L.brightness) out.push([P.brightness(st.bri)[0], `brightness ${st.bri}%`]);
+  return out;
+}
+
 function diffFrames(st) {
   const L = conn.light, f = [];
   if (st.mode !== L.mode) f.push(...P.mode(st.mode));
@@ -311,8 +336,12 @@ function diffFrames(st) {
 }
 
 /**
- * Reveals the staged look. The look is sent while still dark, then again right after power-on
- * (in case the light ignores changes while off), then brightness snaps or fades to the staged level.
+ * Reveals the staged look:
+ *  1. send the changes while still dark (applied if the light accepts changes while off),
+ *  2. power on,
+ *  3. resend each change the light hasn't acknowledged, waiting for its ack and retrying,
+ *  4. snap or fade to the staged brightness.
+ * The next status report is checked against the target and corrected once if it differs.
  */
 async function restore({ snap = false } = {}) {
   const st = ui.staged ?? { mode: ui.mode, cct: +$('cct').value, hue: +$('hue').value, sat: +$('sat').value, bri: conn.light.brightness ?? +$('bri').value };
@@ -323,12 +352,18 @@ async function restore({ snap = false } = {}) {
   conn.logLine(`RESTORE → ${st.mode === 'hsi' ? `hue ${st.hue}° sat ${st.sat}%` : `${st.cct}K`} · ${target}%${fade ? ` (fade ${ui.fadeMs / 1000}s)` : ''}`);
   try {
     const pre = { ...st, bri: fade ? 0 : target };
-    const frames = diffFrames(pre);
-    if (frames.length) await conn.sendFrames(frames, 'restore: preload', { quiet: true });
-    await conn.sendFrames(P.power(true), 'RESTORE');
-    // Resend what changed, in case the light ignored changes while it was off.
-    if (frames.length) await conn.sendFrames(frames, 'restore: confirm', { quiet: true });
-    Object.assign(conn.light, { power: true, mode: pre.mode, cct: pre.cct, hue: pre.hue, saturation: pre.sat, brightness: pre.bri });
+    const items = diffItems(pre);
+    // Track which changes the light acknowledges while still dark.
+    const acked = new Set();
+    const watchers = items.map(([f]) => conn.waitAck(f[7], f[9], 400 + items.length * 80).then((ok) => ok && acked.add(f)));
+    for (const [f, label] of items) await conn.write(conn.ctrl, f, `preload ${label}`, true);
+    await conn.sendConfirmed(P.power(true)[0], 'RESTORE power on');
+    await Promise.all(watchers);
+    if (items.length) conn.logLine(`RESTORE: light acknowledged ${acked.size}/${items.length} changes while dark`);
+    for (const [f, label] of items) {
+      if (!acked.has(f)) await conn.sendConfirmed(f, `restore ${label}`);
+    }
+    ui.expect = { state: pre, until: Date.now() + 7000, fixed: false };
     ui.staged = null;
     renderStaging();
     syncFromLight();
@@ -342,6 +377,7 @@ async function restore({ snap = false } = {}) {
 
 function toggleBlackout() {
   if (!conn.connected || ui.busy) return;
+  ui.expect = null;
   stopEffect(false);
   if (conn.light.power === false) restore(); else blackout();
 }
@@ -389,6 +425,7 @@ function snapshotLight() {
 
 async function applyLook(look) {
   if (!conn.connected) return;
+  ui.expect = null;
   stopEffect(false);
   cancelFade();
   fx.look = look.id;
@@ -406,6 +443,7 @@ async function applyLook(look) {
 
 async function toggleEffect(e) {
   if (!conn.connected) return;
+  ui.expect = null;
   if (fx.id === e.id) { stopEffect(true); return; }
   const snapshot = fx.id ? fx.snapshot : snapshotLight();
   stopEffect(false);
@@ -437,7 +475,7 @@ async function toggleEffect(e) {
 }
 
 /** Manual control: stop any effect without restoring, clear the active look highlight. */
-function takeover() { stopEffect(false); if (fx.look) { fx.look = null; renderPresets(); } }
+function takeover() { ui.expect = null; stopEffect(false); if (fx.look) { fx.look = null; renderPresets(); } }
 
 /** restore=true returns the light to the state captured when the effect started. */
 async function stopEffect(restore) {
@@ -966,6 +1004,7 @@ function init() {
 
   conn.addEventListener('status', renderConn);
   conn.addEventListener('light', syncFromLight);
+  conn.addEventListener('light', checkExpected);
   conn.addEventListener('gatt', () => { renderGatt(); renderWriteTargets(); });
   conn.addEventListener('log', () => { if (!$('tab-debug').hidden) renderLog(); });
 

@@ -282,6 +282,8 @@ export class LightConnection extends EventTarget {
     for (const f of decode(bytes)) {
       if (!(f.isStatus && this.quietStatus)) this.logLine(`RX ${toHex(f.bytes)}  → ${f.text}`);
       if (!f.ok) continue;
+      // Acknowledgement of a set command: cmd 0x02, payload 00 <param> <value>.
+      if (f.bytes[5] === 0x02) this.dispatchEvent(new CustomEvent('ack', { detail: { param: f.bytes[7], value: f.bytes[8], at: performance.now() } }));
       const update = stateFromFrame(f.bytes);
       if (update && Object.keys(update).length) {
         if (f.isStatus) this.lastStatusAt = Date.now();
@@ -300,6 +302,28 @@ export class LightConnection extends EventTarget {
     const p = this._queue.then(fn);
     this._queue = p.catch(() => {});
     return p;
+  }
+
+  /** Resolves true when the light acknowledges `param` = `value`, false after `ms`. */
+  waitAck(param, value, ms = 350) {
+    return new Promise((resolve) => {
+      const done = (ok) => { clearTimeout(timer); this.removeEventListener('ack', onAck); resolve(ok); };
+      const onAck = (e) => { if (e.detail.param === param && e.detail.value === value) done(true); };
+      const timer = setTimeout(() => done(false), ms);
+      this.addEventListener('ack', onAck);
+    });
+  }
+
+  /** Sends one set-parameter frame and retries until the light acknowledges it. */
+  async sendConfirmed(frame, label, { tries = 3, ms = 350 } = {}) {
+    const param = frame[7], value = frame[9];
+    for (let i = 1; i <= tries; i++) {
+      const ack = this.waitAck(param, value, ms);
+      if (!(await this.write(this.ctrl, frame, `${label}${i > 1 ? ` (retry ${i - 1})` : ''}`, true))) return false;
+      if (await ack) return true;
+    }
+    this.logLine(`NO ACK after ${tries} tries: ${label}`);
+    return false;
   }
 
   get connected() { return this.status === 'connected' && !!this.device?.gatt.connected; }
