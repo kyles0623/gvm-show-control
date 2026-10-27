@@ -1,8 +1,8 @@
 # GVM Show Control
 
-Run a GVM LED light from your laptop like a lighting cue: big Blackout / Restore button, timed fades,
-one-tap looks, animated effects (police lights, TV flicker, fire, lightning…), and behind-the-scenes
-changes while the light is dark. It's a web page that talks to the light over Bluetooth — nothing to
+Run one or more GVM LED lights from your laptop like a small lighting console: a cue list with a GO
+button, color crossfades, your own saved looks, a big Blackout / Restore button, and animated effects
+(police lights, TV flicker, fire, lightning…). It's a web page that talks to the light over Bluetooth — nothing to
 install, works offline, and no account.
 
 > **Unofficial.** Not affiliated with, endorsed by, or supported by GVM. Use at your own risk.
@@ -16,7 +16,7 @@ install, works offline, and no account.
 - Close the GVM phone app first — the light accepts only one connection at a time.
 
 ## Use it
-1. Open the hosted app in Chrome or Edge: **`https://kyles0623.github.io/gvm-show-control/`**
+1. Open the hosted app in Chrome or Edge: **`https://<your-username>.github.io/<repo-name>/`**
    (or run it locally, below).
 2. Follow the first-run setup: it checks your browser and Bluetooth and walks you through pairing.
 3. Optional: install it (Chrome address bar → install icon) for its own window and offline use.
@@ -33,15 +33,17 @@ On Windows/Linux, any static server works, e.g. `cd web && python -m http.server
 ## Features
 | | |
 |---|---|
+| **Cue list + GO** (`Space`) | Set the lights, press Record, repeat. Each cue saves every light's look, a fade time, an optional effect with a run time, and an optional auto-GO that fires the next cue by itself. `Shift+Space` goes back. |
+| **Multiple lights** | Pair as many as you have (Settings → Lights → Add another light). Chips at the top pick which lights the controls change; Blackout always covers all of them. |
+| **Color crossfades** | Looks and cues fade brightness, color temperature, hue (the short way round) and saturation together. White ↔ Color changes dip through dark at the midpoint. |
+| **Your own looks** (`1`–`9`) | Save the current look, rename, reorder, update or delete it; the first nine are one tap / one key away. |
 | **Blackout / Restore** (`B`) | Snap or fade, 0–10 s, with fine control under 1 s |
-| **Behind-the-scenes changes** | While blacked out, adjust brightness, color or pick a look — the light stays dark and comes up in the new look on Restore |
-| **Looks** (`1`–`6`) | Daylight, Tungsten, Sunset, Moonlight, Night, Romance |
-| **Effects** (`Q`–`Y`) | Cops, Television, Fire, Candle, Lightning, Breathe — each with its own settings (brightness range, speed, colors, pattern…) |
+| **Effects** (`Q`–`Y`) | Cops, Television, Fire, Candle, Lightning, Breathe — each with its own settings (brightness range, speed, colors, pattern, **run for N seconds**). With several lights, Cops can alternate colors and the flicker effects run independently per light. |
 | **Live controls** | Brightness, color temperature (3200–5600 K), hue, saturation |
-| **Show safety** | Lock (`L`) disables everything except Blackout; auto-reconnect; keeps the screen awake; dim UI for dark rooms |
+| **Show safety** | Lock (`L`) leaves only GO, Back and Blackout working; auto-reconnect per light; keeps the screen awake; dim UI for dark rooms |
 | **Fits one screen** | No scrolling on laptop screens 1024×640 and up; stacks on phones |
 
-![Blackout with a staged look](docs/screenshot-blackout-staging.png)
+![Cue list and looks library](docs/screenshot-cues.png)
 
 ## Other lights
 The protocol was worked out from Bluetooth traffic between the official GVM iOS app and a GVM 800-RGB
@@ -57,13 +59,15 @@ The app never writes to firmware-update characteristics and only sends commands 
 No build step and no dependencies — plain HTML, CSS and ES modules in `web/`.
 ```
 web/            the app (deployed as-is)
-  app.js          UI, blackout/staging, looks & effects engine, settings, help
-  ble.js          Web Bluetooth connection, reconnect, write queue
+  app.js          UI, crossfade engine, blackout/restore, cue runner, effects engine, settings, help
+  rig.js          the set of paired lights: storage, pairing, auto-connect, selection, shared log
+  show.js         looks library + cue list storage, crossfade math
+  ble.js          Web Bluetooth connection to one light, reconnect, write queue
   gvm-protocol.js frame encoder/decoder (CRC-16/XMODEM)
   effects.js      looks and effects — easiest place to contribute new ones
   setup.js        browser detection, setup steps, plain-language error messages
 protocol/       captured control frames used as test fixtures
-tests/          node --test suite (protocol, encoders, effects)
+tests/          node --test suite (protocol, encoders, effects, crossfade math)
 docs/           technical notes and screenshots
 legacy/         original SwiftUI explorer (unused)
 ```

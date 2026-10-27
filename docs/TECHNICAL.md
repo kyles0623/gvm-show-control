@@ -60,18 +60,37 @@ Web Bluetooth only works on `https://` or `http://localhost`.
 | Keep screen awake | Screen Wake Lock while connected |
 | Light reports | Decoded from the light's 5 s status frames |
 
-## Blackout staging (behind-the-scenes edits)
-While blacked out, brightness, color mode, CCT/hue/saturation, chips, swatches, arrow keys and Looks
-**only change the staged look** — nothing is sent, so the light stays dark regardless of how it handles
-commands while off. The header shows "Blackout · editing behind the scenes", editable cards get a dashed
-outline, and the preview swatch (tagged NEXT) shows the staged look.
+## Multiple lights (`rig.js`)
+- Every paired light has its own connection (own write queue, reconnect and status), so lights are driven in parallel.
+- Remembered lights live in `localStorage['gvm.lights']` as `{id, name, label}`; the older single-light keys are migrated on first load.
+- Selection: chips appear with 2+ lights. Click = only that light, Shift/⌘-click = add/remove, All = every light.
+  Sliders, mode, looks, effects and the Power button act on the selection; the sliders show the first selected light.
+- Blackout / Restore always act on every connected light. Each light remembers its own pre-blackout level.
 
-Restore (or Power on) sends only what changed — before power-on and again right after, in case the light
-ignores changes while off — then snaps or fades up to the staged brightness. If nothing changed, power-on
-is the first and only frame (no added delay). Starting an effect while dark turns the light on and drops
-the staged look. If the light is switched off from elsewhere, staging starts automatically.
+## Crossfades
+- Looks use the Fade time; cues use their own fade time. Every ~70 ms (fades ≤ 1.5 s) or ~120 ms, each light gets only the
+  parameters that changed, so a brightness-only fade is one frame per step.
+- Hue moves the short way round the wheel (330° → 20° goes through 0°). White ↔ Color can't be blended, so the light fades
+  out in the old mode, switches at the midpoint and fades in with the new one.
+- Any manual control, Blackout, a new look/cue or Esc cancels a running fade.
+
+## Cue list (`show.js`, Cues tab)
+- A cue = `{name, fade s, follow s | null, effect: {id, params, lightIds} | null, lights: {id: {power, mode, cct, hue, sat, bri}}}`,
+  stored in `localStorage['gvm.cues']`.
+- **Record** saves every connected light after the selected cue. If an effect is running, the cue stores the effect (with its
+  current settings) and, as each light's base look, the look from before the effect started.
+- **GO** (`Space`): lights recorded as on but currently dark are powered on at 0 and faded in; others crossfade; lights
+  recorded as off fade out and power off; then the cue's effect starts. **Auto-GO** counts from the start of the cue.
+  **Back** (`Shift+Space`) runs the previous cue. Esc cancels a pending auto-GO, a running fade and the effect.
+- Lights in a cue that aren't connected are skipped (logged).
+
+## Looks library
+`localStorage['gvm.looks']`, seeded with the six defaults. Save current (from the first selected light), rename, update,
+reorder, delete, restore defaults. The first nine are on the Show tab with keys 1–9.
 
 ## Looks & effects (`effects.js`)
+Default looks (editable, see Looks library):
+
 | Key | Look | State |
 |---|---|---|
 | 1 | Daylight | CCT 5600 K, 80 % |
@@ -91,7 +110,7 @@ the staged look. If the light is switched off from elsewhere, staging starts aut
 | Y | Breathe | brightness sine 10–80 %, 6 s period, current color |
 
 - Looks send only the params that differ from the light's current state.
-- A look pressed during blackout is staged (nothing is sent); Restore brings the light up in that look.
+- A look pressed during blackout is sent to the light; Restore powers on at that look's brightness.
 - Effects: tap again or Esc stops and returns to the look from before the effect. Grabbing a slider, a chip,
   power, or Blackout stops the effect and leaves the light where it is. An effect started during blackout powers the light on.
 - Lock disables look/effect keys and tiles (Esc and B still work).
@@ -106,6 +125,10 @@ the staged look. If the light is switched off from elsewhere, staging starts aut
   | Lightning | Flash brightness, Ambient brightness, Flash color temp, Min gap, Max gap, Double-flash chance |
   | Breathe | Max brightness, Min brightness, Cycle time |
 - Speed scales step timing; any step is ≥ 200 ms regardless of speed.
+- **Run for** (every effect): 0 = until stopped; otherwise the effect stops after that many seconds and the lights return
+  to the look from before it. In a cue, the run time is set in the cue row.
+- With several lights: Cops' "Multiple lights" setting alternates colors between lights (A on odd, B on even);
+  Television, Fire and Candle run an independent random pattern on each light; the others stay in sync.
 - Edit or add entries in `effects.js` (a look is a state; an effect is a generator of `{state, wait}` steps).
 
 Connection: remembers the light, auto-connects on open, sends the handshake, echoes status frames like

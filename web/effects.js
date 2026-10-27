@@ -20,6 +20,8 @@ const FLOOR = (def, label = 'Min brightness') => ({ id: 'floor', label, min: 10,
 const SPEED = (def = 1, max = 2.5) => ({ id: 'speed', label: 'Speed', min: 0.25, max, step: 0.05, def, unit: '×', kind: 'speed' });
 const HUE = (id, label, def) => ({ id, label, min: 0, max: 360, step: 5, def, unit: '°', kind: 'hue' });
 const SAT = (def, label = 'Saturation') => ({ id: 'sat', label, min: 0, max: 100, step: 1, def, unit: '%', kind: 'sat' });
+/** Run time; 0 = until stopped. When it ends the lights return to the look from before the effect. */
+const DURATION = { id: 'duration', label: 'Run for', min: 0, max: 120, step: 1, def: 0, unit: 's', kind: 'plain' };
 
 export const LOOKS = [
   { id: 'daylight',  name: 'Daylight',  swatch: '#f4f1ff', state: { mode: 'cct', cct: 5600, bri: 80 } },
@@ -36,22 +38,26 @@ export const EFFECTS = [
     desc: 'Alternates between two colors',
     params: [LEVEL(100), SPEED(1), HUE('hueA', 'Color A', 0), HUE('hueB', 'Color B', 240),
       { id: 'pattern', label: 'Pattern', kind: 'choice', def: 'alternate',
-        options: [['alternate', 'A / B'], ['double', 'A A / B B'], ['strobe', 'A / dark / B / dark']] }],
+        options: [['alternate', 'A / B'], ['double', 'A A / B B'], ['strobe', 'A / dark / B / dark']] },
+      { id: 'multi', label: 'Multiple lights', kind: 'choice', def: 'alternate',
+        options: [['same', 'In sync'], ['alternate', 'Alternate A/B']] },
+      DURATION],
     *steps(p) {
       for (;;) {
         const A = { mode: 'hsi', hue: p.hueA, sat: 100, bri: p.level };
         const B = { mode: 'hsi', hue: p.hueB, sat: 100, bri: p.level };
         const dim = { bri: 10 };
+        // `alt` is what every other light shows when "Multiple lights" is Alternate.
         if (p.pattern === 'double') {
-          yield { state: A, wait: t(220, p) }; yield { state: dim, wait: t(200, p) };
-          yield { state: A, wait: t(220, p) }; yield { state: B, wait: t(220, p) };
-          yield { state: dim, wait: t(200, p) }; yield { state: B, wait: t(220, p) };
+          yield { state: A, alt: B, wait: t(220, p) }; yield { state: dim, alt: dim, wait: t(200, p) };
+          yield { state: A, alt: B, wait: t(220, p) }; yield { state: B, alt: A, wait: t(220, p) };
+          yield { state: dim, alt: dim, wait: t(200, p) }; yield { state: B, alt: A, wait: t(220, p) };
         } else if (p.pattern === 'strobe') {
-          yield { state: A, wait: t(250, p) }; yield { state: dim, wait: t(250, p) };
-          yield { state: B, wait: t(250, p) }; yield { state: dim, wait: t(250, p) };
+          yield { state: A, alt: dim, wait: t(250, p) }; yield { state: dim, alt: B, wait: t(250, p) };
+          yield { state: B, alt: dim, wait: t(250, p) }; yield { state: dim, alt: A, wait: t(250, p) };
         } else {
-          yield { state: A, wait: t(400, p) };
-          yield { state: B, wait: t(400, p) };
+          yield { state: A, alt: B, wait: t(400, p) };
+          yield { state: B, alt: A, wait: t(400, p) };
         }
       }
     },
@@ -59,8 +65,9 @@ export const EFFECTS = [
   {
     id: 'tv', name: 'Television', swatch: 'hsl(210 35% 55%)',
     desc: 'Flicker with random level and tint changes, occasional scene cuts',
+    perLight: true,
     params: [LEVEL(60), FLOOR(15), SPEED(1), HUE('hue', 'Tint', 210), SAT(30, 'Color strength'),
-      { id: 'cuts', label: 'Scene cuts', min: 0, max: 50, step: 1, def: 15, unit: '%', kind: 'plain' }],
+      { id: 'cuts', label: 'Scene cuts', min: 0, max: 50, step: 1, def: 15, unit: '%', kind: 'plain' }, DURATION],
     *steps(p) {
       let bri = (p.floor + p.level) / 2, hueOff = 0;
       for (;;) {
@@ -76,8 +83,9 @@ export const EFFECTS = [
   {
     id: 'fire', name: 'Fire', swatch: 'hsl(20 100% 50%)',
     desc: 'Orange flicker',
+    perLight: true,
     params: [LEVEL(75), FLOOR(35), SPEED(1), HUE('hue', 'Base color', 20),
-      { id: 'spread', label: 'Color spread', min: 0, max: 30, step: 5, def: 10, unit: '°', kind: 'plain' }],
+      { id: 'spread', label: 'Color spread', min: 0, max: 30, step: 5, def: 10, unit: '°', kind: 'plain' }, DURATION],
     *steps(p) {
       for (;;) {
         const [lo, hi] = lohi(p.floor, p.level);
@@ -89,7 +97,8 @@ export const EFFECTS = [
   {
     id: 'candle', name: 'Candle', swatch: 'hsl(32 100% 60%)',
     desc: 'Gentle warm flicker',
-    params: [LEVEL(45), FLOOR(30), SPEED(1), HUE('hue', 'Color', 30), SAT(85)],
+    perLight: true,
+    params: [LEVEL(45), FLOOR(30), SPEED(1), HUE('hue', 'Color', 30), SAT(85), DURATION],
     *steps(p) {
       for (;;) {
         const [lo, hi] = lohi(p.floor, p.level);
@@ -106,7 +115,8 @@ export const EFFECTS = [
       { id: 'cct', label: 'Flash color temp', min: 3200, max: 5600, step: 100, def: 5600, unit: 'K', kind: 'cct' },
       { id: 'gapMin', label: 'Min gap', min: 0.5, max: 20, step: 0.5, def: 2, unit: 's', kind: 'plain' },
       { id: 'gapMax', label: 'Max gap', min: 1, max: 30, step: 0.5, def: 7, unit: 's', kind: 'plain' },
-      { id: 'multi', label: 'Double-flash chance', min: 0, max: 100, step: 5, def: 60, unit: '%', kind: 'plain' },
+      { id: 'double', label: 'Double-flash chance', min: 0, max: 100, step: 5, def: 60, unit: '%', kind: 'plain' },
+      DURATION,
     ],
     *steps(p) {
       for (;;) {
@@ -114,7 +124,7 @@ export const EFFECTS = [
         yield { state: { mode: 'cct', cct: p.cct, bri: p.floor }, wait: rnd(g0, g1) * 1000 };
         yield { state: { bri: p.level }, wait: 300 };
         yield { state: { bri: Math.min(p.level, p.floor + 5) }, wait: 300 };
-        if (Math.random() < p.multi / 100) yield { state: { bri: p.level }, wait: 300 };
+        if (Math.random() < p.double / 100) yield { state: { bri: p.level }, wait: 300 };
       }
     },
   },
@@ -122,7 +132,7 @@ export const EFFECTS = [
     id: 'breathe', name: 'Breathe', swatch: 'radial-gradient(circle, #ffd9b3, #3a2a1a)',
     desc: 'Slow brightness pulse, keeps the current color',
     params: [LEVEL(80), FLOOR(10),
-      { id: 'period', label: 'Cycle time', min: 2, max: 20, step: 0.5, def: 6, unit: 's', kind: 'plain' }],
+      { id: 'period', label: 'Cycle time', min: 2, max: 20, step: 0.5, def: 6, unit: 's', kind: 'plain' }, DURATION],
     *steps(p) {
       const step = 300;
       for (let ph = 0; ; ph += step / (p.period * 1000)) {

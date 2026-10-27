@@ -110,3 +110,27 @@ test('effects: valid values and never faster than MIN_STEP_MS, at max speed', ()
     }
   }
 });
+
+// ---------- crossfade math and show data (web/show.js) ----------
+import { lerpState, stateAt, normState } from '../web/show.js';
+
+test('crossfade: hue takes the short way round the wheel', () => {
+  const a = { mode: 'hsi', cct: 5600, hue: 330, sat: 70, bri: 40 }, b = { mode: 'hsi', cct: 5600, hue: 20, sat: 90, bri: 60 };
+  const hues = [0, 0.25, 0.5, 0.75, 1].map((t) => Math.round(lerpState(a, b, t).hue));
+  assert.deepEqual(hues, [330, 343, 355, 8, 20]);
+  assert.equal(lerpState(a, b, 0.5).bri, 50);
+});
+
+test('crossfade: White ↔ Color dips through dark at the midpoint', () => {
+  const plan = { from: { mode: 'hsi', cct: 5600, hue: 25, sat: 90, bri: 60 }, to: { mode: 'cct', cct: 5600, hue: 0, sat: 100, bri: 80 } };
+  assert.equal(stateAt(plan, 0).mode, 'hsi');
+  assert.ok(stateAt(plan, 0.49).bri < 2);
+  assert.equal(stateAt(plan, 0.5).mode, 'cct');
+  assert.ok(stateAt(plan, 0.51).bri < 2);
+  assert.equal(stateAt(plan, 1).bri, 80);
+});
+
+test('looks and cues are rounded to what the light can show', () => {
+  assert.deepEqual(normState({ mode: 'hsi', hue: 362, sat: 101, bri: -3, cct: 9000 }), { mode: 'hsi', cct: 5600, hue: 360, sat: 100, bri: 0 });
+  assert.deepEqual(normState({ mode: 'cct', cct: 3149, power: 0 }), { mode: 'cct', cct: 3200, hue: 0, sat: 100, bri: 50, power: false });
+});

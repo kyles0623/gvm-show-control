@@ -21,6 +21,26 @@ const OTA_UUIDS = new Set([
 ]);
 const OTA_KEYWORDS = ['dfu', 'ota', 'oad', 'update', 'firmware', 'upgrade', 'bootloader'];
 
+/**
+ * Opens the browser's device chooser (must run inside a user gesture).
+ * Resolves the chosen device, or rejects with err.problem = 'chooser' | 'adapter'.
+ */
+export async function chooseDevice({ anyDevice = false, extraServices = [] } = {}) {
+  // requestDevice must be called synchronously in the click handler, so the availability
+  // check runs in parallel and only adds context if the chooser fails.
+  const available = navigator.bluetooth.getAvailability?.().catch(() => true) ?? Promise.resolve(true);
+  const optionalServices = [...new Set([...OPTIONAL_SERVICES, ...extraServices])];
+  const opts = anyDevice
+    ? { acceptAllDevices: true, optionalServices }
+    : { filters: [{ namePrefix: 'BT_LED' }, { services: [SERVICE] }], optionalServices };
+  try {
+    return await navigator.bluetooth.requestDevice(opts);
+  } catch (e) {
+    e.problem = (await available) === false && !/cancel/i.test(e.message) ? 'adapter' : 'chooser';
+    throw e;
+  }
+}
+
 export const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const bytesOf = (v) => (v instanceof DataView ? new Uint8Array(v.buffer, v.byteOffset, v.byteLength) : new Uint8Array(v));
 export const toHex = (v) => Array.from(bytesOf(v), (b) => b.toString(16).padStart(2, '0').toUpperCase()).join(' ');
@@ -59,8 +79,16 @@ function ts() {
  * status: unsupported | idle | connecting | connected | reconnecting | disconnected
  */
 export class LightConnection extends EventTarget {
-  constructor() {
+  /**
+   * @param {{id?: string, name?: string, logger?: (line: string) => void}} opts
+   *   id/name: the remembered device; logger: shared log sink (Rig) — otherwise logs locally.
+   */
+  constructor({ id = null, name = null, logger = null } = {}) {
     super();
+    this.id = id;
+    this.storedName = name;
+    this.logger = logger;
+    this.label = name ?? 'BT_LED';
     this.status = navigator.bluetooth ? 'idle' : 'unsupported';
     this.statusDetail = '';
     this.device = null;
@@ -81,6 +109,7 @@ export class LightConnection extends EventTarget {
 
   // ---------- log ----------
   logLine(msg) {
+    if (this.logger) { this.logger(`[${this.label}] ${msg}`); return; }
     const line = `${ts()}  ${msg}`;
     this.full.push(line);
     this.log.push(line);
@@ -100,52 +129,10 @@ export class LightConnection extends EventTarget {
     this.dispatchEvent(new Event('status'));
   }
 
-  get rememberedId() { return store.get('gvm.deviceId'); }
-  get deviceName() { return this.device?.name ?? store.get('gvm.deviceName') ?? 'BT_LED'; }
+  get rememberedId() { return this.id; }
+  get deviceName() { return this.device?.name ?? this.storedName ?? 'BT_LED'; }
 
   // ---------- connect / reconnect ----------
-
-  /** Opens the Chrome device chooser. anyDevice = explorer mode (all devices). Needs a user gesture. */
-  async pair({ anyDevice = false, extraServices = [] } = {}) {
-    if (!navigator.bluetooth) return;
-    // Must call requestDevice synchronously in the click handler (user gesture), so the
-    // availability check runs in parallel and only adds context if the chooser fails.
-    const available = navigator.bluetooth.getAvailability?.().catch(() => true) ?? Promise.resolve(true);
-    const optionalServices = [...new Set([...OPTIONAL_SERVICES, ...extraServices])];
-    const opts = anyDevice
-      ? { acceptAllDevices: true, optionalServices }
-      : { filters: [{ namePrefix: 'BT_LED' }, { services: [SERVICE] }], optionalServices };
-    this.logLine(`CHOOSER ${anyDevice ? 'all devices' : 'BT_LED'} optionalServices=[${optionalServices.map(shortUuid).join(', ')}]`);
-    let device;
-    try { device = await navigator.bluetooth.requestDevice(opts); }
-    catch (e) {
-      this.logLine(`CHOOSER closed: ${e.name}: ${e.message}`);
-      this._problem((await available) === false && !/cancel/i.test(e.message) ? 'adapter' : 'chooser', e);
-      return;
-    }
-    store.set('gvm.deviceId', device.id);
-    store.set('gvm.deviceName', device.name ?? '');
-    await this.connect(device);
-  }
-
-  /** Reconnects to the remembered light without a chooser (if Chrome still has permission). */
-  async restore() {
-    if (!navigator.bluetooth?.getDevices) { this.logLine('getDevices() unavailable: use Pair'); return false; }
-    if ((await navigator.bluetooth.getAvailability?.().catch(() => true)) === false) {
-      this.logLine('Bluetooth adapter unavailable');
-      this._problem('adapter');
-      return false;
-    }
-    const id = this.rememberedId;
-    if (!id) return false;
-    let devices = [];
-    try { devices = await navigator.bluetooth.getDevices(); } catch {}
-    const device = devices.find((d) => d.id === id);
-    if (!device) { this.logLine('Remembered light not permitted any more: use Pair'); this._problem('forgotten'); return false; }
-    this.logLine(`Auto-connect to remembered ${device.name ?? id}`);
-    await this.connect(device, { auto: true });
-    return true;
-  }
 
   async connect(device, { auto = false } = {}) {
     clearTimeout(this._retryTimer);
@@ -282,8 +269,6 @@ export class LightConnection extends EventTarget {
     for (const f of decode(bytes)) {
       if (!(f.isStatus && this.quietStatus)) this.logLine(`RX ${toHex(f.bytes)}  → ${f.text}`);
       if (!f.ok) continue;
-      // Acknowledgement of a set command: cmd 0x02, payload 00 <param> <value>.
-      if (f.bytes[5] === 0x02) this.dispatchEvent(new CustomEvent('ack', { detail: { param: f.bytes[7], value: f.bytes[8], at: performance.now() } }));
       const update = stateFromFrame(f.bytes);
       if (update && Object.keys(update).length) {
         if (f.isStatus) this.lastStatusAt = Date.now();
@@ -302,28 +287,6 @@ export class LightConnection extends EventTarget {
     const p = this._queue.then(fn);
     this._queue = p.catch(() => {});
     return p;
-  }
-
-  /** Resolves true when the light acknowledges `param` = `value`, false after `ms`. */
-  waitAck(param, value, ms = 350) {
-    return new Promise((resolve) => {
-      const done = (ok) => { clearTimeout(timer); this.removeEventListener('ack', onAck); resolve(ok); };
-      const onAck = (e) => { if (e.detail.param === param && e.detail.value === value) done(true); };
-      const timer = setTimeout(() => done(false), ms);
-      this.addEventListener('ack', onAck);
-    });
-  }
-
-  /** Sends one set-parameter frame and retries until the light acknowledges it. */
-  async sendConfirmed(frame, label, { tries = 3, ms = 350 } = {}) {
-    const param = frame[7], value = frame[9];
-    for (let i = 1; i <= tries; i++) {
-      const ack = this.waitAck(param, value, ms);
-      if (!(await this.write(this.ctrl, frame, `${label}${i > 1 ? ` (retry ${i - 1})` : ''}`, true))) return false;
-      if (await ack) return true;
-    }
-    this.logLine(`NO ACK after ${tries} tries: ${label}`);
-    return false;
   }
 
   get connected() { return this.status === 'connected' && !!this.device?.gatt.connected; }

@@ -19,14 +19,12 @@
     </div>
     <button id="connectBtn" class="btn">Connect</button>
   </div>
+  <div id="lightChips" class="lchips" role="group" aria-label="Lights to control" hidden></div>
   <nav class="tabs" role="tablist">
     <button class="tab active" data-tab="show" role="tab">Show</button>
+    <button class="tab" data-tab="cues" role="tab">Cues</button>
     <button id="debugTabBtn" class="tab" data-tab="debug" role="tab" hidden>Debug</button>
   </nav>
-  <div id="stagingPill" class="staging-pill" role="status" hidden
-       title="The light is dark. Brightness, color and looks you set now are held and appear when you press Restore. Starting an effect turns the light on.">
-    <span class="rec"></span> Blackout · editing behind the scenes
-  </div>
   <div class="bar-right">
     <button id="lockBtn" class="btn toggle" title="L">Lock</button>
     <button id="dimBtn" class="btn toggle" title="Dims this screen, not the light">Dim UI</button>
@@ -36,6 +34,23 @@
 </header>
 
 <main id="tab-show" class="tab-panel">
+  <section id="cueBar" class="cuebar">
+    <button id="cueBack" class="btn cue-back" title="Back one cue (Shift+Space)">◀ Back</button>
+    <div class="cue-slot">
+      <div class="label">Current cue</div>
+      <div id="cueNow" class="cue-title">No cues yet</div>
+    </div>
+    <div class="cue-slot cue-mid">
+      <div class="cue-progress"><span id="cueProg"></span></div>
+      <div id="cueState" class="hint cue-state"></div>
+    </div>
+    <div class="cue-slot">
+      <div class="label">Next</div>
+      <div id="cueNext" class="cue-title dim">Record cues on the Cues tab</div>
+    </div>
+    <button id="cueGo" class="go" title="Run the next cue (Space)" disabled>GO <span class="key">Space</span></button>
+  </section>
+
   <!-- Column A: live show controls -->
   <section class="col col-a">
     <button id="powerBtn" class="power" disabled>
@@ -45,18 +60,17 @@
 
     <button id="blackoutBtn" class="blackout" disabled title="B">
       <span id="blackoutLabel">BLACKOUT</span>
-      <span id="blackoutSub" class="blackout-sub"></span>
       <span class="key">B</span>
     </button>
 
     <div class="group">
       <div id="fadeCtl">
         <div class="row-between">
-          <div class="label">Fade time</div>
+          <div class="label" title="Used by Blackout, Restore and Looks. Cues have their own fade times.">Fade time</div>
           <div class="big-value fade-value"><span id="fadeVal">Snap</span><small id="fadeUnit"></small></div>
         </div>
         <input id="fadeSlider" class="range fade" type="range" min="0" max="100" step="1" value="0"
-               aria-label="Fade time for blackout and restore" title="Fade time for Blackout / Restore">
+               aria-label="Fade time for blackout, restore and looks" title="Fade time for Blackout, Restore and Looks">
         <div class="chips fade-chips">
           <button data-ms="0" class="chip">Snap</button>
           <button data-ms="250" class="chip">¼s</button>
@@ -73,7 +87,7 @@
     <div class="group status-card">
       <div id="preview" class="preview" title="Approximate on-screen preview of the requested color"></div>
       <div class="status-text">
-        <div id="readoutLabel" class="label">Light reports</div>
+        <div class="label">Light reports</div>
         <div id="readout" class="readout">—</div>
         <div id="readoutAge" class="hint"></div>
       </div>
@@ -135,8 +149,8 @@
 
     <div class="group looks-card lockable">
       <div class="row-between">
-        <div class="label">Looks</div>
-        <span class="hint" title="A look picked during blackout is revealed by Restore">tap to set</span>
+        <div class="label">Looks <span class="hint">· keys 1–9</span></div>
+        <button id="saveLookBtn" class="btn sm" title="Save the selected light’s current look">+ Save look</button>
       </div>
       <div id="looks" class="tiles"></div>
     </div>
@@ -162,6 +176,37 @@
         <div id="fxParams" class="fx-params"></div>
       </div>
     </div>
+  </section>
+</main>
+
+<main id="tab-cues" class="tab-panel" hidden>
+  <section class="group cues-card">
+    <div class="row-between">
+      <div class="label">Cue list</div>
+      <span class="hint"><kbd>Space</kbd> GO · <kbd>⇧</kbd>+<kbd>Space</kbd> Back · <kbd>Esc</kbd> stop</span>
+    </div>
+    <div class="row cue-tools">
+      <button id="cueRecord" class="btn primary" title="Save every connected light’s current look as a new cue after the selected one">● Record new cue</button>
+      <button id="cueUpdate" class="btn" title="Replace the selected cue with the lights’ current looks">Update selected</button>
+      <button id="cueUp" class="btn" title="Move up">↑</button>
+      <button id="cueDown" class="btn" title="Move down">↓</button>
+      <button id="cueDelete" class="btn danger">Delete</button>
+      <button id="cueReset" class="btn" title="Next GO runs cue 1">Back to top</button>
+    </div>
+    <p class="hint">Set the lights (sliders, looks, an effect), then Record. A cue remembers every connected light, a fade time,
+      an optional effect with a run time, and an optional auto-GO that runs the next cue on its own.</p>
+    <div id="cueList" class="cue-list"></div>
+  </section>
+  <section class="group looks-lib">
+    <div class="row-between">
+      <div class="label">Looks</div>
+      <div class="row" style="margin:0">
+        <button id="lookSave" class="btn sm" title="Save the selected light’s current look">+ Save current</button>
+        <button id="lookReset" class="btn sm danger">Restore defaults</button>
+      </div>
+    </div>
+    <p class="hint">The first nine are on the Show tab (keys 1–9). Looks fade in using the Fade time.</p>
+    <div id="lookList" class="look-list"></div>
   </section>
 </main>
 
@@ -252,14 +297,14 @@
 <dialog id="settingsDlg" class="dlg">
   <div class="dlg-head"><h2>Settings</h2><button class="btn sm" data-close>Done</button></div>
   <section>
-    <h3>Light</h3>
-    <label class="field">Display name <input id="setName" type="text" maxlength="24" placeholder="BT_LED"></label>
-    <label class="switch"><input id="setAuto" type="checkbox"> Connect automatically when the app opens</label>
+    <h3>Lights</h3>
+    <div id="setLights" class="light-list"></div>
     <div class="row">
-      <button id="setReconnect" class="btn">Reconnect</button>
-      <button id="setForget" class="btn danger">Forget this light</button>
+      <button id="setAddLight" class="btn">Add another light</button>
     </div>
-    <p class="hint" id="setLightInfo"></p>
+    <label class="switch"><input id="setAuto" type="checkbox"> Connect automatically when the app opens</label>
+    <p class="hint">With more than one light, chips appear at the top: tap a light to control only it, Shift-click to pick several.
+      Blackout always covers every light.</p>
   </section>
   <section>
     <h3>During the show</h3>
@@ -294,20 +339,23 @@
       <li>Press <b>Pair light</b> (top left) and choose <b>BT_LED</b>.</li>
       <li>Use the sliders, or tap a <b>Look</b> or <b>Effect</b>.</li>
       <li><b>Blackout</b> (or <kbd>B</kbd>) takes the light out; press again to restore. Set a fade time to fade instead of snapping.</li>
-      <li>While blacked out you can set up the next look behind the scenes: brightness, color and Looks change only the preview (marked <b>NEXT</b>) — the light stays dark until you press <b>Restore</b>, then comes up in that look. Starting an effect turns the light on.</li>
-      <li>Press <b>Lock</b> before the show so nothing changes by accident — Blackout still works.</li>
+      <li>For a show, build a <b>cue list</b> on the Cues tab: set the lights, press <b>Record</b>, repeat. During the show press <b>GO</b> (<kbd>Space</kbd>) for each cue.</li>
+      <li>More lights: Settings → Lights → <b>Add another light</b>. Chips at the top choose which light the controls change.</li>
+      <li>Press <b>Lock</b> before the show so nothing changes by accident — GO, Back and Blackout still work.</li>
     </ol>
     <button id="helpSetupBtn" class="btn">Run setup again</button>
   </section>
   <section>
     <h3>Keyboard shortcuts</h3>
     <table class="keys-table">
-      <tr><td><kbd>B</kbd></td><td>Blackout / restore</td></tr>
+      <tr><td><kbd>Space</kbd></td><td>GO — run the next cue</td></tr>
+      <tr><td><kbd>⇧</kbd> <kbd>Space</kbd></td><td>Back one cue</td></tr>
+      <tr><td><kbd>B</kbd></td><td>Blackout / restore (all lights)</td></tr>
       <tr><td><kbd>↑</kbd> <kbd>↓</kbd></td><td>Brightness ±5 (hold <kbd>⇧</kbd> for ±1)</td></tr>
-      <tr><td><kbd>1</kbd>–<kbd>6</kbd></td><td>Looks</td></tr>
+      <tr><td><kbd>1</kbd>–<kbd>9</kbd></td><td>Looks (fade in with the Fade time)</td></tr>
       <tr><td><kbd>Q</kbd>–<kbd>Y</kbd></td><td>Start / stop effects</td></tr>
-      <tr><td><kbd>Esc</kbd></td><td>Stop effect and return to the previous look</td></tr>
-      <tr><td><kbd>L</kbd></td><td>Lock / unlock</td></tr>
+      <tr><td><kbd>Esc</kbd></td><td>Stop: effect (back to the previous look), running fade, pending auto-GO</td></tr>
+      <tr><td><kbd>L</kbd></td><td>Lock / unlock (GO, Back and Blackout still work)</td></tr>
       <tr><td><kbd>?</kbd></td><td>This help</td></tr>
     </table>
   </section>
