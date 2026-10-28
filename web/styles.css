@@ -477,3 +477,5 @@ body.popout { overflow: hidden; height: 100vh; }
   background: var(--bg); color: var(--text); border: 1px solid var(--accent); user-select: text;
 }
 #connSub .rename-input { border-radius: 6px; width: 140px; }
+
+.lbo.silent .lbo-state { color: var(--warn, #e0a030); }

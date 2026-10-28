@@ -8,6 +8,9 @@ const LOG_CAP = 500;
 const BASE = '-0000-1000-8000-00805f9b34fb';
 const RETRY_DELAYS_MS = [1000, 2000, 4000, 8000, 15000, 30000];
 const CONNECT_TIMEOUT_MS = 10000;
+// The light sends a status frame every ~5 s while connected. If nothing arrives for this long,
+// the link is dead even though the OS still reports it connected: drop it and reconnect.
+const SILENT_MS = 12000;
 const FRAME_GAP_MS = 60;
 
 const OTA_UUIDS = new Set([
@@ -96,6 +99,8 @@ export class LightConnection extends EventTarget {
     this.chars = [];             // {id, svc, uuid, props[], ch, userDesc, ota, last}
     this.light = {};             // power, brightness, cct, hue, saturation, mode
     this.lastStatusAt = 0;
+    this.lastRxAt = 0;
+    this._watchdog = null;
     this.echoStatus = true;
     this.quietStatus = true;
     this.log = [];
@@ -155,6 +160,8 @@ export class LightConnection extends EventTarget {
       await this._enqueue(() => this._discover(server));
       if (!this.ctrl) { const e = new Error('control characteristic not found'); e.code = 'not-light'; throw e; }
       this._retry = 0;
+      this.lastRxAt = Date.now();
+      this._startWatchdog();
       this._setStatus('connected');
       await this.sendFrames(GVMProtocol.handshake(), 'handshake');
     } catch (e) {
@@ -198,7 +205,23 @@ export class LightConnection extends EventTarget {
     this._retryTimer = setTimeout(() => this.connect(this.device), delay);
   }
 
+  /** Reconnects a light that has stopped sending anything (see SILENT_MS). */
+  _startWatchdog() {
+    clearInterval(this._watchdog);
+    this._watchdog = setInterval(() => {
+      if (this.status !== 'connected' || !this.device) return;
+      const silent = Date.now() - this.lastRxAt;
+      if (silent < SILENT_MS) return;
+      clearInterval(this._watchdog);
+      this.logLine(`NO RESPONSE for ${Math.round(silent / 1000)}s (status expected every 5s): dropping the link and reconnecting`);
+      this.device.removeEventListener('gattserverdisconnected', this._onDisc);   // connect() re-adds it
+      try { if (this.device.gatt.connected) this.device.gatt.disconnect(); } catch {}
+      this._handleDisconnect();
+    }, 1000);
+  }
+
   _handleDisconnect() {
+    clearInterval(this._watchdog);
     this.ctrl = null;
     this.chars = [];
     this.dispatchEvent(new Event('gatt'));
@@ -214,6 +237,7 @@ export class LightConnection extends EventTarget {
 
   disconnect() {
     this._userDisconnect = true;
+    clearInterval(this._watchdog);
     clearTimeout(this._retryTimer);
     this._retry = 0;
     if (this.device?.gatt.connected) { this.logLine('DISCONNECT requested'); this.device.gatt.disconnect(); }
@@ -266,6 +290,7 @@ export class LightConnection extends EventTarget {
       this.dispatchEvent(new Event('gatt'));
       return;
     }
+    this.lastRxAt = Date.now();
     for (const f of decode(bytes)) {
       if (!(f.isStatus && this.quietStatus)) this.logLine(`RX ${toHex(f.bytes)}  → ${f.text}`);
       if (!f.ok) continue;

@@ -62,6 +62,9 @@ Web Bluetooth only works on `https://` or `http://localhost`.
 
 ## Multiple lights (`rig.js`)
 - Every paired light has its own connection (own write queue, reconnect and status), so lights are driven in parallel.
+- Silent-link watchdog: the light sends a status frame every ~5 s. If a connected light sends nothing for 7 s its
+  blackout button shows "no reply"; after 12 s the app drops that link and reconnects it (macOS can keep a dead link
+  "connected" for 20 s or more, while writes to it go nowhere).
 - Remembered lights live in `localStorage['gvm.lights']` as `{id, name, label}`; the older single-light keys are migrated on first load.
 - Selection: chips appear with 2+ lights. Click = only that light, Shift/⌘-click = add/remove, All = every light.
   Sliders, mode, looks, effects and the Power button act on the selection; the sliders show the first selected light.

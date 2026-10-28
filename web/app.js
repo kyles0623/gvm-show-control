@@ -278,6 +278,7 @@ let chipsTimer = null;
 function renderChipsSoon() { if (!chipsTimer) chipsTimer = setTimeout(() => { chipsTimer = null; renderChips(); }, 200); }
 
 setInterval(() => {
+  if (rig.lights.length > 1) renderLightBlackouts();
   const p = primary();
   if (!p?.conn.connected) { $('readoutAge').textContent = ''; return; }
   if (!p.conn.lastStatusAt) { $('readoutAge').textContent = 'waiting for first status…'; return; }
@@ -493,8 +494,10 @@ function renderLightBlackouts() {
   for (const b of box.children) {
     const l = rig.get(b.dataset.id);
     const dark = isDarkLight(l);
+    const silent = l.conn.connected && Date.now() - (l.conn.lastRxAt || Date.now()) > 7000;   // missed a 5 s status
     b.querySelector('.lbo-name').textContent = l.label;
-    b.querySelector('.lbo-state').textContent = !l.conn.connected ? 'offline' : l.busy ? '…' : dark ? 'OUT' : 'ON';
+    b.querySelector('.lbo-state').textContent = !l.conn.connected ? (l.conn.status === 'reconnecting' ? 'reconnecting' : 'offline') : silent ? 'no reply' : l.busy ? '…' : dark ? 'OUT' : 'ON';
+    b.classList.toggle('silent', silent);
     b.classList.toggle('dark', dark && l.conn.connected);
     b.classList.toggle('busy', !!l.busy);
     b.disabled = !l.conn.connected;
