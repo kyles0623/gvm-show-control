@@ -1,7 +1,8 @@
 // Environment detection, per-OS setup steps, and plain-language explanations for
 // Web Bluetooth problems. No DOM access here; app.js renders what these return.
 
-export const APP_VERSION = '1.0.0';
+// Shown in the lower-right corner and in Settings. Bump it (and CACHE in sw.js) with every release.
+export const APP_VERSION = '1.1.0';
 
 /** Detects OS, browser and Web Bluetooth readiness. */
 export function detectEnv(nav = navigator, win = window) {

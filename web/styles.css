@@ -483,3 +483,12 @@ body.popout { overflow: hidden; height: 100vh; }
 /* Board follows the selected light(s): "partial" = only some of the selected lights have this look/effect. */
 .tile.partial { border-color: var(--accent); border-style: dashed; }
 .cue-fx-strip .chip.partial { border-color: var(--accent); border-style: dashed; }
+
+.ladd { flex: none; padding: 4px 11px; border-radius: 999px; border: 1px dashed var(--border); background: transparent;
+  color: var(--muted); font: inherit; font-size: 13px; cursor: pointer; white-space: nowrap; }
+.ladd:hover:not(:disabled) { border-color: var(--accent); color: var(--text); }
+.ladd:disabled { opacity: .5; cursor: default; }
+
+/* App version, lower-right corner. Small and dim so it never competes with the controls. */
+.version-badge { position: fixed; right: 6px; bottom: 2px; z-index: 5; font: 10px/1 var(--mono); color: var(--muted);
+  background: var(--bg); padding: 2px 4px; border-radius: 3px; pointer-events: none; user-select: none; }

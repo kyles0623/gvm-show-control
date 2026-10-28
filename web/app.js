@@ -175,14 +175,18 @@ function startRename(el, l) {
 function renderChips() {
   if (ui.renaming) return;                     // don't touch the chips under an open rename box
   const bar = $('lightChips');
-  bar.hidden = rig.lights.length < 2;
-  if (bar.hidden) { bar.innerHTML = ''; return; }
+  // No lights: the header's "Pair light" button covers it. One light: only "+ Add light".
+  // Two or more: All, one chip per light, then "+".
+  bar.hidden = !rig.lights.length || !env.supported;
+  if (bar.hidden) { bar.innerHTML = ''; bar.dataset.ids = ''; return; }
+  const multi = rig.lights.length > 1;
   // Build the chips only when the set of lights changes; otherwise update them in place, so a
   // double-click (rename) isn't broken by the re-render that the first click's selection causes.
-  const ids = ['all', ...rig.lights.map((l) => l.id)].join('|');
+  const ids = multi ? ['all', ...rig.lights.map((l) => l.id), 'add'].join('|') : 'add';
   if (bar.dataset.ids !== ids) {
     bar.dataset.ids = ids;
     bar.innerHTML = '';
+    if (!multi) { bar.appendChild(addLightChip(false)); updateAddChip(); return; }
     const all = document.createElement('button');
     all.className = 'lchip';
     all.textContent = 'All';
@@ -201,7 +205,10 @@ function renderChips() {
       b.addEventListener('dblclick', (e) => { e.preventDefault(); startRename(b, rig.get(l.id)); });
       bar.appendChild(b);
     }
+    bar.appendChild(addLightChip(true));
   }
+  updateAddChip();
+  if (!multi) return;
   bar.firstChild.classList.toggle('sel', !rig.selection);
   for (const b of [...bar.children].slice(1)) {
     const l = rig.get(b.dataset.id);
@@ -212,6 +219,31 @@ function renderChips() {
     b.children[1].style.background = l.conn.connected ? stateColor({ ...stateOf(l), power: l.conn.light.power }) : '#222';
     b.children[2].textContent = l.label;
   }
+}
+
+/** "+ Add light" at the end of the chips: opens the Bluetooth chooser to pair one more light. */
+function addLightChip(compact) {
+  const b = document.createElement('button');
+  b.className = 'ladd';
+  b.id = 'chipAddLight';
+  b.textContent = compact ? '+' : '+ Add light';
+  b.setAttribute('aria-label', 'Add a light');
+  b.title = 'Pair another light: opens the Bluetooth device list (choose BT_LED)';
+  b.addEventListener('click', addLight);
+  return b;
+}
+function updateAddChip() {
+  const b = $('chipAddLight');
+  if (b) b.disabled = ui.pairing || !env.supported;
+}
+async function addLight() {
+  if (ui.pairing) return;
+  ui.pairing = true; updateAddChip();
+  try {
+    const before = rig.lights.length;
+    const l = await rig.pair();
+    if (l && rig.lights.length > before) toast({ level: 'ok', title: `Added ${l.label}`, body: 'Double-click its chip to rename it. Tab switches between lights.' });
+  } finally { ui.pairing = false; updateAddChip(); }
 }
 
 /** Tab / Shift+Tab: All → first light → second light → … → All. */
@@ -1592,6 +1624,7 @@ function syncSettingsForm() {
 
 function initSettings() {
   $('appVersion').textContent = APP_VERSION;
+  $('versionBadge').textContent = `v${APP_VERSION}`;
   $('envInfo').textContent = `${BROWSER_NAME[env.browser]} on ${OS_NAME[env.os]}${env.supported ? '' : ' (no Web Bluetooth)'}`;
   $('settingsBtn').addEventListener('click', () => openDialog('settingsDlg'));
   for (const b of document.querySelectorAll('[data-close]')) b.addEventListener('click', () => closeDialog(b.closest('dialog')));

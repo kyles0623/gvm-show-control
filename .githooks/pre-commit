@@ -1,0 +1,10 @@
+#!/bin/sh
+# Every commit gets a minor version bump (1.4.0 -> 1.5.0), shown in the app's lower-right corner.
+# Skipped when the commit already changes APP_VERSION (keeps a manual major/patch bump).
+# Skip once with:  SKIP_BUMP=1 git commit ...
+# Enable once per clone:  git config core.hooksPath .githooks
+[ -n "$SKIP_BUMP" ] && exit 0
+git diff --cached -U0 -- web/setup.js | grep -q "^+export const APP_VERSION" && exit 0
+new=$(scripts/bump-version.sh minor) || exit 1
+git add web/setup.js web/sw.js
+echo "pre-commit: version $new"

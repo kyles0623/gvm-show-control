@@ -78,5 +78,19 @@ Run the tests (Node 18+): `node --test tests/protocol.test.mjs`
 2. Settings → Pages → Build and deployment → Source: **GitHub Actions**.
 3. Every push to `main` runs the tests and publishes `web/` (`.github/workflows/pages.yml`).
 
+### Versioning
+
+The version is shown in the app's lower-right corner (and in Settings). It lives in `web/setup.js` (`APP_VERSION`);
+the offline cache in `web/sw.js` is named after it, so a new version also makes browsers fetch the new files.
+
+Every commit bumps the minor version (1.4.0 → 1.5.0) through a git hook. Turn it on once per clone:
+
+```sh
+git config core.hooksPath .githooks
+```
+
+- Skip it for one commit: `SKIP_BUMP=1 git commit ...`
+- Major or patch release: `scripts/bump-version.sh major` (or `patch`), then commit; the hook keeps your bump.
+
 ## License
 [MIT](LICENSE)
