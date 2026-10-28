@@ -511,7 +511,7 @@ const EFFECT_KEYS = ['q', 'w', 'e', 'r', 't', 'y'];
 async function applyLook(look, { fadeMs = ui.fadeMs } = {}) {
   const lights = targets();
   if (!lights.length) return;
-  stopEffect(false);
+  releaseFromEffect(lights);
   clearFollow();
   fx.look = look.id;
   renderPresets();
@@ -559,16 +559,17 @@ async function toggleEffect(e, { params = fx.params[e.id], lights = targets(), f
   renderPresets();
   rig.logLine(`EFFECT ${e.name} start on ${lights.map((l) => l.label).join(', ')}${params.duration > 0 ? ` for ${params.duration}s` : ''}`);
   const guard = () => token === fx.token;
+  const inFx = (l) => fx.lights.includes(l);   // a light leaves the effect when it is edited by hand
   await each(lights.filter(isDarkLight), (l) => { l.blackoutPre = null; return l.conn.sendFrames(P.power(true), 'power on (effect)'); });
 
   const run = async (gen, group) => {
     for (const step of gen) {
-      if (!guard() || performance.now() >= fx.deadline) break;
+      if (!guard() || performance.now() >= fx.deadline || !group.some(inFx)) break;
       const t0 = performance.now();
       await each(group, (l) => {
-        if (!l.conn.connected) return null;
+        if (!l.conn.connected || !inFx(l)) return null;
         const alt = step.alt && params.multi === 'alternate' && lights.indexOf(l) % 2 === 1;
-        return applyStateTo(l, alt ? step.alt : step.state, { guard });
+        return applyStateTo(l, alt ? step.alt : step.state, { guard: () => guard() && inFx(l) });
       });
       if (group.includes(primary())) syncFromLight();
       const rest = Math.min(step.wait - (performance.now() - t0), fx.deadline - performance.now());
@@ -586,7 +587,19 @@ async function toggleEffect(e, { params = fx.params[e.id], lights = targets(), f
 }
 
 /** Manual control: stop any effect without restoring, clear the active look highlight. */
-function takeover() { stopEffect(false); clearFollow(); if (fx.look) { fx.look = null; renderPresets(); } }
+function takeover() { releaseFromEffect(targets()); clearFollow(); if (fx.look) { fx.look = null; renderPresets(); } }
+
+/** Takes `lights` out of the running effect (they stay where they are); stops it when none are left. */
+function releaseFromEffect(lights) {
+  if (!fx.id) return;
+  const keep = fx.lights.filter((l) => !lights.includes(l));
+  if (keep.length === fx.lights.length) return;
+  if (!keep.length) { stopEffect(false); return; }
+  const gone = fx.lights.filter((l) => !keep.includes(l));
+  fx.lights = keep;
+  rig.logLine(`EFFECT ${EFFECTS.find((x) => x.id === fx.id)?.name} released ${gone.map((l) => l.label).join(', ')}; still running on ${keep.map((l) => l.label).join(', ')}`);
+  renderPresets();
+}
 
 /** restore=true returns each light to the look it had when the effect started. */
 async function stopEffect(restore) {
@@ -736,7 +749,7 @@ const cue = { index: -1, token: 0, followTimer: null, followAt: 0, followTotal: 
 function snapshotRig() {
   const lights = {};
   for (const l of rig.connected) {
-    const base = fx.id && fx.snapshot?.has(l.id) ? { ...fx.snapshot.get(l.id), power: true } : { ...stateOf(l), power: l.conn.light.power !== false };
+    const base = fx.id && fx.lights.includes(l) && fx.snapshot?.has(l.id) ? { ...fx.snapshot.get(l.id), power: true } : { ...stateOf(l), power: l.conn.light.power !== false };
     lights[l.id] = normState(base);
   }
   return lights;
