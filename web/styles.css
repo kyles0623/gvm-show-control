@@ -479,3 +479,7 @@ body.popout { overflow: hidden; height: 100vh; }
 #connSub .rename-input { border-radius: 6px; width: 140px; }
 
 .lbo.silent .lbo-state { color: var(--warn, #e0a030); }
+
+/* Board follows the selected light(s): "partial" = only some of the selected lights have this look/effect. */
+.tile.partial { border-color: var(--accent); border-style: dashed; }
+.cue-fx-strip .chip.partial { border-color: var(--accent); border-style: dashed; }

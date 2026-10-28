@@ -38,7 +38,7 @@ On Windows/Linux, any static server works, e.g. `cd web && python -m http.server
 | **Color crossfades** | Looks and cues fade brightness, color temperature, hue (the short way round) and saturation together. White ↔ Color changes dip through dark at the midpoint. |
 | **Your own looks** (`1`–`9`) | **+ Save look** on the Show tab; rename, reorder, update or delete on the Looks tab. The first nine are one tap / one key away. |
 | **Blackout / Restore** (`B`) | Snap or fade, 0–10 s, with fine control under 1 s |
-| **Effects** (`Q`–`Y`) | Cops, Television, Fire, Candle, Party, Breathe — each with its own settings (brightness range, speed, colors, pattern, **run for N seconds**). With several lights, Cops can alternate colors and the flicker effects run independently per light. |
+| **Effects** (`Q`–`Y`) | Cops, Television, Fire, Candle, Party, Breathe — each with its own settings (brightness range, speed, colors, pattern, **run for N seconds**). Each light can run its own effect at the same time (e.g. Cops on one, Fire on another); the board shows the selected light's effect, look and settings. With several lights on one effect, Cops can alternate colors and the flicker effects run independently per light. |
 | **Live controls** | Brightness, color temperature (3200–5600 K), hue, saturation |
 | **Show safety** | Lock (`L`) leaves only GO, Back and Blackout working; auto-reconnect per light; keeps the screen awake; dim UI for dark rooms |
 | **Fits one screen** | No scrolling on laptop screens 1024×640 and up; stacks on phones |

@@ -123,7 +123,14 @@ Default looks (editable, see Looks library):
 
 - Looks send only the params that differ from the light's current state.
 - A look pressed during blackout is sent to the light; Restore powers on at that look's brightness.
-- Effects: tap again or Esc stops and returns to the look from before the effect. Grabbing a slider, a chip,
+- Effects run per light: each light runs at most one effect, and different lights can run different effects at once.
+  Lights started together share one run (in sync, Cops A/B alternation). Starting an effect on a light moves it out of
+  its previous run; the rest of that run keeps going.
+- The board follows the selection: look/effect tiles are lit when every selected light has them, dashed when only some do.
+  The effect settings panel shows the selected light's running values; edits apply to the selected lights' runs and are
+  saved as the defaults for next time.
+- Cues record every running effect with its lights (`effects: [{id, params, lightIds}]`; single-effect cues keep `effect`).
+- Effects: tapping a lit effect stops it on the selected lights and returns them to their look from before; Esc stops all effects. Grabbing a slider, a chip,
   or a look on a light takes that light out of the effect and leaves it where it is (other lights keep running).
   Power off, Blackout (master or per light) pause the effect on the dark lights; it resumes when they come back on.
   A timed effect keeps counting while paused. An effect started during blackout powers the light on.

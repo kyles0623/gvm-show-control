@@ -1,6 +1,7 @@
 // Show data kept in this browser: the looks library and the cue list.
 //   look  = { id, name, state: {mode, cct, hue, sat, bri} }
 //   cue   = { id, name, fade (s), follow (s | null), effect: null | {id, params, lightIds},
+//             effects: null | [{id, params, lightIds}]   (several effects on different lights),
 //             lights: { [lightId]: {power, mode, cct, hue, sat, bri} } }
 import { LOOKS as DEFAULT_LOOKS } from './effects.js';
 
@@ -86,8 +87,9 @@ export class Show extends EventTarget {
 
   // ---------- cues ----------
   /** Inserts a cue after index `after` (-1 = at start, null = at end). */
-  addCue({ lights, effect = null, fade = 2, follow = null, name }, after = null) {
+  addCue({ lights, effect = null, effects = null, fade = 2, follow = null, name }, after = null) {
     const cue = { id: uid(), name: name || '', fade, follow, effect, lights };
+    if (effects?.length) cue.effects = effects;
     const at = after == null ? this.cues.length : after + 1;
     this.cues.splice(at, 0, cue);
     this._changed('cues');

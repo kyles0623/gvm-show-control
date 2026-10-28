@@ -515,9 +515,9 @@ async function applyLook(look, { fadeMs = ui.fadeMs } = {}) {
   if (!lights.length) return;
   releaseFromEffect(lights);
   clearFollow();
-  fx.look = look.id;
+  for (const l of lights) l.look = look.id;
   renderPresets();
-  rig.logLine(`LOOK ${look.name}${fadeMs ? ` (fade ${fadeMs / 1000}s)` : ''}`);
+  rig.logLine(`LOOK ${look.name}${fadeMs ? ` (fade ${fadeMs / 1000}s)` : ''}${rig.lights.length > 1 ? ` → ${lights.map((l) => l.label).join(', ')}` : ''}`);
   await crossfade(lights.map((l) => ({ light: l, to: look.state })), fadeMs, { label: `LOOK ${look.name}` });
 }
 
@@ -525,16 +525,21 @@ function saveCurrentLook() {
   const p = primary();
   if (!p?.conn.connected) return;
   const look = show.addLook(stateOf(p));
-  fx.look = look.id;
+  p.look = look.id;
   renderPresets();
   toast({ level: 'ok', title: `Saved “${look.name}”`, body: 'Rename, reorder or delete it on the Looks tab.', actions: [{ label: 'Open Looks tab', fn: () => showTab('looks') }] });
 }
 
 // ---------- effects ----------
+//
+// Every light runs its own effect independently. A "run" is one started effect on one or more lights
+// (several lights started together stay in sync, e.g. Cops alternating A/B). Each light belongs to at
+// most one run; starting an effect on a light takes it out of whatever it was running before.
+//   run = { e, params, lights[], snapshot: Map(lightId → look before the effect), deadline, dead }
 
-const fx = { id: null, token: 0, snapshot: null, look: null, selected: null, params: {}, lights: [], deadline: 0 };
+const fx = { runs: [], selected: null, params: {} };
 
-// Live per-effect params (the running generator reads this same object every step).
+// Saved settings per effect: the starting values for new runs (each run gets its own copy).
 for (const e of EFFECTS) {
   const saved = prefs.get('fx.' + e.id, {});
   fx.params[e.id] = { ...defaults(e) };
@@ -543,83 +548,111 @@ for (const e of EFFECTS) {
 fx.selected = prefs.get('fx.selected', EFFECTS[0].id);
 if (!EFFECTS.some((e) => e.id === fx.selected)) fx.selected = EFFECTS[0].id;
 
+const runOf = (l) => fx.runs.find((r) => r.lights.includes(l)) ?? null;
+const fxName = (id) => EFFECTS.find((x) => x.id === id)?.name ?? id;
+/** 'all' | 'some' | 'none': how many of `lights` (default: the selected lights) are running effect `id`. */
+function effectState(id, lights = targets()) {
+  const n = lights.filter((l) => runOf(l)?.e.id === id).length;
+  return !lights.length || !n ? 'none' : n === lights.length ? 'all' : 'some';
+}
+
 /**
- * Starts an effect on `lights` (default: selected lights), or stops it if it is running.
+ * Starts effect `e` on `lights` (default: selected lights), or, if all of them are already running it,
+ * stops it on them and returns them to their look from before. Other lights are not touched.
  * Random effects (perLight) run an independent pattern on each light; others stay in sync,
  * and steps with `alt` give every other light the alternate color when params.multi = 'alternate'.
  */
-async function toggleEffect(e, { params = fx.params[e.id], lights = targets(), fromCue = false } = {}) {
+async function toggleEffect(e, { params = null, lights = targets(), fromCue = false } = {}) {
   if (!lights.length) return;
-  if (fx.id === e.id && !fromCue) { stopEffect(true); return; }
-  const snapshot = fx.id ? fx.snapshot : new Map(lights.map((l) => [l.id, stateOf(l)]));
-  stopEffect(false);
-  cancelFade();
+  if (!fromCue && effectState(e.id, lights) === 'all') { stopEffectOn(lights, { restore: true }); return; }
+  // Each light's "before" look: if it was running another effect, the look from before that one.
+  const snapshot = new Map(lights.map((l) => [l.id, runOf(l)?.snapshot.get(l.id) ?? stateOf(l)]));
+  stopEffectOn(lights, { restore: false, quietLog: true });
+  for (const l of lights) { l.fadeTok = null; l.look = null; }   // stop fades on these lights only
   if (!fromCue) clearFollow();
-  const token = ++fx.token;
-  Object.assign(fx, { id: e.id, snapshot, lights, look: null, deadline: params.duration > 0 ? performance.now() + params.duration * 1000 : Infinity });
+  params = { ...(params ?? fx.params[e.id]) };
+  const run = { e, params, lights: [...lights], snapshot, deadline: params.duration > 0 ? performance.now() + params.duration * 1000 : Infinity, dead: false };
+  fx.runs.push(run);
   selectEffect(e.id);
   renderPresets();
   rig.logLine(`EFFECT ${e.name} start on ${lights.map((l) => l.label).join(', ')}${params.duration > 0 ? ` for ${params.duration}s` : ''}`);
-  const guard = () => token === fx.token;
-  const inFx = (l) => fx.lights.includes(l);   // a light leaves the effect when it is edited by hand
+  const guard = () => !run.dead;
+  const inRun = (l) => run.lights.includes(l);   // a light leaves the run when it is edited by hand or given another effect
   // While a light is off or mid blackout/restore fade, the effect skips it (the light ignores
   // changes while off) and picks up again at the current step once it is back on.
   const paused = (l) => isDarkLight(l) || !!l.busy;
   await each(lights.filter(isDarkLight), (l) => { l.blackoutPre = null; return l.conn.sendFrames(P.power(true), 'power on (effect)'); });
 
-  const run = async (gen, group) => {
+  const loop = async (gen, group) => {
     for (const step of gen) {
-      if (!guard() || performance.now() >= fx.deadline || !group.some(inFx)) break;
+      if (!guard() || performance.now() >= run.deadline || !group.some(inRun)) break;
       const t0 = performance.now();
       await each(group, (l) => {
-        if (!l.conn.connected || !inFx(l) || paused(l)) return null;
+        if (!l.conn.connected || !inRun(l) || paused(l)) return null;
         const alt = step.alt && params.multi === 'alternate' && lights.indexOf(l) % 2 === 1;
-        return applyStateTo(l, alt ? step.alt : step.state, { guard: () => guard() && inFx(l) && !paused(l) });
+        return applyStateTo(l, alt ? step.alt : step.state, { guard: () => guard() && inRun(l) && !paused(l) });
       });
       if (group.includes(primary())) syncFromLight();
-      const rest = Math.min(step.wait - (performance.now() - t0), fx.deadline - performance.now());
+      const rest = Math.min(step.wait - (performance.now() - t0), run.deadline - performance.now());
       if (rest > 0) await sleep(rest);
     }
   };
-  if (e.perLight) await each(lights, (l) => run(e.steps(params), [l]));
-  else await run(e.steps(params), lights);
+  if (e.perLight) await each(lights, (l) => loop(e.steps(params), [l]));
+  else await loop(e.steps(params), lights);
 
-  if (fx.token !== token) return;
-  if (performance.now() >= fx.deadline) {
-    rig.logLine(`EFFECT ${e.name} finished after ${params.duration}s`);
-    await stopEffect(true);
-  } else { fx.id = null; renderPresets(); }
+  if (run.dead) return;
+  if (performance.now() >= run.deadline) {
+    rig.logLine(`EFFECT ${e.name} finished after ${params.duration}s on ${run.lights.map((l) => l.label).join(', ')}`);
+    await stopEffectOn([...run.lights], { restore: true });
+  } else endRun(run);
 }
 
-/** Manual control: stop any effect without restoring, clear the active look highlight. */
-function takeover() { releaseFromEffect(targets()); clearFollow(); if (fx.look) { fx.look = null; renderPresets(); } }
-
-/** Takes `lights` out of the running effect (they stay where they are); stops it when none are left. */
-function releaseFromEffect(lights) {
-  if (!fx.id) return;
-  const keep = fx.lights.filter((l) => !lights.includes(l));
-  if (keep.length === fx.lights.length) return;
-  if (!keep.length) { stopEffect(false); return; }
-  const gone = fx.lights.filter((l) => !keep.includes(l));
-  fx.lights = keep;
-  rig.logLine(`EFFECT ${EFFECTS.find((x) => x.id === fx.id)?.name} released ${gone.map((l) => l.label).join(', ')}; still running on ${keep.map((l) => l.label).join(', ')}`);
+function endRun(run) {
+  run.dead = true;
+  fx.runs = fx.runs.filter((r) => r !== run);
   renderPresets();
+  renderFxParams();
 }
 
-/** restore=true returns each light to the look it had when the effect started. */
-async function stopEffect(restore) {
-  if (!fx.id) return;
-  const name = EFFECTS.find((x) => x.id === fx.id)?.name;
-  const snap = fx.snapshot, lights = fx.lights;
-  fx.token++;
-  fx.id = null;
+/**
+ * Stops whatever effect each of `lights` is running. Other lights in the same run keep going.
+ * restore=true returns each light to the look it had before its effect started.
+ */
+async function stopEffectOn(lights, { restore = false, quietLog = false } = {}) {
+  const back = [];
+  for (const run of [...fx.runs]) {
+    const gone = run.lights.filter((l) => lights.includes(l));
+    if (!gone.length) continue;
+    run.lights = run.lights.filter((l) => !gone.includes(l));
+    if (!quietLog) {
+      rig.logLine(`EFFECT ${run.e.name} stop on ${gone.map((l) => l.label).join(', ')}${restore ? ' (restore previous look)' : ''}${run.lights.length ? `; still running on ${run.lights.map((l) => l.label).join(', ')}` : ''}`);
+    }
+    if (restore) for (const l of gone) if (run.snapshot.has(l.id)) back.push([l, run.snapshot.get(l.id)]);
+    if (!run.lights.length) run.dead = true;
+  }
+  if (fx.runs.some((r) => r.dead)) fx.runs = fx.runs.filter((r) => !r.dead);
   renderPresets();
-  rig.logLine(`EFFECT ${name} stop${restore ? ' (restore previous look)' : ''}`);
-  if (restore && snap) {
-    await each(lights.filter((l) => l.conn.connected && !isDarkLight(l) && snap.has(l.id)), (l) => applyStateTo(l, snap.get(l.id), { quiet: false }));
+  renderFxParams();
+  if (back.length) {
+    await each(back.filter(([l]) => l.conn.connected && !isDarkLight(l)), ([l, st]) => applyStateTo(l, st, { quiet: false }));
     syncFromLight();
   }
 }
+
+/** Stops every running effect (Esc, GO). */
+function stopAllEffects(restore) { return stopEffectOn(fx.runs.flatMap((r) => r.lights), { restore }); }
+
+/** Manual control: takes the selected lights out of their effects (they stay where they are), clears their look highlight. */
+function takeover() { releaseFromEffect(targets()); clearFollow(); clearLookMark(targets()); }
+
+function clearLookMark(lights) {
+  if (!lights.some((l) => l.look)) return;
+  for (const l of lights) l.look = null;
+  renderPresets();
+}
+
+/** Takes `lights` out of their effects without restoring. */
+function releaseFromEffect(lights) { if (lights.some(runOf)) stopEffectOn(lights, { restore: false }); }
 
 function tile(item, key, kind) {
   const b = document.createElement('button');
@@ -658,12 +691,33 @@ function selectEffect(id) {
   renderFxParams();
 }
 
+/** Runs of effect `id` on the selected lights: the settings panel edits these live. */
+const selectedRuns = (id) => [...new Set(targets().map(runOf).filter((r) => r?.e.id === id))];
+
+function fxRunningText(id) {
+  const st = effectState(id);
+  if (st === 'none') return '';
+  if (st === 'all') return '● running';
+  return `● running on ${targets().filter((l) => runOf(l)?.e.id === id).map((l) => l.label).join(', ')}`;
+}
+
 function renderFxParams() {
+  if (!$('fxSelect').options.length) return;
   const e = EFFECTS.find((x) => x.id === fx.selected);
-  const p = fx.params[e.id];
+  // Show the values of the selected light's own run if it is running this effect, else the saved settings.
+  const runs = selectedRuns(e.id);
+  const p = runs[0]?.params ?? fx.params[e.id];
+  // An edit goes to the saved settings (for next time) and to the runs on the selected lights.
+  const setP = (k, v) => {
+    fx.params[e.id][k] = v;
+    for (const r of runs) {
+      r.params[k] = v;
+      if (k === 'duration') r.deadline = v > 0 ? performance.now() + v * 1000 : Infinity;
+    }
+  };
   const box = $('fxParams');
   box.innerHTML = '';
-  $('fxRunning').textContent = fx.id === e.id ? '● running' : '';
+  $('fxRunning').textContent = fxRunningText(e.id);
   for (const d of e.params) {
     if (d.id === 'multi' && rig.lights.length < 2) continue;      // only meaningful with several lights
     const wrap = document.createElement('div');
@@ -683,7 +737,7 @@ function renderFxParams() {
         b.textContent = label;
         b.classList.toggle('active', p[d.id] === v);
         b.addEventListener('click', () => {
-          p[d.id] = v; saveParams(e.id);
+          setP(d.id, v); saveParams(e.id);
           for (const x of seg.children) x.classList.toggle('active', x === b);
           val.textContent = fmtParam(d, v);
         });
@@ -698,9 +752,8 @@ function renderFxParams() {
       r.value = p[d.id];
       r.setAttribute('aria-label', `${e.name} ${d.label}`);
       r.addEventListener('input', () => {
-        p[d.id] = +r.value;
+        setP(d.id, +r.value);
         val.textContent = fmtParam(d, p[d.id]);
-        if (d.id === 'duration' && fx.id === e.id) fx.deadline = p.duration > 0 ? performance.now() + p.duration * 1000 : Infinity;
       });
       r.addEventListener('change', () => { saveParams(e.id); rig.logLine(`FX ${e.name} ${d.label} = ${fmtParam(d, p[d.id])}`); });
       wrap.appendChild(r);
@@ -713,8 +766,13 @@ function initFxSettings() {
   for (const e of EFFECTS) $('fxSelect').add(new Option(e.name, e.id));
   $('fxSelect').addEventListener('change', () => selectEffect($('fxSelect').value));
   $('fxReset').addEventListener('click', () => {
-    // Mutate in place so a running effect sees the reset values.
-    Object.assign(fx.params[fx.selected], defaults(EFFECTS.find((x) => x.id === fx.selected)));
+    // Saved settings and the runs on the selected lights go back to defaults.
+    const def = defaults(EFFECTS.find((x) => x.id === fx.selected));
+    Object.assign(fx.params[fx.selected], def);
+    for (const r of selectedRuns(fx.selected)) {
+      Object.assign(r.params, def);
+      r.deadline = def.duration > 0 ? performance.now() + def.duration * 1000 : Infinity;
+    }
     saveParams(fx.selected);
     renderFxParams();
   });
@@ -726,20 +784,32 @@ function renderPresets() {
   looks.innerHTML = '';
   show.looks.slice(0, LOOK_KEYS.length).forEach((l, i) => looks.appendChild(tile(l, LOOK_KEYS[i], 'look')));
   if (!effects.children.length) EFFECTS.forEach((e, i) => effects.appendChild(tile(e, EFFECT_KEYS[i], 'effect')));
-  for (const b of looks.children) b.classList.toggle('active', b.dataset.id === fx.look);
+  // The board shows the selected light(s): a tile is lit when every selected light has it,
+  // half-lit ("partial") when only some do.
+  const sel = targets();
+  for (const b of looks.children) {
+    const n = sel.filter((l) => l.look === b.dataset.id).length;
+    b.classList.toggle('active', !!sel.length && n === sel.length);
+    b.classList.toggle('partial', n > 0 && n < sel.length);
+  }
   for (const b of effects.children) {
-    const running = b.dataset.id === fx.id;
-    b.classList.toggle('running', running);
+    const st = effectState(b.dataset.id, sel);
+    b.classList.toggle('running', st === 'all');
+    b.classList.toggle('partial', st === 'some');
     const nm = b.querySelector('.nm');
     const item = EFFECTS.find((x) => x.id === b.dataset.id);
     nm.innerHTML = '';
     nm.append(item.name);
-    if (running) { const s = document.createElement('span'); s.className = 'sub'; s.textContent = 'running · tap to stop'; nm.append(s); }
+    if (st !== 'none') {
+      const s = document.createElement('span'); s.className = 'sub';
+      s.textContent = st === 'all' ? 'running · tap to stop' : `on ${sel.filter((l) => runOf(l)?.e.id === item.id).map((l) => l.label).join(', ')} · tap for all`;
+      nm.append(s);
+    }
   }
   const on = rig.anyConnected;
   for (const b of document.querySelectorAll('#tab-show .tile')) b.disabled = !on;
   $('saveLookBtn').disabled = !on;
-  if ($('fxSelect').options.length) $('fxRunning').textContent = fx.id && fx.id === fx.selected ? '● running' : '';
+  if ($('fxSelect').options.length) $('fxRunning').textContent = fxRunningText(fx.selected);
   if (cuePanel.hosts.panel) updateCueTools();
 }
 
@@ -754,7 +824,8 @@ const cue = { index: -1, token: 0, followTimer: null, followAt: 0, followTotal: 
 function snapshotRig() {
   const lights = {};
   for (const l of rig.connected) {
-    const base = fx.id && fx.lights.includes(l) && fx.snapshot?.has(l.id) ? { ...fx.snapshot.get(l.id), power: !isDarkLight(l) } : { ...stateOf(l), power: l.conn.light.power !== false };
+    const before = runOf(l)?.snapshot.get(l.id);
+    const base = before ? { ...before, power: !isDarkLight(l) } : { ...stateOf(l), power: l.conn.light.power !== false };
     lights[l.id] = normState(base);
   }
   return lights;
@@ -784,12 +855,12 @@ async function goCue(i, { fade } = {}) {
   const c = show.cues[i];
   if (!c || !rig.anyConnected) return;
   if (cue.followTimer) { clearTimeout(cue.followTimer); cue.followTimer = null; }
-  stopEffect(false);
+  stopAllEffects(false);
   cancelFade();
   const token = ++cue.token;
   cue.index = i;
   cue.selected = c.id;
-  fx.look = null;
+  for (const l of rig.lights) l.look = null;
   renderPresets();
   rig.logLine(`GO cue ${i + 1}${c.name ? ` · ${c.name}` : ''}`);
   if (c.follow != null && c.follow !== '') scheduleFollow(i, +c.follow);
@@ -815,10 +886,10 @@ async function goCue(i, { fade } = {}) {
     l.blackoutPre = st.bri || null;
     return l.conn.sendFrames(P.power(false), `cue ${i + 1} power off`);
   });
-  if (c.effect?.id) {
-    const e = EFFECTS.find((x) => x.id === c.effect.id);
-    const ls = (c.effect.lightIds?.length ? c.effect.lightIds : Object.keys(c.lights)).map((id) => rig.get(id)).filter((l) => l?.conn.connected);
-    if (e && ls.length && token === cue.token) toggleEffect(e, { params: { ...defaults(e), ...c.effect.params }, lights: ls, fromCue: true });
+  for (const ce of cueEffects(c)) {
+    const e = EFFECTS.find((x) => x.id === ce.id);
+    const ls = (ce.lightIds?.length ? ce.lightIds : Object.keys(c.lights)).map((id) => rig.get(id)).filter((l) => l?.conn.connected);
+    if (e && ls.length && token === cue.token) toggleEffect(e, { params: { ...defaults(e), ...ce.params }, lights: ls, fromCue: true });
   }
 }
 
@@ -849,8 +920,11 @@ function updateCueProgress() {
   } else if (ui.fading) {
     pct = ui.fadeT * 100;
     text = `fading ${Math.round(pct)}%`;
-  } else if (fx.id && fx.deadline !== Infinity) {
-    text = `${EFFECTS.find((e) => e.id === fx.id)?.name}: ${Math.max(0, (fx.deadline - performance.now()) / 1000).toFixed(0)} s left`;
+  } else {
+    // Timed effect on the selected lights (else on any light) that ends soonest.
+    const timed = (rs) => rs.filter((r) => r.deadline !== Infinity).sort((a, b) => a.deadline - b.deadline)[0];
+    const r = timed([...new Set(targets().map(runOf).filter(Boolean))]) ?? timed(fx.runs);
+    if (r) text = `${r.e.name}: ${Math.max(0, (r.deadline - performance.now()) / 1000).toFixed(0)} s left`;
   }
   $('cueProg').style.width = `${pct}%`;
   $('cueState').textContent = text;
@@ -948,11 +1022,12 @@ window.addEventListener('pagehide', () => { if (cuePanel.win && !cuePanel.win.cl
 function recordCue() {
   if (!rig.anyConnected) return;
   const after = cue.selected ? show.cueIndex(cue.selected) : null;
-  const c = show.addCue({ lights: snapshotRig(), effect: runningEffectForCue(), fade: 2 }, after);
+  const effs = runningEffectsForCue();
+  const c = show.addCue({ lights: snapshotRig(), effect: effs.length === 1 ? effs[0] : null, effects: effs.length > 1 ? effs : null, fade: 2 }, after);
   cue.selected = c.id;
   rig.logLine(`RECORD cue ${show.cueIndex(c.id) + 1}`);
   renderCueList();
-  toast({ level: 'ok', title: `Recorded cue ${show.cueIndex(c.id) + 1}`, body: `${Object.keys(c.lights).length} light(s)${c.effect ? ` + ${EFFECTS.find((e) => e.id === c.effect.id).name}` : ''}` });
+  toast({ level: 'ok', title: `Recorded cue ${show.cueIndex(c.id) + 1}`, body: `${Object.keys(c.lights).length} light(s)${effs.length ? ` + ${cueEffectsLabel(effs)}` : ''}` });
 }
 
 function updateSelectedCue() {
@@ -1028,16 +1103,26 @@ function renderCueList() {
     effSel.className = 'cue-fx';
     effSel.add(new (d.defaultView.Option)('No effect', ''));
     for (const e of EFFECTS) effSel.add(new (d.defaultView.Option)(e.name, e.id));
-    effSel.value = c.effect?.id ?? '';
-    const dur = numInput(d, c.effect?.params?.duration ?? 0, { min: 0, max: 600, step: 1, placeholder: '∞' }, (v) => {
-      if (!c.effect) return;
-      show.updateCue(c.id, { effect: { ...c.effect, params: { ...c.effect.params, duration: v ?? 0 } } });
+    const effs = cueEffects(c);
+    if (effs.length > 1) {
+      // Recorded with different effects on different lights: keep them unless the user picks one for all.
+      const o = new (d.defaultView.Option)(cueEffectsLabel(effs), '__multi');
+      effSel.add(o, 1);
+      effSel.value = '__multi';
+      effSel.title = effs.map((ce) => `${fxName(ce.id)}: ${ce.lightIds.map((id) => rig.get(id)?.label ?? id).join(', ')}`).join('\n');
+    } else effSel.value = effs[0]?.id ?? '';
+    const dur = numInput(d, effs[0]?.params?.duration ?? 0, { min: 0, max: 600, step: 1, placeholder: '∞' }, (v) => {
+      const list = cueEffects(c);
+      if (!list.length) return;
+      const upd = list.map((ce) => ({ ...ce, params: { ...ce.params, duration: v ?? 0 } }));
+      show.updateCue(c.id, upd.length > 1 ? { effects: upd, effect: null } : { effect: upd[0], effects: null });
     });
     dur.title = 'Effect run time in seconds (0 = until the next cue)';
-    dur.disabled = !c.effect;
+    dur.disabled = !effs.length;
     effSel.addEventListener('change', () => {
       const id = effSel.value;
-      show.updateCue(c.id, { effect: id ? { id, params: { ...fx.params[id] }, lightIds: Object.keys(c.lights) } : null });
+      if (id === '__multi') return;
+      show.updateCue(c.id, { effect: id ? { id, params: { ...fx.params[id] }, lightIds: Object.keys(c.lights) } : null, effects: null });
     });
 
     const go = d.createElement('button');
@@ -1066,7 +1151,9 @@ function updateCueTools() {
   h.up.disabled = h.down.disabled = h.del.disabled = !sel;
   for (const b of h.strip.querySelectorAll('.chip')) {
     b.disabled = !rig.anyConnected;
-    b.classList.toggle('running', b.dataset.id === fx.id);
+    const st = effectState(b.dataset.id);
+    b.classList.toggle('running', st === 'all');
+    b.classList.toggle('partial', st === 'some');
   }
 }
 
@@ -1077,10 +1164,15 @@ function markSelected() {
   updateCueTools();
 }
 
-function runningEffectForCue() {
-  if (!fx.id) return null;
-  return { id: fx.id, params: { ...fx.params[fx.id] }, lightIds: fx.lights.map((l) => l.id) };
+/** Every running effect, for recording a cue: [{id, params, lightIds}]. */
+function runningEffectsForCue() {
+  return fx.runs.filter((r) => r.lights.some((l) => l.conn.connected))
+    .map((r) => ({ id: r.e.id, params: { ...r.params }, lightIds: r.lights.filter((l) => l.conn.connected).map((l) => l.id) }));
 }
+
+/** A cue's effects. Older cues and single-effect cues use `effect`; cues with several use `effects`. */
+function cueEffects(c) { return c.effects?.length ? c.effects : c.effect ? [c.effect] : []; }
+function cueEffectsLabel(effs) { return effs.map((ce) => fxName(ce.id)).join(' + '); }
 
 function initCues() {
   $('cueGo').addEventListener('click', goNext);
@@ -1167,7 +1259,7 @@ function onKeyDown(e) {
   // Show-running keys work on the Show and Cues tabs, and while locked.
   if (k === ' ' || e.code === 'Space') { e.preventDefault(); if (e.shiftKey) goBack(); else if (!$('cueGo').disabled) goNext(); return; }
   if (k === 'b') { e.preventDefault(); toggleBlackout(); return; }
-  if (k === 'escape') { e.preventDefault(); clearFollow(); cancelFade(); stopEffect(true); return; }
+  if (k === 'escape') { e.preventDefault(); clearFollow(); cancelFade(); stopAllEffects(true); return; }
   if (k === 'l') { e.preventDefault(); setLocked(!ui.locked); return; }
   if (k === 'c') { e.preventDefault(); if (isPopped()) cuePanel.win.focus(); else { if ($('tab-show').hidden) showTab('show'); setCuePanel(!cuePanel.open); } return; }
   if ($('tab-show').hidden || ui.locked) return;
@@ -1561,12 +1653,12 @@ function init() {
   }
 
   rig.addEventListener('status', renderConn);
-  rig.addEventListener('lights', () => { renderConn(); syncFromLight(); renderFxParams(); renderCueList(); });
+  rig.addEventListener('lights', () => { renderConn(); syncFromLight(); renderPresets(); renderFxParams(); renderCueList(); });
   rig.addEventListener('light', syncFromLight);
   rig.addEventListener('gatt', () => { renderGatt(); renderWriteTargets(); });
   rig.addEventListener('log', () => { if (!$('tab-debug').hidden) renderLog(); });
   rig.addEventListener('status', () => {
-    if (!rig.anyConnected && fx.id) { fx.token++; fx.id = null; renderPresets(); }
+    if (!rig.anyConnected && fx.runs.length) { for (const r of fx.runs) r.dead = true; fx.runs = []; renderPresets(); }
     renderPresets();
     renderCueList();
     if (!$('tab-looks').hidden) renderLookList();
@@ -1586,7 +1678,7 @@ function init() {
 
   $('powerBtn').addEventListener('click', () => {
     clearFollow();                       // not takeover(): a running effect pauses while off and resumes on power on
-    if (fx.look) { fx.look = null; renderPresets(); }
+    clearLookMark(targets());
     cancelFade();
     const turnOn = isDark();
     each(targets(), (l) => { l.blackoutPre = null; return l.conn.sendFrames(P.power(turnOn), turnOn ? 'power on' : 'power off'); });
