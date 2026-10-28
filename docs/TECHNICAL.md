@@ -121,7 +121,9 @@ Default looks (editable, see Looks library):
 - Looks send only the params that differ from the light's current state.
 - A look pressed during blackout is sent to the light; Restore powers on at that look's brightness.
 - Effects: tap again or Esc stops and returns to the look from before the effect. Grabbing a slider, a chip,
-  power, or Blackout stops the effect and leaves the light where it is. An effect started during blackout powers the light on.
+  or a look on a light takes that light out of the effect and leaves it where it is (other lights keep running).
+  Power off, Blackout (master or per light) pause the effect on the dark lights; it resumes when they come back on.
+  A timed effect keeps counting while paused. An effect started during blackout powers the light on.
 - Lock disables look/effect keys and tiles (Esc and B still work).
 - All writes are spaced ≥ 60 ms. Effects stay ≥ 10 % brightness and ≤ ~3 changes/s.
 - **Effect settings** (panel under the effect tiles; pick the effect in "Settings for"). Edits apply live, persist per effect, Reset restores defaults, editable while disconnected:

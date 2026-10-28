@@ -458,8 +458,7 @@ async function restore(lights = rig.connected, { label = 'RESTORE' } = {}) {
 async function toggleBlackout() {
   if (!rig.anyConnected || ui.busy) return;
   clearFollow();
-  stopEffect(false);
-  cancelFade();
+  cancelFade();                          // a running effect pauses while dark and resumes on Restore (Esc stops it)
   setBusy(true);
   try {
     if (allDark()) await restore(); else await blackout();
@@ -560,6 +559,9 @@ async function toggleEffect(e, { params = fx.params[e.id], lights = targets(), f
   rig.logLine(`EFFECT ${e.name} start on ${lights.map((l) => l.label).join(', ')}${params.duration > 0 ? ` for ${params.duration}s` : ''}`);
   const guard = () => token === fx.token;
   const inFx = (l) => fx.lights.includes(l);   // a light leaves the effect when it is edited by hand
+  // While a light is off or mid blackout/restore fade, the effect skips it (the light ignores
+  // changes while off) and picks up again at the current step once it is back on.
+  const paused = (l) => isDarkLight(l) || !!l.busy;
   await each(lights.filter(isDarkLight), (l) => { l.blackoutPre = null; return l.conn.sendFrames(P.power(true), 'power on (effect)'); });
 
   const run = async (gen, group) => {
@@ -567,9 +569,9 @@ async function toggleEffect(e, { params = fx.params[e.id], lights = targets(), f
       if (!guard() || performance.now() >= fx.deadline || !group.some(inFx)) break;
       const t0 = performance.now();
       await each(group, (l) => {
-        if (!l.conn.connected || !inFx(l)) return null;
+        if (!l.conn.connected || !inFx(l) || paused(l)) return null;
         const alt = step.alt && params.multi === 'alternate' && lights.indexOf(l) % 2 === 1;
-        return applyStateTo(l, alt ? step.alt : step.state, { guard: () => guard() && inFx(l) });
+        return applyStateTo(l, alt ? step.alt : step.state, { guard: () => guard() && inFx(l) && !paused(l) });
       });
       if (group.includes(primary())) syncFromLight();
       const rest = Math.min(step.wait - (performance.now() - t0), fx.deadline - performance.now());
@@ -611,7 +613,7 @@ async function stopEffect(restore) {
   renderPresets();
   rig.logLine(`EFFECT ${name} stop${restore ? ' (restore previous look)' : ''}`);
   if (restore && snap) {
-    await each(lights.filter((l) => l.conn.connected && snap.has(l.id)), (l) => applyStateTo(l, snap.get(l.id), { quiet: false }));
+    await each(lights.filter((l) => l.conn.connected && !isDarkLight(l) && snap.has(l.id)), (l) => applyStateTo(l, snap.get(l.id), { quiet: false }));
     syncFromLight();
   }
 }
@@ -749,7 +751,7 @@ const cue = { index: -1, token: 0, followTimer: null, followAt: 0, followTotal: 
 function snapshotRig() {
   const lights = {};
   for (const l of rig.connected) {
-    const base = fx.id && fx.lights.includes(l) && fx.snapshot?.has(l.id) ? { ...fx.snapshot.get(l.id), power: true } : { ...stateOf(l), power: l.conn.light.power !== false };
+    const base = fx.id && fx.lights.includes(l) && fx.snapshot?.has(l.id) ? { ...fx.snapshot.get(l.id), power: !isDarkLight(l) } : { ...stateOf(l), power: l.conn.light.power !== false };
     lights[l.id] = normState(base);
   }
   return lights;
@@ -1580,7 +1582,8 @@ function init() {
   $('dimBtn').addEventListener('click', () => setDim(!document.body.classList.contains('dim')));
 
   $('powerBtn').addEventListener('click', () => {
-    takeover();
+    clearFollow();                       // not takeover(): a running effect pauses while off and resumes on power on
+    if (fx.look) { fx.look = null; renderPresets(); }
     cancelFade();
     const turnOn = isDark();
     each(targets(), (l) => { l.blackoutPre = null; return l.conn.sendFrames(P.power(turnOn), turnOn ? 'power on' : 'power off'); });
