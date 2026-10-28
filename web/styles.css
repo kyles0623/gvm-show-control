@@ -458,3 +458,22 @@ body.popout { overflow: hidden; height: 100vh; }
   .cue-fx-strip .chip { padding: 2px 7px; font-size: 11px; }
 }
 .bar .btn { white-space: nowrap; }
+
+/* ---------- per-light blackout (under the master Blackout) ---------- */
+.lbo-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(80px, 1fr)); gap: 6px; flex: none; }
+.lbo {
+  display: flex; justify-content: space-between; align-items: center; gap: 6px; min-width: 0;
+  background: #22100e; border: 1px solid #6a2a24; color: #ffd9d4; border-radius: 9px;
+  padding: clamp(4px, .9vh, 8px) 9px; font-size: 13px;
+}
+.lbo-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+.lbo-state { font: 700 10px var(--mono); letter-spacing: .06em; opacity: .85; flex: none; }
+.lbo.dark { background: #0f2414; border-color: var(--ok); color: #d4ffdc; }
+.lbo.busy { animation: pulse 1s infinite; }
+.lchip.flash { box-shadow: 0 0 0 3px var(--accent); }
+
+.rename-input {
+  width: 120px; margin: 0; padding: 3px 8px; border-radius: 999px; font: 13px -apple-system, BlinkMacSystemFont, sans-serif;
+  background: var(--bg); color: var(--text); border: 1px solid var(--accent); user-select: text;
+}
+#connSub .rename-input { border-radius: 6px; width: 140px; }

@@ -43,7 +43,7 @@ Web Bluetooth only works on `https://` or `http://localhost`.
 - 960 px wide and up: three columns that fill the window, no scrolling — **A** Power / Blackout / Fade / status,
   **B** Brightness / color / Looks, **C** Effects + settings. Sizes scale with window height; checked in Chromium
   at 1024×640, 1024×768, 1180×820, 1280×720, 1366×768, 1440×900 and 1920×1080, including the tallest
-  case (Color mode + Lightning settings).
+  case (Color mode + an effect with 7 settings).
 - Narrower (phones, portrait tablets): sections stack and the page scrolls.
 - Keyboard shortcuts moved from the footer to Help (`?`).
 
@@ -65,7 +65,12 @@ Web Bluetooth only works on `https://` or `http://localhost`.
 - Remembered lights live in `localStorage['gvm.lights']` as `{id, name, label}`; the older single-light keys are migrated on first load.
 - Selection: chips appear with 2+ lights. Click = only that light, Shift/⌘-click = add/remove, All = every light.
   Sliders, mode, looks, effects and the Power button act on the selection; the sliders show the first selected light.
-- Blackout / Restore always act on every connected light. Each light remembers its own pre-blackout level.
+- The master Blackout / Restore acts on every connected light; Restore also brings back lights blacked out individually.
+  Each light remembers its own pre-blackout level.
+- With 2+ lights, a button per light under the master blacks out / restores just that light (same fade time).
+  It doesn't stop effects or cues on the other lights; each light owns its own fade, so one light's fade never cancels another's.
+- `Tab` / `⇧Tab` cycles the selection All → each light (ignored while typing in a text field).
+- Rename: double-click a light chip, or the header name with one light, or Settings → Lights. Enter saves, Esc cancels.
 
 ## Crossfades
 - Looks use the Fade time; cues use their own fade time. Every ~70 ms (fades ≤ 1.5 s) or ~120 ms, each light gets only the
@@ -110,7 +115,7 @@ Default looks (editable, see Looks library):
 | W | Television | cool tint, level 15–60 %, changes every 250–700 ms, occasional scene cut |
 | E | Fire | hue 10–30°, level 35–75 %, every 300–500 ms |
 | R | Candle | hue 30°, level 30–45 %, every 350–700 ms |
-| T | Lightning | CCT 5600 K at 10 %, double flash to 100 % every 2–7 s |
+| T | Party | saturated color changes: Jump (new color every ~450 ms), Flow (glides around the palette), Beat (color on / dim, ~260 ms each); palettes Rainbow, Warm, Cool, Pink/Blue; each light runs its own sequence |
 | Y | Breathe | brightness sine 10–80 %, 6 s period, current color |
 
 - Looks send only the params that differ from the light's current state.
@@ -126,7 +131,7 @@ Default looks (editable, see Looks library):
   | Television | Max brightness, Min brightness, Speed, Tint, Color strength, Scene cuts |
   | Fire | Max brightness, Min brightness, Speed, Base color, Color spread |
   | Candle | Max brightness, Min brightness, Speed, Color, Saturation |
-  | Lightning | Flash brightness, Ambient brightness, Flash color temp, Min gap, Max gap, Double-flash chance |
+  | Party | Max brightness, Min brightness, Speed, Colors, Style, Saturation, Run for |
   | Breathe | Max brightness, Min brightness, Cycle time |
 - Speed scales step timing; any step is ≥ 200 ms regardless of speed.
 - **Run for** (every effect): 0 = until stopped; otherwise the effect stops after that many seconds and the lights return

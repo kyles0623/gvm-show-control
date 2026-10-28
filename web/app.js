@@ -126,6 +126,7 @@ function renderConn() {
     const down = rig.lights.filter((l) => !l.conn.connected).map((l) => `${l.label}: ${STATUS_TEXT[l.conn.status].toLowerCase().replace('…', '')}`);
     $('connSub').textContent = down.length ? down.join(' · ') : rig.lights.map((l) => l.label).join(' · ');
   } else $('connSub').textContent = '—';
+  $('connSub').title = n === 1 ? 'Double-click to rename the light' : '';
   const btn = $('connectBtn');
   btn.hidden = !rig.supported || (n > 0 && c === n) || rig.lights.some((l) => l.conn.status === 'connecting');
   btn.textContent = !n ? 'Pair light' : rig.lights.some((l) => l.conn.status === 'reconnecting') ? 'Retry now' : 'Connect';
@@ -140,28 +141,88 @@ function renderConn() {
   renderLight();
 }
 
+/** Replaces `el` with a text box to rename light `l`; Enter/blur saves, Esc cancels. */
+function startRename(el, l) {
+  if (!l || ui.renaming) return;
+  ui.renaming = l.id;
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.className = 'rename-input';
+  input.value = l.label;
+  input.maxLength = 24;
+  input.setAttribute('aria-label', `Name for ${l.label}`);
+  const done = (save) => {
+    if (ui.renaming !== l.id) return;
+    ui.renaming = null;
+    if (save && input.value.trim() && input.value.trim() !== l.label) {
+      rig.rename(l.id, input.value);
+      toast({ level: 'ok', title: `Renamed to “${l.label}”` });
+    }
+    $('lightChips').dataset.ids = '';
+    renderConn();
+  };
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); done(true); }
+    else if (e.key === 'Escape') { e.preventDefault(); done(false); }
+    e.stopPropagation();
+  });
+  input.addEventListener('blur', () => done(true));
+  el.replaceWith(input);
+  input.focus();
+  input.select();
+}
+
 function renderChips() {
+  if (ui.renaming) return;                     // don't touch the chips under an open rename box
   const bar = $('lightChips');
   bar.hidden = rig.lights.length < 2;
-  bar.innerHTML = '';
-  if (bar.hidden) return;
-  const all = document.createElement('button');
-  all.className = 'lchip' + (rig.selection ? '' : ' sel');
-  all.textContent = 'All';
-  all.title = 'Controls act on every light';
-  all.addEventListener('click', () => rig.select(null));
-  bar.appendChild(all);
-  for (const l of rig.lights) {
-    const b = document.createElement('button');
-    b.className = 'lchip' + (rig.selection && rig.isSelected(l.id) ? ' sel' : '');
-    b.dataset.id = l.id;
-    b.title = `${l.label}: ${STATUS_TEXT[l.conn.status]}${l.conn.connected ? ` · ${describeState({ ...stateOf(l), power: l.conn.light.power })}` : ''}\nClick: control only this light · Shift/⌘-click: add or remove`;
-    const dot = document.createElement('span'); dot.className = 'dot ' + l.conn.status;
-    const sw = document.createElement('span'); sw.className = 'lsw'; sw.style.background = l.conn.connected ? stateColor({ ...stateOf(l), power: l.conn.light.power }) : '#222';
-    b.append(dot, sw, l.label);
-    b.addEventListener('click', (e) => rig.select(l.id, { add: e.shiftKey || e.metaKey || e.ctrlKey }));
-    bar.appendChild(b);
+  if (bar.hidden) { bar.innerHTML = ''; return; }
+  // Build the chips only when the set of lights changes; otherwise update them in place, so a
+  // double-click (rename) isn't broken by the re-render that the first click's selection causes.
+  const ids = ['all', ...rig.lights.map((l) => l.id)].join('|');
+  if (bar.dataset.ids !== ids) {
+    bar.dataset.ids = ids;
+    bar.innerHTML = '';
+    const all = document.createElement('button');
+    all.className = 'lchip';
+    all.textContent = 'All';
+    all.title = 'Controls act on every light (Tab cycles)';
+    all.addEventListener('click', () => rig.select(null));
+    bar.appendChild(all);
+    for (const l of rig.lights) {
+      const b = document.createElement('button');
+      b.className = 'lchip';
+      b.dataset.id = l.id;
+      const dot = document.createElement('span');
+      const sw = document.createElement('span'); sw.className = 'lsw';
+      const name = document.createElement('span'); name.className = 'lchip-name';
+      b.append(dot, sw, name);
+      b.addEventListener('click', (e) => rig.select(l.id, { add: e.shiftKey || e.metaKey || e.ctrlKey }));
+      b.addEventListener('dblclick', (e) => { e.preventDefault(); startRename(b, rig.get(l.id)); });
+      bar.appendChild(b);
+    }
   }
+  bar.firstChild.classList.toggle('sel', !rig.selection);
+  for (const b of [...bar.children].slice(1)) {
+    const l = rig.get(b.dataset.id);
+    if (!l) continue;
+    b.classList.toggle('sel', !!rig.selection && rig.isSelected(l.id));
+    b.title = `${l.label}: ${STATUS_TEXT[l.conn.status]}${l.conn.connected ? ` · ${describeState({ ...stateOf(l), power: l.conn.light.power })}` : ''}\nClick: control only this light · Shift/⌘-click: add or remove · Double-click: rename`;
+    b.children[0].className = 'dot ' + l.conn.status;
+    b.children[1].style.background = l.conn.connected ? stateColor({ ...stateOf(l), power: l.conn.light.power }) : '#222';
+    b.children[2].textContent = l.label;
+  }
+}
+
+/** Tab / Shift+Tab: All → first light → second light → … → All. */
+function cycleLights(dir) {
+  const order = [null, ...rig.lights.map((l) => l.id)];
+  const cur = rig.selection && rig.selection.size === 1 ? order.indexOf([...rig.selection][0]) : 0;
+  const next = order[(Math.max(0, cur) + dir + order.length) % order.length];
+  rig.select(next);
+  const chip = document.querySelector(next ? `.lchip[data-id="${next}"]` : '.lchip:not([data-id])');
+  chip?.classList.add('flash');
+  setTimeout(() => chip?.classList.remove('flash'), 400);
 }
 
 async function onConnectClick() {
@@ -190,6 +251,7 @@ function renderLight() {
   const dark = allDark();
   $('blackoutBtn').classList.toggle('restore', dark);
   $('blackoutLabel').textContent = dark ? 'RESTORE' : 'BLACKOUT';
+  renderLightBlackouts();
   if (!known) { $('readout').textContent = '—'; return; }
   const color = L.mode === 'hsi' ? `hue ${L.hue}° sat ${L.saturation}%` : `${L.cct}K`;
   const who = rig.lights.length > 1 ? `${primary().label}: ` : '';
@@ -301,89 +363,144 @@ function bindLiveSlider(id) {
 
 // ---------- crossfades ----------
 
-function cancelFade() { ui.fadeToken++; ui.fading = false; ui.fadeT = 0; $('fadeStatus').textContent = ''; }
+/** Cancels every running fade (all lights). */
+function cancelFade() {
+  ui.fadeToken++;
+  for (const l of rig.lights) l.fadeTok = null;
+  ui.fading = false; ui.fadeT = 0; $('fadeStatus').textContent = '';
+}
 
 /**
  * Fades each light from its current look to `to` (partial looks keep the other values) over `ms`.
  * Returns false if cancelled by another fade, blackout, or manual control.
  */
 async function crossfade(jobs, ms, { label = 'FADE' } = {}) {
+  // Each light belongs to the newest fade that includes it, so fading one light (e.g. its own blackout)
+  // doesn't stop a fade running on the others.
   const token = ++ui.fadeToken;
-  const guard = () => token === ui.fadeToken;
+  const tok = {};
   const plans = jobs.filter((j) => j.light.conn.connected).map(({ light, to }) => {
     const from = stateOf(light);
+    light.fadeTok = tok;
     return { light, from, to: { ...from, ...to } };
   });
   if (!plans.length) return true;
+  const live = (p) => p.light.fadeTok === tok;
   if (ms <= 0) {
-    await each(plans, (p) => applyStateTo(p.light, p.to, { guard }));
+    await each(plans, (p) => applyStateTo(p.light, p.to, { guard: () => live(p) }));
+    for (const p of plans) if (live(p)) p.light.fadeTok = null;
     syncFromLight();
-    return guard();
+    return plans.every(live) || plans.every((p) => p.light.fadeTok === null);
   }
   rig.logLine(`${label}: ${ms / 1000}s · ${plans.map((p) => `${p.light.label} → ${describeState(normState(p.to))}`).join(' · ')}`);
   ui.fading = true;
   const stepMs = ms <= 1500 ? 70 : 120;
   const start = performance.now();
   for (;;) {
-    if (!guard()) { rig.logLine(`${label} cancelled`); return false; }
+    const active = plans.filter(live);
+    if (!active.length) { rig.logLine(`${label} cancelled`); return false; }
     const t = Math.min(1, (performance.now() - start) / ms);
-    ui.fadeT = t;
-    await each(plans, (p) => applyStateTo(p.light, stateAt(p, t), { guard }));
-    const pl = plans.find((p) => p.light === primary());
+    if (token === ui.fadeToken) ui.fadeT = t;
+    await each(active, (p) => applyStateTo(p.light, stateAt(p, t), { guard: () => live(p) }));
+    const pl = active.find((p) => p.light === primary());
     if (pl) { $('bri').value = Math.round(stateAt(pl, t).bri); renderValues(); }
-    $('fadeStatus').textContent = `fading… ${Math.round(t * 100)}%`;
+    if (token === ui.fadeToken) $('fadeStatus').textContent = `fading… ${Math.round(t * 100)}%`;
     if (t >= 1) break;
     await sleep(stepMs);
   }
-  if (!guard()) return false;
-  ui.fading = false;
-  ui.fadeT = 0;
-  $('fadeStatus').textContent = '';
+  const complete = plans.every(live);
+  for (const p of plans) if (live(p)) p.light.fadeTok = null;
+  if (token === ui.fadeToken) { ui.fading = false; ui.fadeT = 0; $('fadeStatus').textContent = ''; }
   syncFromLight();
-  return true;
+  return complete;
 }
 
-// ---------- blackout (always all lights) ----------
+// ---------- blackout: master (all lights) and per light ----------
 
 function setBusy(b) {
   ui.busy = b;
   $('blackoutBtn').classList.toggle('busy', b);
 }
 
-async function blackout() {
-  const lights = rig.connected.filter((l) => !isDarkLight(l));
-  for (const l of lights) l.blackoutPre = l.conn.light.brightness ?? +$('bri').value;
-  setBusy(true);
+/** Fades (if a fade time is set) and powers off `lights`; each remembers its level for Restore. */
+async function blackout(lights = rig.connected, { label = 'BLACKOUT' } = {}) {
+  lights = lights.filter((l) => l.conn.connected && !isDarkLight(l));
+  if (!lights.length) return;
+  for (const l of lights) { l.blackoutPre = l.conn.light.brightness ?? +$('bri').value; l.busy = true; }
+  renderLightBlackouts();
   try {
-    if (ui.fadeMs > 0 && !(await crossfade(lights.map((l) => ({ light: l, to: { bri: 0 } })), ui.fadeMs, { label: 'BLACKOUT fade' }))) return;
-    await each(lights, (l) => l.conn.sendFrames(P.power(false), 'BLACKOUT'));
-  } finally { setBusy(false); }
+    if (ui.fadeMs > 0 && !(await crossfade(lights.map((l) => ({ light: l, to: { bri: 0 } })), ui.fadeMs, { label: `${label} fade` }))) return;
+    await each(lights, (l) => l.conn.sendFrames(P.power(false), label));
+  } finally { for (const l of lights) l.busy = false; renderLightBlackouts(); }
 }
 
-/** Powers dark lights back on and returns each to its pre-blackout brightness (fading if a fade time is set). */
-async function restore() {
-  const lights = rig.connected.filter(isDarkLight);
+/** Powers dark `lights` back on and returns each to its pre-blackout brightness (fading if a fade time is set). */
+async function restore(lights = rig.connected, { label = 'RESTORE' } = {}) {
+  lights = lights.filter((l) => l.conn.connected && isDarkLight(l));
+  if (!lights.length) return;
   const fade = ui.fadeMs > 0;
-  setBusy(true);
+  const target = new Map(lights.map((l) => [l, l.blackoutPre ?? l.conn.light.brightness ?? +$('bri').value]));
+  for (const l of lights) l.busy = true;
+  renderLightBlackouts();
   try {
-    const target = new Map(lights.map((l) => [l, l.blackoutPre ?? l.conn.light.brightness ?? +$('bri').value]));
     await each(lights, async (l) => {
       if (fade && l.conn.light.brightness !== 0) await l.conn.sendFrames(P.brightness(0), 'restore prep', { quiet: true });
-      await l.conn.sendFrames(P.power(true), 'RESTORE');
+      await l.conn.sendFrames(P.power(true), label);
       if (fade) l.conn.light.brightness = 0;
       else if (l.conn.light.brightness !== target.get(l)) await l.conn.sendFrames(P.brightness(target.get(l)), 'restore level');
     });
-    if (fade && !(await crossfade(lights.map((l) => ({ light: l, to: { bri: target.get(l) } })), ui.fadeMs, { label: 'RESTORE fade' }))) return;
+    if (fade && !(await crossfade(lights.map((l) => ({ light: l, to: { bri: target.get(l) } })), ui.fadeMs, { label: `${label} fade` }))) return;
     for (const l of lights) l.blackoutPre = null;
-  } finally { setBusy(false); }
+  } finally { for (const l of lights) l.busy = false; renderLightBlackouts(); }
 }
 
-function toggleBlackout() {
+/** Master button: blacks out every light that is on; if all are dark, restores all of them. */
+async function toggleBlackout() {
   if (!rig.anyConnected || ui.busy) return;
   clearFollow();
   stopEffect(false);
   cancelFade();
-  if (allDark()) restore(); else blackout();
+  setBusy(true);
+  try {
+    if (allDark()) await restore(); else await blackout();
+  } finally { setBusy(false); }
+}
+
+/** Per-light button: blackout / restore just this light. Leaves cues, effects and other lights alone. */
+function toggleLightBlackout(l) {
+  if (!l?.conn.connected || l.busy || ui.busy) return;
+  rig.logLine(`${isDarkLight(l) ? 'RESTORE' : 'BLACKOUT'} ${l.label} only`);
+  if (isDarkLight(l)) restore([l], { label: `RESTORE ${l.label}` });
+  else blackout([l], { label: `BLACKOUT ${l.label}` });
+}
+
+/** One button per light under the master Blackout (only with 2+ lights). */
+function renderLightBlackouts() {
+  const box = $('lightBlackouts');
+  const show = rig.lights.length > 1;
+  box.hidden = !show;
+  if (!show) { box.innerHTML = ''; return; }
+  if (box.children.length !== rig.lights.length || [...box.children].some((b, i) => b.dataset.id !== rig.lights[i].id)) {
+    box.innerHTML = '';
+    for (const l of rig.lights) {
+      const b = document.createElement('button');
+      b.className = 'lbo';
+      b.dataset.id = l.id;
+      b.innerHTML = '<span class="lbo-name"></span><span class="lbo-state"></span>';
+      b.addEventListener('click', () => toggleLightBlackout(rig.get(b.dataset.id)));
+      box.appendChild(b);
+    }
+  }
+  for (const b of box.children) {
+    const l = rig.get(b.dataset.id);
+    const dark = isDarkLight(l);
+    b.querySelector('.lbo-name').textContent = l.label;
+    b.querySelector('.lbo-state').textContent = !l.conn.connected ? 'offline' : l.busy ? '…' : dark ? 'OUT' : 'ON';
+    b.classList.toggle('dark', dark && l.conn.connected);
+    b.classList.toggle('busy', !!l.busy);
+    b.disabled = !l.conn.connected;
+    b.title = `${dark ? 'Restore' : 'Black out'} only ${l.label}${ui.fadeMs ? ` (fade ${ui.fadeMs / 1000}s)` : ''}`;
+  }
 }
 
 // ---------- looks ----------
@@ -1027,6 +1144,7 @@ function onKeyDown(e) {
   if (document.querySelector('dialog[open]') || !$('setup').hidden || !$('blocker').hidden) return;
   if (e.key === '?') { e.preventDefault(); openDialog('helpDlg'); return; }
   if (!$('tab-debug').hidden) return;
+  if (e.key === 'Tab' && rig.lights.length > 1) { e.preventDefault(); cycleLights(e.shiftKey ? -1 : 1); return; }
   const k = e.key.toLowerCase();
   // Show-running keys work on the Show and Cues tabs, and while locked.
   if (k === ' ' || e.code === 'Space') { e.preventDefault(); if (e.shiftKey) goBack(); else if (!$('cueGo').disabled) goNext(); return; }
@@ -1437,6 +1555,13 @@ function init() {
   });
 
   $('connectBtn').addEventListener('click', onConnectClick);
+  $('connSub').addEventListener('dblclick', () => {
+    if (rig.lights.length !== 1) return;
+    const span = document.createElement('span');
+    $('connSub').textContent = '';
+    $('connSub').appendChild(span);
+    startRename(span, rig.lights[0]);
+  });
   for (const t of document.querySelectorAll('.tab')) t.addEventListener('click', () => showTab(t.dataset.tab));
   $('lockBtn').addEventListener('click', () => setLocked(!ui.locked));
   $('dimBtn').addEventListener('click', () => setDim(!document.body.classList.contains('dim')));

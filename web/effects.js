@@ -11,6 +11,14 @@ export const MIN_STEP_MS = 200;
 const rnd = (lo, hi) => lo + Math.random() * (hi - lo);
 const pick = (a) => a[Math.floor(Math.random() * a.length)];
 const lohi = (a, b) => [Math.min(a, b), Math.max(a, b)];
+
+/** Hue sets for the Party effect (degrees). */
+const PARTY_PALETTES = {
+  rainbow: [0, 30, 55, 120, 180, 220, 270, 320],
+  warm: [0, 15, 30, 45, 330, 345],
+  cool: [160, 180, 200, 220, 240, 260, 280],
+  pinkblue: [320, 330, 340, 225, 235, 245],
+};
 /** Base wait in ms divided by speed, never below MIN_STEP_MS. */
 const t = (ms, p) => Math.max(MIN_STEP_MS, ms / (p.speed ?? 1));
 
@@ -107,24 +115,43 @@ export const EFFECTS = [
     },
   },
   {
-    id: 'lightning', name: 'Lightning', swatch: 'linear-gradient(135deg, #1a1d33 40%, #f4f1ff 50%, #1a1d33 60%)',
-    desc: 'Dim ambient with random flashes',
+    id: 'party', name: 'Party',
+    swatch: 'conic-gradient(hsl(0 100% 55%), hsl(60 100% 55%), hsl(120 100% 50%), hsl(180 100% 50%), hsl(240 100% 60%), hsl(300 100% 55%), hsl(360 100% 55%))',
+    desc: 'Club-style color changes: Jump between colors, Flow around the palette, or pulse to a Beat',
+    perLight: true,   // every light runs its own sequence, so several lights show different colors
     params: [
-      { id: 'level', label: 'Flash brightness', min: 10, max: 100, step: 1, def: 100, unit: '%', kind: 'bri' },
-      FLOOR(10, 'Ambient brightness'),
-      { id: 'cct', label: 'Flash color temp', min: 3200, max: 5600, step: 100, def: 5600, unit: 'K', kind: 'cct' },
-      { id: 'gapMin', label: 'Min gap', min: 0.5, max: 20, step: 0.5, def: 2, unit: 's', kind: 'plain' },
-      { id: 'gapMax', label: 'Max gap', min: 1, max: 30, step: 0.5, def: 7, unit: 's', kind: 'plain' },
-      { id: 'double', label: 'Double-flash chance', min: 0, max: 100, step: 5, def: 60, unit: '%', kind: 'plain' },
-      DURATION,
+      LEVEL(100), FLOOR(15), SPEED(1),
+      { id: 'palette', label: 'Colors', kind: 'choice', def: 'rainbow',
+        options: [['rainbow', 'Rainbow'], ['warm', 'Warm'], ['cool', 'Cool'], ['pinkblue', 'Pink / Blue']] },
+      { id: 'style', label: 'Style', kind: 'choice', def: 'jump',
+        options: [['jump', 'Jump'], ['flow', 'Flow'], ['beat', 'Beat']] },
+      SAT(100), DURATION,
     ],
     *steps(p) {
+      let i = Math.floor(Math.random() * 8);   // random start so lights don't match
+      let prev = -1;
       for (;;) {
-        const [g0, g1] = lohi(p.gapMin, p.gapMax);
-        yield { state: { mode: 'cct', cct: p.cct, bri: p.floor }, wait: rnd(g0, g1) * 1000 };
-        yield { state: { bri: p.level }, wait: 300 };
-        yield { state: { bri: Math.min(p.level, p.floor + 5) }, wait: 300 };
-        if (Math.random() < p.double / 100) yield { state: { bri: p.level }, wait: 300 };
+        const pal = PARTY_PALETTES[p.palette] ?? PARTY_PALETTES.rainbow;
+        const [lo, hi] = lohi(p.floor, p.level);
+        if (p.style === 'flow') {
+          // glide from one palette color to the next in 5 small hue steps
+          const a = pal[i % pal.length], b = pal[(i + 1) % pal.length];
+          const d = ((((b - a) % 360) + 540) % 360) - 180;
+          for (let k = 1; k <= 5; k++) {
+            yield { state: { mode: 'hsi', hue: (((a + (d * k) / 5) % 360) + 360) % 360, sat: p.sat, bri: hi }, wait: t(260, p) };
+          }
+          i++;
+        } else {
+          let hue;
+          do { hue = pick(pal); } while (pal.length > 1 && hue === prev);
+          prev = hue;
+          if (p.style === 'beat') {
+            yield { state: { mode: 'hsi', hue, sat: p.sat, bri: hi }, wait: t(260, p) };
+            yield { state: { bri: lo }, wait: t(260, p) };
+          } else {
+            yield { state: { mode: 'hsi', hue, sat: p.sat, bri: rnd(Math.max(lo, hi - 25), hi) }, wait: t(450, p) };
+          }
+        }
       }
     },
   },
