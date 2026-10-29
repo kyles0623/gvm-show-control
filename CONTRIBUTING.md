@@ -30,7 +30,8 @@ See [docs/TECHNICAL.md](docs/TECHNICAL.md) for how the app and the protocol work
   a real light. Say in the pull request which it is.
 - **No fuzzing**, no brute-forcing unknown commands, and never write to anything that looks like firmware update
   (OTA/DFU). The app blocks such characteristics; keep it that way.
-- Never send commands faster than the official app does (one write per 60 ms per light; effect steps ≥ 200 ms).
+- Never send commands faster than the official app does: one write per 60 ms per light. Built-in effect steps are
+  ≥ 200 ms; custom effect steps ≥ 60 ms.
 - Be clear about what was tested on hardware and what only in a simulator.
 
 ## Versions and the changelog

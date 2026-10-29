@@ -9,6 +9,13 @@ the minor version (see [CONTRIBUTING.md](CONTRIBUTING.md#versions-and-the-change
 
 ## [Unreleased]
 
+## [1.4.0] - 2026-10-29
+
+### Changed
+- Custom effects can hold a step for as little as 0.06 s (was 0.2 s), for fast flicker and strobe-like effects.
+  A step needs 0.06 s per value it changes (brightness only: 0.06 s; color and brightness: up to 0.24 s); shorter
+  holds are shown in orange. The built-in effects keep their 0.2 s minimum.
+
 ## [1.3.0] - 2026-10-29
 
 ### Added

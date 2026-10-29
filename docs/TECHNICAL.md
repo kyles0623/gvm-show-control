@@ -148,7 +148,8 @@ others 50 %. Default min brightness is 20 % for every effect. Each effect's sett
   saved as the defaults for next time.
 - Custom effects (Effects tab, `localStorage['gvm.customfx']`): `{id, name, steps: [{mode, cct|hue+sat, bri, hold s,
   fade s}]}`, looped. A fade is sent as intermediate steps of ≥ 250 ms (hue the short way round; White↔Color dips
-  through dark); holds are at least 200 ms. Settings: Speed (0.25–4×) and Run for. The running effect re-reads the
+  through dark); holds are at least 60 ms (`FAST_STEP_MS`, the write gap), and a step that changes several values takes
+  60 ms per value regardless (the editor marks shorter holds in orange). Built-in effects keep ≥ 200 ms steps. Settings: Speed (0.25–4×) and Run for. The running effect re-reads the
   steps every cycle, so edits apply live. Effect ids are `custom:<id>`; a cue that uses a deleted custom effect skips it.
 - Gels: approximate gel-style colors (`GELS` in effects.js). Corrections are color temperature (Full CTO 3200 K,
   ¾ 3500, ½ 3800, ¼ 4500, ⅛ 4900, ½ CTB on tungsten 4100, Full CTB 5600); colors are hue/saturation. Applying a gel

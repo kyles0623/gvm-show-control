@@ -539,3 +539,6 @@ body.popout { overflow: hidden; height: 100vh; }
 .fxb-tools { display: flex; gap: 4px; }
 .fxb-add { margin-top: 8px; gap: 8px; }
 @media (max-width: 900px) { .fxb { grid-template-columns: 1fr; } }
+
+.fxb-row input.fxb-warn { border-color: var(--warn); color: var(--warn); }
+.fxb-note { margin-top: 8px; }

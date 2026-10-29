@@ -137,13 +137,14 @@ test('looks and cues are rounded to what the light can show', () => {
 
 // ---------- custom effects and gels ----------
 import { GELS } from '../web/effects.js';
-import { toEffect, normStep, cycleSeconds } from '../web/customfx.js';
+import { toEffect, normStep, cycleSeconds, changedValues } from '../web/customfx.js';
+import { FAST_STEP_MS } from '../web/effects.js';
 
-test('custom effect: never faster than MIN_STEP_MS, one cycle takes hold + fade of every step', () => {
+test('custom effect: never faster than FAST_STEP_MS (60 ms), one cycle takes hold + fade of every step', () => {
   const def = { id: 't', name: 'T', steps: [
     normStep({ mode: 'hsi', hue: 250, sat: 100, bri: 40, hold: 1, fade: 0 }),
     normStep({ mode: 'hsi', hue: 0, sat: 100, bri: 40, hold: 0.5, fade: 2 }),
-    normStep({ mode: 'cct', cct: 3200, bri: 60, hold: 0.1, fade: 1 }),        // hold below the minimum → clamped
+    normStep({ mode: 'cct', cct: 3200, bri: 60, hold: 0.02, fade: 1 }),       // hold below the minimum → clamped
   ] };
   const e = toEffect(def);
   for (const speed of [1, 4]) {
@@ -151,7 +152,7 @@ test('custom effect: never faster than MIN_STEP_MS, one cycle takes hold + fade 
     const cycle = [];
     // First pass has no previous step to fade from; measure the second pass.
     for (let i = 0; i < 200; i++) { const s = gen.next().value; cycle.push(s); }
-    for (const s of cycle) assert.ok(s.wait >= MIN_STEP_MS, `step wait ${s.wait} at speed ${speed}`);
+    for (const s of cycle) assert.ok(s.wait >= FAST_STEP_MS, `step wait ${s.wait} at speed ${speed}`);
   }
   // At speed 1 a steady-state cycle is 1 + 8 + 4 = 13 yields (step 2 fades 2 s in 250 ms parts, step 3 fades 1 s);
   // the first pass is also 13 (only the very first step has nothing to fade from, and it has no fade anyway).
@@ -159,7 +160,7 @@ test('custom effect: never faster than MIN_STEP_MS, one cycle takes hold + fade 
   const waits = Array.from({ length: 26 }, () => gen.next().value.wait);
   const cycle2 = waits.slice(13).reduce((a, b) => a + b, 0);
   assert.ok(Math.abs(cycle2 - cycleSeconds(def) * 1000) < 1, `cycle ${cycle2} ms vs ${cycleSeconds(def) * 1000} ms`);
-  assert.equal(def.steps[2].hold, MIN_STEP_MS / 1000);
+  assert.equal(def.steps[2].hold, FAST_STEP_MS / 1000);
 });
 
 test('custom effect: fades take the short way round the hue circle', () => {
@@ -183,4 +184,13 @@ test('repo link: this repo by default, a fork when served from <user>.github.io/
   assert.equal(repoUrl({ hostname: 'localhost', pathname: '/' }), REPO_URL);
   assert.equal(repoUrl({ hostname: 'kyles0623.github.io', pathname: '/gvm-show-control/' }), 'https://github.com/kyles0623/gvm-show-control');
   assert.equal(repoUrl({ hostname: 'someone.github.io', pathname: '/my-fork/index.html' }), 'https://github.com/someone/my-fork');
+});
+
+test('custom effect: brightness-only flicker can step every 60 ms; changed values are counted', () => {
+  const a = normStep({ mode: 'cct', cct: 5600, bri: 10, hold: 0.06 }), b = normStep({ mode: 'cct', cct: 5600, bri: 60, hold: 0.06 });
+  const gen = toEffect({ id: 'f', name: 'F', steps: [a, b] }).steps({ speed: 1, duration: 0 });
+  const waits = Array.from({ length: 10 }, () => gen.next().value.wait);
+  assert.ok(waits.every((w) => w === 60), waits.join(' '));
+  assert.equal(changedValues(a, b), 1);                                                    // brightness only
+  assert.equal(changedValues(a, normStep({ mode: 'hsi', hue: 0, sat: 100, bri: 60 })), 4); // mode, hue, sat, bri
 });

@@ -4,7 +4,7 @@
 //   step = { mode: 'cct' | 'hsi', cct, hue, sat, bri, hold (s), fade (s) }
 // toEffect() turns a def into the same shape as the built-in EFFECTS, so the effect engine, cues and the
 // settings panel treat both alike. The running effect reads the def live, so edits show up immediately.
-import { MIN_STEP_MS, SPEED, DURATION } from './effects.js';
+import { MIN_STEP_MS, FAST_STEP_MS, SPEED, DURATION } from './effects.js';
 import { normState, stateAt, uid } from './show.js';
 
 const KEY = 'gvm.customfx';
@@ -16,7 +16,7 @@ const clamp = (v, lo, hi, d) => (Number.isFinite(+v) ? Math.min(hi, Math.max(lo,
 
 export function normStep(s = {}) {
   const n = normState({ mode: s.mode, cct: s.cct, hue: s.hue, sat: s.sat, bri: s.bri ?? 50 });
-  return { ...n, hold: clamp(s.hold, MIN_STEP_MS / 1000, 600, 1), fade: clamp(s.fade, 0, 60, 0) };
+  return { ...n, hold: clamp(s.hold, FAST_STEP_MS / 1000, 600, 1), fade: clamp(s.fade, 0, 60, 0) };
 }
 
 function normDef(d) {
@@ -70,6 +70,17 @@ export class CustomEffects extends EventTarget {
 /** Cycle length in seconds at speed 1. */
 export const cycleSeconds = (def) => def.steps.reduce((t, s) => t + s.hold + s.fade, 0);
 
+/** Values a step changes compared with the step before it (each costs one write, at least 60 ms). */
+export function changedValues(prev, s) {
+  if (!prev) return s.mode === 'cct' ? 3 : 4;
+  let n = 0;
+  if (prev.mode !== s.mode) n++;
+  if (s.mode === 'cct') { if (prev.cct !== s.cct || prev.mode !== s.mode) n++; }
+  else { if (prev.hue !== s.hue || prev.mode !== s.mode) n++; if (prev.sat !== s.sat || prev.mode !== s.mode) n++; }
+  if (prev.bri !== s.bri) n++;
+  return n;
+}
+
 export function toEffect(def, live = () => def) {
   return {
     id: PREFIX + def.id,
@@ -92,7 +103,7 @@ export function toEffect(def, live = () => def) {
           // Fade: intermediate steps of at least 250 ms (never faster than MIN_STEP_MS). White↔Color dips through dark.
           const n = prev ? Math.min(40, Math.floor(fadeMs / 250)) : 0;
           for (let k = 1; k < n; k++) yield { state: normState(stateAt({ from: prev, to }, k / n)), wait: fadeMs / n };
-          yield { state: to, wait: Math.max(MIN_STEP_MS, (s.hold * 1000) / p.speed + (n ? fadeMs / n : 0)) };
+          yield { state: to, wait: Math.max(FAST_STEP_MS, (s.hold * 1000) / p.speed + (n ? fadeMs / n : 0)) };
           prev = to;
         }
       }

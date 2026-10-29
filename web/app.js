@@ -3,7 +3,7 @@ import { parseHex, toHex, shortUuid, sleep } from './ble.js';
 import { Rig } from './rig.js';
 import { Show, describeState, normState, stateAt } from './show.js';
 import { EFFECTS, GELS, defaults } from './effects.js';
-import { CustomEffects, PREFIX as CUSTOM, stepColor, normStep, cycleSeconds } from './customfx.js';
+import { CustomEffects, PREFIX as CUSTOM, stepColor, normStep, cycleSeconds, changedValues } from './customfx.js';
 import { APP_VERSION, repoUrl, detectEnv, blockReason, bluetoothSteps, explainProblem, LIGHT_STEPS, OS_NAME, BROWSER_NAME } from './setup.js';
 
 const env = detectEnv();
@@ -637,7 +637,13 @@ function renderEffectEditor() {
         n(s.sat, { min: 0, max: 100, step: 1 }, (v) => set(i, { sat: v }), 'sat'), mk('small', '', '%'));
     }
     const bri = n(s.bri, { min: 0, max: 100, step: 1 }, (v) => set(i, { bri: v }), 'bri');
-    const hold = n(s.hold, { min: 0.2, max: 600, step: 0.1 }, (v) => set(i, { hold: v }), 'hold');
+    const hold = n(s.hold, { min: 0.06, max: 600, step: 0.01 }, (v) => set(i, { hold: v }), 'hold');
+    // A step needs one write (60 ms) per value it changes; flag holds shorter than that.
+    const need = changedValues(d.steps[(i - 1 + d.steps.length) % d.steps.length], s) * 0.06;
+    if (d.steps.length > 1 && s.hold < need - 1e-9) {
+      hold.classList.add('fxb-warn');
+      hold.title = `This step changes ${Math.round(need / 0.06)} values, so it takes at least ${need.toFixed(2)} s to send.`;
+    }
     const fade = n(s.fade, { min: 0, max: 60, step: 0.1 }, (v) => set(i, { fade: v }), 'fade');
     const gel = mk('select', 'fxb-gel');
     gel.add(new Option('—', ''));
@@ -663,7 +669,14 @@ function renderEffectEditor() {
     }),
   );
   if (d.steps.length >= 64) for (const b of add.querySelectorAll('button')) b.disabled = true;
+  const notes = [];
+  if (d.steps.some((s) => s.hold < 0.2)) {
+    notes.push('Fast steps: a step that changes only brightness can be as short as 0.06 s; each other value it changes adds 0.06 s. Holds shown in orange are shorter than that, so those steps will run a little slower.');
+    notes.push('Fast flashing can affect people with photosensitive epilepsy. Theatres usually post a strobe warning.');
+  }
+  const note = mk('p', 'hint fxb-note', notes.join(' '));
   ed.append(head, info, table, add);
+  if (notes.length) ed.append(note);
   if (keep) ed.querySelector(`[data-focus="${keep}"]`)?.focus();
 }
 

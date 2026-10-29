@@ -7,6 +7,10 @@
 // Every step waits at least MIN_STEP_MS so the BLE link is not flooded.
 
 export const MIN_STEP_MS = 200;
+// Custom effects may go faster, down to one write per light every 60 ms: the minimum gap between writes, which is
+// the fastest the official app was seen sending (FRAME_GAP_MS in ble.js enforces it). A step that changes several
+// values needs one write per value, so it takes at least 60 ms per changed value whatever its hold time says.
+export const FAST_STEP_MS = 60;
 
 const rnd = (lo, hi) => lo + Math.random() * (hi - lo);
 const pick = (a) => a[Math.floor(Math.random() * a.length)];
