@@ -2,8 +2,9 @@ import { GVMProtocol as P } from './gvm-protocol.js';
 import { parseHex, toHex, shortUuid, sleep } from './ble.js';
 import { Rig } from './rig.js';
 import { Show, describeState, normState, stateAt } from './show.js';
-import { EFFECTS, defaults } from './effects.js';
-import { APP_VERSION, detectEnv, blockReason, bluetoothSteps, explainProblem, LIGHT_STEPS, OS_NAME, BROWSER_NAME } from './setup.js';
+import { EFFECTS, GELS, defaults } from './effects.js';
+import { CustomEffects, PREFIX as CUSTOM, stepColor, normStep, cycleSeconds } from './customfx.js';
+import { APP_VERSION, repoUrl, detectEnv, blockReason, bluetoothSteps, explainProblem, LIGHT_STEPS, OS_NAME, BROWSER_NAME } from './setup.js';
 
 const env = detectEnv();
 const rig = new Rig();
@@ -131,7 +132,7 @@ function renderConn() {
   btn.hidden = !rig.supported || (n > 0 && c === n) || rig.lights.some((l) => l.conn.status === 'connecting');
   btn.textContent = !n ? 'Pair light' : rig.lights.some((l) => l.conn.status === 'reconnecting') ? 'Retry now' : 'Connect';
   const on = rig.anyConnected;
-  for (const el of document.querySelectorAll('#tab-show button, #tab-show input[type=range]')) {
+  for (const el of document.querySelectorAll('#tab-show button, #tab-show input[type=range], #gelSel')) {
     if (el.closest('.fx-settings')) continue;          // effect settings stay editable offline
     el.disabled = !on;
   }
@@ -313,6 +314,7 @@ setInterval(() => {
   if (rig.lights.length > 1) renderLightBlackouts();
   const p = primary();
   if (!p?.conn.connected) { $('readoutAge').textContent = ''; return; }
+  if (p.conn.noReply) { $('readoutAge').textContent = 'no reply from the light'; return; }
   if (!p.conn.lastStatusAt) { $('readoutAge').textContent = 'waiting for first status…'; return; }
   const s = Math.round((Date.now() - p.conn.lastStatusAt) / 1000);
   $('readoutAge').textContent = s > 12 ? `no status for ${s}s` : `status ${s}s ago`;
@@ -487,6 +489,284 @@ async function restore(lights = rig.connected, { label = 'RESTORE' } = {}) {
   } finally { for (const l of lights) l.busy = false; renderLightBlackouts(); }
 }
 
+// ---------- pre-show check ----------
+
+let checking = false;
+
+async function runPreShowCheck() {
+  if (checking) return;
+  checking = true;
+  $('checkRun').disabled = true;
+  const list = $('checkList');
+  list.innerHTML = '';
+  $('checkSummary').textContent = 'Checking…';
+  const row = (level, name, text) => {
+    const li = document.createElement('li');
+    li.className = `check-${level}`;
+    li.innerHTML = '<span class="check-mark"></span><b></b> <span></span>';
+    li.querySelector('.check-mark').textContent = level === 'ok' ? '✓' : level === 'warn' ? '!' : '✗';
+    li.querySelector('b').textContent = name;
+    li.querySelector('span:last-child').textContent = text;
+    list.appendChild(li);
+    return li;
+  };
+  let bad = 0, warn = 0;
+  if (!rig.lights.length) { row('bad', 'No lights', 'pair a light first'); bad++; }
+  for (const l of rig.lights) {
+    const c = l.conn;
+    if (!c.connected) { row('bad', l.label, STATUS_TEXT[c.status].toLowerCase().replace('…', '')); bad++; continue; }
+    const age = (Date.now() - (c.lastRxAt || 0)) / 1000;
+    if (isDarkLight(l) || runOf(l) || l.busy) {
+      const why = isDarkLight(l) ? 'off (not flashed)' : runOf(l) ? `running ${runOf(l).e.name} (not flashed)` : 'fading (not flashed)';
+      if (age < 7 && !c.noReply) row('ok', l.label, `${why}, answered ${age < 1 ? 'just now' : `${Math.round(age)} s ago`}`);
+      else { row('bad', l.label, `${why}, no answer for ${Math.round(age)} s`); bad++; }
+      continue;
+    }
+    // Flash: dip brightness and wait for the light's acknowledgement, then put it back.
+    const li = row('warn', l.label, 'flashing…');
+    const chip = document.querySelector(`.lchip[data-id="${CSS.escape(l.id)}"]`);
+    chip?.classList.add('flash');
+    // The dip must differ from what the light itself last reported, or it won't acknowledge it.
+    const reported = c.confirmed[2] ?? c.light.brightness ?? 50;
+    const cur = c.wanted.brightness ?? reported;
+    const dip = reported > 25 ? 10 : Math.min(100, reported + 40);
+    const t0 = performance.now();
+    const acked = c.waitAck(2, 1500);
+    await c.sendFrames(P.brightness(dip), 'check: flash', { quiet: true });
+    const ok = await acked;
+    const ms = Math.round(performance.now() - t0);
+    await sleep(350);
+    await c.sendFrames(P.brightness(cur), 'check: back', { quiet: true });
+    chip?.classList.remove('flash');
+    li.remove();
+    if (ok) row(ms > 400 ? 'warn' : 'ok', l.label, `answered in ${ms} ms${ms > 400 ? ' (slow: check distance)' : ''}`);
+    else row('bad', l.label, 'flashed, but no answer: check the light is on and in range');
+    if (!ok) bad++; else if (ms > 400) warn++;
+  }
+  // Cues that use lights that aren't here or aren't connected.
+  show.cues.forEach((cu, i) => {
+    const ids = [...new Set([...Object.keys(cu.lights), ...cueEffects(cu).flatMap((e) => e.lightIds ?? [])])];
+    const gone = ids.filter((id) => !rig.get(id));
+    const off = ids.filter((id) => rig.get(id) && !rig.get(id).conn.connected).map((id) => rig.get(id).label);
+    if (gone.length) { row('warn', `Cue ${i + 1}`, `uses ${gone.length} light(s) that are no longer paired: they'll be skipped`); warn++; }
+    if (off.length) { row('warn', `Cue ${i + 1}`, `uses ${off.join(', ')} (not connected)`); warn++; }
+  });
+  $('checkSummary').textContent = bad ? `${bad} problem${bad > 1 ? 's' : ''} found` : warn ? `Ready, with ${warn} warning${warn > 1 ? 's' : ''}` : `All ${rig.lights.length} light${rig.lights.length > 1 ? 's' : ''} ready`;
+  $('checkSummary').className = 'check-summary ' + (bad ? 'check-bad' : warn ? 'check-warn' : 'check-ok');
+  rig.logLine(`CHECK: ${$('checkSummary').textContent}`);
+  checking = false;
+  $('checkRun').disabled = false;
+}
+
+// ---------- custom effect builder (Effects tab) ----------
+
+const fxb = { sel: prefs.get('fxb.sel', null) };
+
+function initEffectEditor() {
+  customFx.addEventListener('change', onCustomFxChange);
+  $('fxbNew').addEventListener('click', () => {
+    const d = customFx.add();
+    fxb.sel = d.id; prefs.set('fxb.sel', d.id);
+    renderEffectEditor();
+    $('fxbEdit').querySelector('.fxb-name')?.select();
+  });
+}
+
+function renderEffectEditor() {
+  if ($('tab-effects').hidden) return;
+  const listEl = $('fxbList'), ed = $('fxbEdit');
+  const keep = document.activeElement && ed.contains(document.activeElement) ? document.activeElement.dataset.focus : null;
+  if (!customFx.get(fxb.sel)) fxb.sel = customFx.list[0]?.id ?? null;
+  listEl.innerHTML = '';
+  if (!customFx.list.length) {
+    const p = document.createElement('p'); p.className = 'hint empty'; p.textContent = 'No custom effects yet. Press + New effect.';
+    listEl.appendChild(p);
+  }
+  for (const d of customFx.list) {
+    const e = findEffect(CUSTOM + d.id);
+    const b = document.createElement('button');
+    b.className = 'fxb-item' + (d.id === fxb.sel ? ' sel' : '');
+    b.innerHTML = '<span class="cfx-sw"></span><span class="fxb-item-name"></span><span class="hint"></span>';
+    b.querySelector('.cfx-sw').style.background = e.swatch;
+    b.querySelector('.fxb-item-name').textContent = d.name;
+    b.querySelector('.hint').textContent = `${d.steps.length} step${d.steps.length === 1 ? '' : 's'} · ${cycleSeconds(d).toFixed(1)} s`;
+    b.addEventListener('click', () => { fxb.sel = d.id; prefs.set('fxb.sel', d.id); renderEffectEditor(); });
+    listEl.appendChild(b);
+  }
+  ed.innerHTML = '';
+  const d = customFx.get(fxb.sel);
+  if (!d) return;
+  const id = CUSTOM + d.id;
+  const mk = (tag, cls, text) => { const el = document.createElement(tag); if (cls) el.className = cls; if (text != null) el.textContent = text; return el; };
+  const btn = (text, cls, title, fn) => { const b = mk('button', 'btn sm ' + (cls ?? ''), text); b.title = title; b.addEventListener('click', fn); return b; };
+
+  // Head: name, preview, duplicate, delete
+  const head = mk('div', 'fxb-head');
+  const name = mk('input', 'fxb-name');
+  name.type = 'text'; name.value = d.name; name.maxLength = 40; name.dataset.focus = 'name'; name.setAttribute('aria-label', 'Effect name');
+  name.addEventListener('change', () => customFx.rename(d.id, name.value.trim()));
+  const st = effectState(id);
+  const play = btn(st === 'all' ? '■ Stop' : '▶ Preview', 'primary', 'Start / stop it on the selected light(s)', () => { const e = findEffect(id); if (e) toggleEffect(e); setTimeout(renderEffectEditor, 50); });
+  play.disabled = !rig.anyConnected;
+  const dup = btn('Duplicate', '', 'Make a copy', () => { const c = customFx.duplicate(d.id); if (c) { fxb.sel = c.id; prefs.set('fxb.sel', c.id); renderEffectEditor(); } });
+  const del = btn('Delete', 'danger', 'Delete this effect', () => {});
+  confirmButton(del, 'Sure?', () => { customFx.remove(d.id); toast({ level: 'ok', title: `Deleted “${d.name}”` }); });
+  head.append(name, play, dup, del);
+  const info = mk('p', 'hint fxb-info', `${d.steps.length} step${d.steps.length === 1 ? '' : 's'} · ${cycleSeconds(d).toFixed(1)} s per cycle at speed 1× · loops until stopped (or its Run for time). Speed and Run for are in the Effects settings on the Show tab.`);
+
+  // Steps
+  const table = mk('div', 'fxb-steps');
+  const hdr = mk('div', 'fxb-row fxb-hdr');
+  for (const h of ['#', '', 'Color', 'Value', 'Level %', 'Hold s', 'Fade s', 'Gel', '']) hdr.append(mk('span', '', h));
+  table.append(hdr);
+  const set = (i, patch) => { const steps = d.steps.map((s) => ({ ...s })); Object.assign(steps[i], patch); customFx.setSteps(d.id, steps); };
+  const move = (i, k) => { const steps = d.steps.map((s) => ({ ...s })); const j = i + k; if (j < 0 || j >= steps.length) return; [steps[i], steps[j]] = [steps[j], steps[i]]; customFx.setSteps(d.id, steps); };
+  d.steps.forEach((s, i) => {
+    const row = mk('div', 'fxb-row');
+    const sw = mk('span', 'cfx-sw'); sw.style.background = stepColor(s);
+    const mode = mk('select', 'fxb-mode');
+    mode.add(new Option('White', 'cct')); mode.add(new Option('Color', 'hsi'));
+    mode.value = s.mode; mode.dataset.focus = `${i}:mode`;
+    mode.addEventListener('change', () => set(i, { mode: mode.value }));
+    const val = mk('span', 'fxb-val');
+    const n = (v, o, f, key) => { const x = numInput(document, v, o, (nv) => { if (nv != null) f(nv); }); x.dataset.focus = `${i}:${key}`; return x; };
+    if (s.mode === 'cct') {
+      val.append(n(s.cct, { min: 3200, max: 5600, step: 100 }, (v) => set(i, { cct: v }), 'cct'), mk('small', '', 'K'));
+    } else {
+      val.append(n(s.hue, { min: 0, max: 360, step: 5 }, (v) => set(i, { hue: v }), 'hue'), mk('small', '', '°'),
+        n(s.sat, { min: 0, max: 100, step: 1 }, (v) => set(i, { sat: v }), 'sat'), mk('small', '', '%'));
+    }
+    const bri = n(s.bri, { min: 0, max: 100, step: 1 }, (v) => set(i, { bri: v }), 'bri');
+    const hold = n(s.hold, { min: 0.2, max: 600, step: 0.1 }, (v) => set(i, { hold: v }), 'hold');
+    const fade = n(s.fade, { min: 0, max: 60, step: 0.1 }, (v) => set(i, { fade: v }), 'fade');
+    const gel = mk('select', 'fxb-gel');
+    gel.add(new Option('—', ''));
+    for (const g of GELS) gel.add(new Option(g.name, g.id));
+    gel.dataset.focus = `${i}:gel`;
+    gel.addEventListener('change', () => { const g = GELS.find((x) => x.id === gel.value); if (g) set(i, { ...g.state }); });
+    const tools = mk('span', 'fxb-tools');
+    tools.append(btn('↑', '', 'Move up', () => move(i, -1)), btn('↓', '', 'Move down', () => move(i, 1)),
+      btn('✕', 'danger', 'Remove this step', () => customFx.setSteps(d.id, d.steps.filter((_, k) => k !== i))));
+    row.append(mk('span', 'fxb-num', String(i + 1)), sw, mode, val, bri, hold, fade, gel, tools);
+    table.append(row);
+  });
+
+  // Add steps
+  const add = mk('div', 'row fxb-add');
+  const last = d.steps.at(-1) ?? { mode: 'hsi', hue: 0, sat: 100, bri: 40, hold: 1, fade: 0 };
+  add.append(
+    btn('+ Add step', '', 'Add a step (copy of the last one)', () => customFx.setSteps(d.id, [...d.steps, { ...last }])),
+    btn('+ Add the light’s current color', '', 'Add a step with the selected light’s current color and brightness', () => {
+      const p = primary();
+      if (!p?.conn.connected) { toast({ level: 'info', title: 'Connect a light first' }); return; }
+      customFx.setSteps(d.id, [...d.steps, normStep({ ...stateOf(p), hold: last.hold, fade: last.fade })]);
+    }),
+  );
+  if (d.steps.length >= 64) for (const b of add.querySelectorAll('button')) b.disabled = true;
+  ed.append(head, info, table, add);
+  if (keep) ed.querySelector(`[data-focus="${keep}"]`)?.focus();
+}
+
+// ---------- links: changelog, issues ----------
+
+function issueUrl(template) {
+  const chrome = /(?:Chrome|Edg|CriOS)\/(\d+)/.exec(navigator.userAgent)?.[1];
+  const q = new URLSearchParams({ template, version: APP_VERSION });
+  if (template === 'bug_report.yml') {
+    q.set('environment', `${BROWSER_NAME[env.browser]}${chrome ? ' ' + chrome : ''} on ${OS_NAME[env.os]}`);
+    if (rig.lights.length) q.set('lights', `${rig.lights.length} light${rig.lights.length > 1 ? 's' : ''}`);
+  }
+  return `${repoUrl()}/issues/new?${q}`;
+}
+
+function initLinks() {
+  const base = repoUrl();
+  const set = (cls, href) => { for (const a of document.querySelectorAll(cls)) a.href = href; };
+  set('.lnk-changelog', `${base}/blob/main/CHANGELOG.md`);
+  set('.lnk-idea', issueUrl('feature_request.yml'));
+  set('.lnk-light', issueUrl('light_report.yml'));
+  set('.lnk-repo', base);
+  $('versionBadge').href = `${base}/blob/main/CHANGELOG.md`;
+  // The bug link carries the current number of lights, so fill it when clicked.
+  for (const a of document.querySelectorAll('.lnk-bug')) {
+    a.href = issueUrl('bug_report.yml');
+    a.addEventListener('click', () => { a.href = issueUrl('bug_report.yml'); });
+  }
+  // One notice after an update (not on first run).
+  const last = prefs.get('lastVersion', null);
+  if (last && last !== APP_VERSION) {
+    toast({ level: 'ok', title: `Updated to v${APP_VERSION}`, body: `You were on v${last}.`, actions: [{ label: 'What’s new', fn: () => window.open(`${base}/blob/main/CHANGELOG.md`, '_blank', 'noopener') }] });
+  }
+  prefs.set('lastVersion', APP_VERSION);
+}
+
+// ---------- gels ----------
+
+function initGels() {
+  const sel = $('gelSel');
+  sel.add(new Option('Gel… (approximate)', ''));
+  let og = null;
+  for (const g of GELS) {
+    if (og?.label !== g.group) { og = document.createElement('optgroup'); og.label = g.group; sel.appendChild(og); }
+    const desc = g.state.mode === 'cct' ? `${g.state.cct} K` : `${g.state.hue}°, ${g.state.sat}%`;
+    og.appendChild(new Option(`${g.name}  ·  ${desc}`, g.id));
+  }
+  sel.addEventListener('change', () => {
+    const g = GELS.find((x) => x.id === sel.value);
+    sel.value = '';
+    sel.blur();
+    if (g) applyGel(g);
+  });
+}
+
+/** Changes only the color of the selected lights (brightness stays), fading with the Fade time. */
+async function applyGel(g, { fadeMs = ui.fadeMs } = {}) {
+  const lights = targets();
+  if (!lights.length) return;
+  takeover();
+  rig.logLine(`GEL ${g.name}${fadeMs ? ` (fade ${fadeMs / 1000}s)` : ''}${rig.lights.length > 1 ? ` → ${lights.map((l) => l.label).join(', ')}` : ''}`);
+  await crossfade(lights.map((l) => ({ light: l, to: { ...stateOf(l), ...g.state } })), fadeMs, { label: `GEL ${g.name}` });
+  syncFromLight();
+}
+
+// ---------- restore after reconnect ----------
+
+/**
+ * When a light's link drops, remember what the app last had it doing (the app's model includes
+ * commands that were sent but may never have arrived). When it reconnects, put it back.
+ */
+function trackLink(l) {
+  if (!l) return;
+  const st = l.conn.status;
+  if (st === 'connected') {
+    if (l.linkUp === false && l.intended) restoreAfterReconnect(l);
+    l.linkUp = true;
+  } else if (st === 'reconnecting' && l.linkUp) {
+    l.linkUp = false;
+    const w = l.conn.wanted;
+    l.intended = { mode: w.mode ?? 'cct', cct: w.cct ?? 5600, hue: w.hue ?? 0, sat: w.saturation ?? 100, bri: w.brightness ?? 0, power: w.power !== false };
+  }
+}
+
+async function restoreAfterReconnect(l) {
+  const want = l.intended;
+  l.intended = null;
+  const t0 = Date.now();
+  // The first status frame after the handshake tells us what the light actually has now.
+  while (Date.now() - t0 < 2000 && (l.conn.lastStatusAt ?? 0) < t0) await sleep(100);
+  if (!l.conn.connected) return;
+  const on = l.conn.light.power !== false;
+  if (want.power === false) {
+    if (on) await l.conn.sendFrames(P.power(false), 'restore after reconnect: off');
+  } else {
+    if (!on) await l.conn.sendFrames(P.power(true), 'restore after reconnect: on');
+    // A light running an effect is picked up by the effect itself; otherwise resend its look.
+    if (!runOf(l)) await applyStateTo(l, want, { quiet: false });
+  }
+  rig.logLine(`${l.label}: restored after reconnect → ${want.power === false ? 'off' : describeState(want)}${runOf(l) ? ` (${runOf(l).e.name} resumes)` : ''}`);
+  syncFromLight();
+}
+
 /** Master button: blacks out every light that is on; if all are dark, restores all of them. */
 async function toggleBlackout() {
   if (!rig.anyConnected || ui.busy) return;
@@ -526,7 +806,8 @@ function renderLightBlackouts() {
   for (const b of box.children) {
     const l = rig.get(b.dataset.id);
     const dark = isDarkLight(l);
-    const silent = l.conn.connected && Date.now() - (l.conn.lastRxAt || Date.now()) > 7000;   // missed a 5 s status
+    // No reply: a command went unanswered (even after a resend), or a 5 s status was missed.
+    const silent = l.conn.connected && (l.conn.noReply || Date.now() - (l.conn.lastRxAt || Date.now()) > 7000);
     b.querySelector('.lbo-name').textContent = l.label;
     b.querySelector('.lbo-state').textContent = !l.conn.connected ? (l.conn.status === 'reconnecting' ? 'reconnecting' : 'offline') : silent ? 'no reply' : l.busy ? '…' : dark ? 'OUT' : 'ON';
     b.classList.toggle('silent', silent);
@@ -571,17 +852,27 @@ function saveCurrentLook() {
 
 const fx = { runs: [], selected: null, params: {} };
 
+// Built-in effects plus the ones built on the Effects tab.
+const customFx = new CustomEffects();
+let customList = customFx.effects();
+const allEffects = () => [...EFFECTS, ...customList];
+const findEffect = (id) => allEffects().find((x) => x.id === id) ?? null;
+
 // Saved settings per effect: the starting values for new runs (each run gets its own copy).
-for (const e of EFFECTS) {
-  const saved = prefs.get('fx.' + e.id, {});
-  fx.params[e.id] = { ...defaults(e) };
-  for (const d of e.params) if (saved[d.id] != null) fx.params[e.id][d.id] = saved[d.id];
+function ensureParams() {
+  for (const e of allEffects()) {
+    if (fx.params[e.id]) continue;
+    const saved = prefs.get('fx.' + e.id, {});
+    fx.params[e.id] = { ...defaults(e) };
+    for (const d of e.params) if (saved[d.id] != null) fx.params[e.id][d.id] = saved[d.id];
+  }
 }
+ensureParams();
 fx.selected = prefs.get('fx.selected', EFFECTS[0].id);
-if (!EFFECTS.some((e) => e.id === fx.selected)) fx.selected = EFFECTS[0].id;
+if (!findEffect(fx.selected)) fx.selected = EFFECTS[0].id;
 
 const runOf = (l) => fx.runs.find((r) => r.lights.includes(l)) ?? null;
-const fxName = (id) => EFFECTS.find((x) => x.id === id)?.name ?? id;
+const fxName = (id) => findEffect(id)?.name ?? (id.startsWith(CUSTOM) ? 'deleted effect' : id);
 /** 'all' | 'some' | 'none': how many of `lights` (default: the selected lights) are running effect `id`. */
 function effectState(id, lights = targets()) {
   const n = lights.filter((l) => runOf(l)?.e.id === id).length;
@@ -735,7 +1026,7 @@ function fxRunningText(id) {
 
 function renderFxParams() {
   if (!$('fxSelect').options.length) return;
-  const e = EFFECTS.find((x) => x.id === fx.selected);
+  const e = findEffect(fx.selected) ?? EFFECTS[0];
   // Show the values of the selected light's own run if it is running this effect, else the saved settings.
   const runs = selectedRuns(e.id);
   const p = runs[0]?.params ?? fx.params[e.id];
@@ -794,12 +1085,26 @@ function renderFxParams() {
   }
 }
 
+function fillFxSelect() {
+  const sel = $('fxSelect');
+  sel.innerHTML = '';
+  for (const e of EFFECTS) sel.add(new Option(e.name, e.id));
+  if (customList.length) {
+    const og = document.createElement('optgroup');
+    og.label = 'Custom';
+    for (const e of customList) og.appendChild(new Option(e.name, e.id));
+    sel.appendChild(og);
+  }
+  if (!findEffect(fx.selected)) fx.selected = EFFECTS[0].id;
+  sel.value = fx.selected;
+}
+
 function initFxSettings() {
-  for (const e of EFFECTS) $('fxSelect').add(new Option(e.name, e.id));
+  fillFxSelect();
   $('fxSelect').addEventListener('change', () => selectEffect($('fxSelect').value));
   $('fxReset').addEventListener('click', () => {
     // Saved settings and the runs on the selected lights go back to defaults.
-    const def = defaults(EFFECTS.find((x) => x.id === fx.selected));
+    const def = defaults(findEffect(fx.selected));
     Object.assign(fx.params[fx.selected], def);
     for (const r of selectedRuns(fx.selected)) {
       Object.assign(r.params, def);
@@ -811,11 +1116,81 @@ function initFxSettings() {
   selectEffect(fx.selected);
 }
 
+/** Custom effects as a compact row of chips under the built-in tiles (keeps the Show tab on one screen). */
+function renderCustomChips() {
+  const box = $('customFx');
+  const key = customList.map((e) => e.id + e.name + e.swatch).join('|');
+  if (box.dataset.key !== key) {
+    box.dataset.key = key;
+    box.innerHTML = '';
+    box.hidden = !customList.length;
+    if (customList.length) {
+      const h = document.createElement('span'); h.className = 'hint'; h.textContent = 'Custom';
+      box.appendChild(h);
+    }
+    for (const e of customList) {
+      const b = document.createElement('button');
+      b.className = 'chip cfx';
+      b.dataset.id = e.id;
+      b.title = `${e.desc}\nTap to start / stop on the selected light(s). Edit it on the Effects tab.`;
+      b.innerHTML = '<span class="cfx-sw"></span><span class="cfx-nm"></span>';
+      b.querySelector('.cfx-sw').style.background = e.swatch;
+      b.querySelector('.cfx-nm').textContent = e.name;
+      b.addEventListener('click', () => { const x = findEffect(e.id); if (x) toggleEffect(x); });
+      box.appendChild(b);
+    }
+  }
+  const sel = targets();
+  for (const b of box.querySelectorAll('.cfx')) {
+    const st = effectState(b.dataset.id, sel);
+    b.classList.toggle('running', st === 'all');
+    b.classList.toggle('partial', st === 'some');
+    b.disabled = !rig.anyConnected;
+  }
+}
+
+/** Effect chips in the cue panel's strip (built-in and custom). */
+function fillCueFxStrip(strip, d) {
+  strip.innerHTML = '';
+  const hint = d.createElement('span'); hint.className = 'hint'; hint.textContent = 'Effects';
+  strip.append(hint);
+  for (const e of allEffects()) {
+    const b = d.createElement('button');
+    b.className = 'chip';
+    b.textContent = e.name;
+    b.dataset.id = e.id;
+    b.title = `Start / stop ${e.name} on the selected light(s). Settings are in the Effects column.`;
+    b.addEventListener('click', () => { const x = findEffect(e.id); if (x) toggleEffect(x); });
+    strip.append(b);
+  }
+}
+
+/** Custom effects changed (Effects tab): refresh every place that lists effects. */
+function onCustomFxChange() {
+  customList = customFx.effects();
+  ensureParams();
+  // Running custom effects: point their runs at the new effect object (same id), drop deleted ones.
+  for (const r of fx.runs) {
+    if (!r.e.custom) continue;
+    const e = findEffect(r.e.id);
+    if (e) r.e = e;
+  }
+  const gone = fx.runs.filter((r) => r.e.custom && !findEffect(r.e.id));
+  if (gone.length) stopEffectOn(gone.flatMap((r) => r.lights), { restore: true });
+  fillFxSelect();
+  renderFxParams();
+  renderPresets();
+  for (const h of [cuePanel.hosts.panel, cuePanel.hosts.pop]) if (h) fillCueFxStrip(h.strip, h.d);
+  renderCueList();
+  renderEffectEditor();
+}
+
 function renderPresets() {
   const looks = $('looks'), effects = $('effects');
   looks.innerHTML = '';
   show.looks.slice(0, LOOK_KEYS.length).forEach((l, i) => looks.appendChild(tile(l, LOOK_KEYS[i], 'look')));
   if (!effects.children.length) EFFECTS.forEach((e, i) => effects.appendChild(tile(e, EFFECT_KEYS[i], 'effect')));
+  renderCustomChips();
   // The board shows the selected light(s): a tile is lit when every selected light has it,
   // half-lit ("partial") when only some do.
   const sel = targets();
@@ -829,7 +1204,7 @@ function renderPresets() {
     b.classList.toggle('running', st === 'all');
     b.classList.toggle('partial', st === 'some');
     const nm = b.querySelector('.nm');
-    const item = EFFECTS.find((x) => x.id === b.dataset.id);
+    const item = findEffect(b.dataset.id);
     nm.innerHTML = '';
     nm.append(item.name);
     if (st !== 'none') {
@@ -843,6 +1218,8 @@ function renderPresets() {
   $('saveLookBtn').disabled = !on;
   if ($('fxSelect').options.length) $('fxRunning').textContent = fxRunningText(fx.selected);
   if (cuePanel.hosts.panel) updateCueTools();
+  const pb = document.querySelector('#fxbEdit .fxb-head .btn.primary');
+  if (pb && fxb.sel) pb.textContent = effectState(CUSTOM + fxb.sel) === 'all' ? '■ Stop' : '▶ Preview';
 }
 
 // ---------- cues ----------
@@ -919,7 +1296,7 @@ async function goCue(i, { fade } = {}) {
     return l.conn.sendFrames(P.power(false), `cue ${i + 1} power off`);
   });
   for (const ce of cueEffects(c)) {
-    const e = EFFECTS.find((x) => x.id === ce.id);
+    const e = findEffect(ce.id);
     const ls = (ce.lightIds?.length ? ce.lightIds : Object.keys(c.lights)).map((id) => rig.get(id)).filter((l) => l?.conn.connected);
     if (e && ls.length && token === cue.token) toggleEffect(e, { params: { ...defaults(e), ...ce.params }, lights: ls, fromCue: true });
   }
@@ -1001,14 +1378,7 @@ function buildCueEditor(root, d, { popped = false } = {}) {
   const top = btn('Top', '', 'Next GO runs cue 1', () => { clearFollow(); cue.index = -1; renderCueBar(); renderCueList(); });
 
   const strip = mk('div', 'cue-fx-strip');
-  strip.append(mk('span', 'hint', 'Effects'));
-  for (const e of EFFECTS) {
-    const b = mk('button', 'chip', e.name);
-    b.dataset.id = e.id;
-    b.title = `Start / stop ${e.name} on the selected light(s). Settings are in the Effects column.`;
-    b.addEventListener('click', () => toggleEffect(e));
-    strip.append(b);
-  }
+  fillCueFxStrip(strip, d);
   const hint = mk('p', 'hint cue-hint', 'Set the lights (sliders, looks, an effect), then Record. A cue saves every connected light, a fade, an optional effect with a run time, and an optional auto-GO.');
   const list = mk('div', 'cue-list' + (popped ? ' wide' : ''));
   root.append(head, tools, strip, hint, list);
@@ -1134,7 +1504,8 @@ function renderCueList() {
     const effSel = d.createElement('select');
     effSel.className = 'cue-fx';
     effSel.add(new (d.defaultView.Option)('No effect', ''));
-    for (const e of EFFECTS) effSel.add(new (d.defaultView.Option)(e.name, e.id));
+    for (const e of allEffects()) effSel.add(new (d.defaultView.Option)(e.custom ? `${e.name} (custom)` : e.name, e.id));
+    for (const ce of cueEffects(c)) if (!findEffect(ce.id)) effSel.add(new (d.defaultView.Option)('(deleted effect)', ce.id));
     const effs = cueEffects(c);
     if (effs.length > 1) {
       // Recorded with different effects on different lights: keep them unless the user picks one for all.
@@ -1625,6 +1996,7 @@ function syncSettingsForm() {
 function initSettings() {
   $('appVersion').textContent = APP_VERSION;
   $('versionBadge').textContent = `v${APP_VERSION}`;
+  initLinks();
   $('envInfo').textContent = `${BROWSER_NAME[env.browser]} on ${OS_NAME[env.os]}${env.supported ? '' : ' (no Web Bluetooth)'}`;
   $('settingsBtn').addEventListener('click', () => openDialog('settingsDlg'));
   for (const b of document.querySelectorAll('[data-close]')) b.addEventListener('click', () => closeDialog(b.closest('dialog')));
@@ -1642,7 +2014,7 @@ function initSettings() {
   });
   $('debugTabBtn').hidden = !prefs.get('showDebug', false);
   confirmButton($('setResetFx'), 'Click again to reset effects', () => {
-    for (const e of EFFECTS) { Object.assign(fx.params[e.id], defaults(e)); saveParams(e.id); }
+    for (const e of allEffects()) { Object.assign(fx.params[e.id], defaults(e)); saveParams(e.id); }
     renderFxParams();
     toast({ level: 'ok', title: 'Effect settings reset' });
   });
@@ -1660,6 +2032,8 @@ function initSettings() {
 
 function initHelp() {
   $('helpBtn').addEventListener('click', () => openDialog('helpDlg'));
+  $('checkBtn').addEventListener('click', () => { openDialog('checkDlg'); runPreShowCheck(); });
+  $('checkRun').addEventListener('click', runPreShowCheck);
   for (const [id, steps] of [['helpLight', LIGHT_STEPS], ['helpBt', bluetoothSteps(env)]]) {
     for (const s of steps) { const li = document.createElement('li'); li.textContent = s; $(id).appendChild(li); }
   }
@@ -1670,18 +2044,20 @@ function initHelp() {
 
 function showTab(name) {
   if (name === 'debug' && !prefs.get('showDebug', false)) name = 'show';
-  if (!['show', 'looks', 'debug'].includes(name)) name = 'show';
+  if (!['show', 'looks', 'effects', 'debug'].includes(name)) name = 'show';
   for (const t of document.querySelectorAll('.tab')) t.classList.toggle('active', t.dataset.tab === name);
   $('tab-show').hidden = name !== 'show';
   $('tab-looks').hidden = name !== 'looks';
+  $('tab-effects').hidden = name !== 'effects';
   $('tab-debug').hidden = name !== 'debug';
   prefs.set('tab', name);
   if (name === 'debug') { renderLog(); renderGatt(); renderWriteTargets(); }
   if (name === 'looks') renderLookList();
+  if (name === 'effects') renderEffectEditor();
 }
 
 function init() {
-  for (const sel of ['#powerBtn', '#fadeCtl', '#bri', '#modeSeg', '#cctPanel', '#hsiPanel']) {
+  for (const sel of ['#powerBtn', '#fadeCtl', '#bri', '#modeSeg', '#cctPanel', '#hsiPanel', '.gel-row']) {
     document.querySelector(sel).classList.add('lockable');
   }
 
@@ -1690,8 +2066,11 @@ function init() {
   rig.addEventListener('light', syncFromLight);
   rig.addEventListener('gatt', () => { renderGatt(); renderWriteTargets(); });
   rig.addEventListener('log', () => { if (!$('tab-debug').hidden) renderLog(); });
+  rig.addEventListener('status', (ev) => trackLink(ev.detail.light));
   rig.addEventListener('status', () => {
-    if (!rig.anyConnected && fx.runs.length) { for (const r of fx.runs) r.dead = true; fx.runs = []; renderPresets(); }
+    // Effects survive a dropout (they skip a light while it is away and resume when it is back);
+    // they end only when no light is connected or trying to reconnect.
+    if (!rig.anyActive && fx.runs.length) { for (const r of fx.runs) r.dead = true; fx.runs = []; renderPresets(); }
     renderPresets();
     renderCueList();
     if (!$('tab-looks').hidden) renderLookList();
@@ -1776,6 +2155,8 @@ function init() {
   });
 
   initFxSettings();
+  initGels();
+  initEffectEditor();
   renderPresets();
   initCues();
   initLookLibrary();

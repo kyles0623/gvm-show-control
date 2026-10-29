@@ -491,4 +491,51 @@ body.popout { overflow: hidden; height: 100vh; }
 
 /* App version, lower-right corner. Small and dim so it never competes with the controls. */
 .version-badge { position: fixed; right: 6px; bottom: 2px; z-index: 5; font: 10px/1 var(--mono); color: var(--muted);
-  background: var(--bg); padding: 2px 4px; border-radius: 3px; pointer-events: none; user-select: none; }
+  background: var(--bg); padding: 2px 4px; border-radius: 3px; user-select: none; text-decoration: none; }
+.version-badge:hover { color: var(--text); }
+.links a { color: var(--accent); cursor: pointer; }
+
+/* Pre-show check */
+.check-summary { font-weight: 600; margin: 0 0 8px; }
+.check-summary.check-ok { color: var(--ok); } .check-summary.check-warn { color: var(--warn); } .check-summary.check-bad { color: var(--danger); }
+.check-list { list-style: none; padding: 0; margin: 0 0 10px; display: grid; gap: 6px; }
+.check-list li { display: flex; gap: 8px; align-items: baseline; }
+.check-mark { width: 1.2em; text-align: center; font-weight: 700; }
+.check-ok .check-mark { color: var(--ok); } .check-warn .check-mark { color: var(--warn); } .check-bad .check-mark { color: var(--danger); }
+
+/* Gel menu (in the color card) */
+.gel-row { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
+.gel-select { flex: 1; min-width: 0; background: var(--panel-2); color: var(--text); border: 1px solid var(--border);
+  border-radius: 8px; padding: 5px 8px; font: inherit; font-size: 13px; }
+
+/* Custom effects: chips on the Show tab */
+.custom-fx { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 6px; max-height: 64px; overflow-y: auto; }
+.custom-fx .cfx { display: inline-flex; align-items: center; gap: 6px; }
+.custom-fx .cfx.running { border-color: var(--accent); color: var(--accent); animation: pulse 1.2s infinite; }
+.custom-fx .cfx.partial { border-color: var(--accent); border-style: dashed; }
+.cfx-sw { display: inline-block; width: 14px; height: 14px; border-radius: 4px; border: 1px solid #0006; flex: none; }
+
+/* Custom effect builder (Effects tab) */
+#tab-effects { display: block; padding: var(--gap); overflow: auto; }
+.fxb { display: grid; grid-template-columns: minmax(200px, 260px) 1fr; gap: 16px; align-items: start; height: 100%; overflow: auto; }
+.fxb-list { display: grid; gap: 6px; margin: 8px 0; }
+.fxb-item { display: grid; grid-template-columns: auto 1fr; grid-template-rows: auto auto; column-gap: 8px; text-align: left;
+  background: var(--panel-2); border: 1px solid var(--border); border-radius: 8px; padding: 7px 10px; color: var(--text); font: inherit; cursor: pointer; }
+.fxb-item .cfx-sw { grid-row: span 2; align-self: center; width: 18px; height: 18px; }
+.fxb-item.sel { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.fxb-head { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.fxb-name { flex: 1; min-width: 160px; font: inherit; font-size: 16px; font-weight: 600; background: var(--panel-2); color: var(--text);
+  border: 1px solid var(--border); border-radius: 8px; padding: 6px 10px; }
+.fxb-info { margin: 6px 0 10px; }
+.fxb-steps { display: grid; gap: 4px; overflow-x: auto; }
+.fxb-row { display: grid; grid-template-columns: 22px 18px 90px 172px 76px 70px 70px minmax(120px, 1fr) auto; gap: 6px; align-items: center; }
+.fxb-row select, .fxb-row input { height: 30px; }
+.fxb-hdr span { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+.fxb-row input, .fxb-row select { width: 100%; min-width: 0; background: var(--panel-2); color: var(--text); border: 1px solid var(--border);
+  border-radius: 6px; padding: 4px 6px; font: inherit; font-size: 13px; }
+.fxb-val { display: flex; gap: 4px; align-items: center; }
+.fxb-val input { width: 64px; }
+.fxb-num { color: var(--muted); font: 12px var(--mono); text-align: right; }
+.fxb-tools { display: flex; gap: 4px; }
+.fxb-add { margin-top: 8px; gap: 8px; }
+@media (max-width: 900px) { .fxb { grid-template-columns: 1fr; } }

@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Open the app
+    url: https://kyles0623.github.io/gvm-show-control/
+    about: The hosted app (Chrome or Edge). Help → Report a problem fills in your version and browser.

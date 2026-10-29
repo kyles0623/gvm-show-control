@@ -1,8 +1,8 @@
 // Offline support: network-first (so edits are picked up while serve.sh runs),
 // falling back to the cached copy when the local server is not running.
-const CACHE = 'gvm-show-1.2.0';
+const CACHE = 'gvm-show-1.3.0';
 const ASSETS = [
-  './', 'index.html', 'styles.css', 'app.js', 'ble.js', 'gvm-protocol.js', 'effects.js', 'setup.js', 'rig.js', 'show.js', 'manifest.webmanifest',
+  './', 'index.html', 'styles.css', 'app.js', 'ble.js', 'gvm-protocol.js', 'effects.js', 'setup.js', 'rig.js', 'show.js', 'customfx.js', 'manifest.webmanifest',
   'icons/icon-192.png', 'icons/icon-512.png', 'icons/icon-512-maskable.png',
 ];
 

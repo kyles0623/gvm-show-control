@@ -16,7 +16,7 @@ install, works offline, and no account.
 - Close the GVM phone app first — the light accepts only one connection at a time.
 
 ## Use it
-1. Open the hosted app in Chrome or Edge: **`https://<your-username>.github.io/<repo-name>/`**
+1. Open the app in Chrome or Edge: **https://kyles0623.github.io/gvm-show-control/**
    (or run it locally, below).
 2. Follow the first-run setup: it checks your browser and Bluetooth and walks you through pairing.
 3. Optional: install it (Chrome address bar → install icon) for its own window and offline use.
@@ -41,16 +41,22 @@ On Windows/Linux, any static server works, e.g. `cd web && python -m http.server
 | **Effects** (`Q`–`Y`) | Cops, Television, Fire, Candle, Party, Breathe — each with its own settings (brightness range, speed, colors, pattern, **run for N seconds**). Each light can run its own effect at the same time (e.g. Cops on one, Fire on another); the board shows the selected light's effect, look and settings. With several lights on one effect, Cops can alternate colors and the flicker effects run independently per light. |
 | **Live controls** | Brightness, color temperature (3200–5600 K), hue, saturation |
 | **Show safety** | Lock (`L`) leaves only GO, Back and Blackout working; auto-reconnect per light; keeps the screen awake; dim UI for dark rooms |
+| **Custom effects** | Build your own on the **Effects** tab: a looping list of steps (color or gel, brightness, hold time, fade time). They sit under the built-in effects on the Show tab, run per light, and can be recorded into cues. |
+| **Gels** | The **Gel** menu applies approximate gel-style colors (CTO/CTB corrections, ambers, pinks, lavenders, blues, greens) to the selected lights, keeping their brightness. |
+| **Pre-show check** | **Check** (top right) confirms every light is connected and answering, dims each one briefly so you can see which is which, and flags cues that use missing lights. |
+| **Reliable link** | Every change is confirmed by the light and resent if the confirmation doesn't arrive. A light that stops answering is flagged ("no reply") within about 2 s, reconnected, and put back the way it was, effect included. |
 | **Fits one screen** | No scrolling on laptop screens 1024×640 and up; stacks on phones |
 
 ![Recording cues from the Show tab](docs/screenshot-cues.png)
+
+![Building a custom effect on the Effects tab](docs/screenshot-effects.png)
 
 ## Other lights
 The protocol was worked out from Bluetooth traffic between the official GVM iOS app and a GVM 800-RGB
 ([details](docs/TECHNICAL.md#protocol), [captured frames](protocol/gvm-800rgb-frames.json)).
 If you have a different GVM model:
 1. Settings → Advanced → **Show the Debug tab**. Use **Choose any device…** to connect and see whether the light has the same service (`…0a0b0c0d1910`) and control characteristic (`…0a0b0c0d2b10`).
-2. If it does, the app may just work. Please open an issue with the model and what worked.
+2. If it does, the app may just work. Please open a [Light report](https://github.com/kyles0623/gvm-show-control/issues/new?template=light_report.yml) with the model and what worked.
 3. If not, a filtered capture of the official app's traffic (see [protocol/README.md](protocol/README.md)) is what's needed to add support.
 
 The app never writes to firmware-update characteristics and only sends commands seen in real traffic.
@@ -91,6 +97,15 @@ git config core.hooksPath .githooks
 
 - Skip it for one commit: `SKIP_BUMP=1 git commit ...`
 - Major or patch release: `scripts/bump-version.sh major` (or `patch`), then commit; the hook keeps your bump.
+- Write release notes under **Unreleased** in [CHANGELOG.md](CHANGELOG.md); the hook files them under the new version.
+
+## Feedback and contributing
+- **What's new:** [CHANGELOG.md](CHANGELOG.md) (also: click the version number in the app's corner).
+- **Problems and ideas:** [open an issue](https://github.com/kyles0623/gvm-show-control/issues/new/choose), or use
+  **Help → Report a problem** in the app, which fills in your version and browser.
+- **Other GVM lights:** a *Light report* issue tells us what works on your model.
+- **Contributing:** see [CONTRIBUTING.md](CONTRIBUTING.md) (including the rules for protocol changes), the
+  [code of conduct](CODE_OF_CONDUCT.md) and [security notes](SECURITY.md).
 
 ## License
 [MIT](LICENSE)

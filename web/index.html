@@ -23,9 +23,11 @@
   <nav class="tabs" role="tablist">
     <button class="tab active" data-tab="show" role="tab">Show</button>
     <button class="tab" data-tab="looks" role="tab">Looks</button>
+    <button class="tab" data-tab="effects" role="tab">Effects</button>
     <button id="debugTabBtn" class="tab" data-tab="debug" role="tab" hidden>Debug</button>
   </nav>
   <div class="bar-right">
+    <button id="checkBtn" class="btn" title="Pre-show check: is every light connected and answering?">Check</button>
     <button id="lockBtn" class="btn toggle" title="L">Lock</button>
     <button id="dimBtn" class="btn toggle" title="Dims this screen, not the light">Dim UI</button>
     <button id="helpBtn" class="btn" title="Help (?)">Help</button>
@@ -112,6 +114,10 @@
         <button data-mode="cct">White (CCT)</button>
         <button data-mode="hsi">Color (HSI)</button>
       </div>
+      <div class="gel-row">
+        <label class="label" for="gelSel">Gel</label>
+        <select id="gelSel" class="gel-select" disabled title="Gel-style colors (approximate): changes color only, keeps brightness, uses the Fade time"></select>
+      </div>
 
       <div id="cctPanel" class="color-panel">
         <div class="row-between">
@@ -167,6 +173,7 @@
         <span class="hint">tap again or Esc to stop</span>
       </div>
       <div id="effects" class="tiles"></div>
+      <div id="customFx" class="custom-fx" hidden></div>
       <div class="fx-settings">
         <div class="row-between">
           <div class="row fx-head">
@@ -195,6 +202,22 @@
     <p class="hint">The first nine are on the Show tab (keys 1–9). Looks fade in using the Fade time. Cues are recorded from
       <b>☰ Cue list</b> on the Show tab.</p>
     <div id="lookList" class="look-list"></div>
+  </section>
+</main>
+
+<main id="tab-effects" class="tab-panel" hidden>
+  <section class="group fxb">
+    <div class="fxb-side">
+      <div class="row-between">
+        <div class="label">Custom effects</div>
+        <button id="fxbNew" class="btn sm">+ New effect</button>
+      </div>
+      <div id="fxbList" class="fxb-list"></div>
+      <p class="hint">Build an effect from steps: a color, a brightness, how long to hold it and how long to fade into it.
+        It loops. Custom effects appear on the Show tab under the built-in ones, run on the selected lights like
+        any effect, and can be recorded into cues. Edits apply while it runs.</p>
+    </div>
+    <div id="fxbEdit" class="fxb-edit"></div>
   </section>
 </main>
 
@@ -314,6 +337,22 @@
     <p><b>GVM Show Control</b> <span id="appVersion"></span> · <span id="envInfo"></span></p>
     <p class="hint">Unofficial controller, not affiliated with or endorsed by GVM. Runs entirely in your browser:
       nothing is sent anywhere except Bluetooth commands to your light. Works offline once installed.</p>
+    <p class="links"><a class="lnk-changelog" target="_blank" rel="noopener">What’s new</a> ·
+      <a class="lnk-bug" target="_blank" rel="noopener">Report a problem</a> ·
+      <a class="lnk-idea" target="_blank" rel="noopener">Suggest a feature</a> ·
+      <a class="lnk-repo" target="_blank" rel="noopener">Source code</a></p>
+  </section>
+</dialog>
+
+<!-- Pre-show check -->
+<dialog id="checkDlg" class="dlg">
+  <div class="dlg-head"><h2>Pre-show check</h2><button class="btn sm" data-close>Close</button></div>
+  <section>
+    <p id="checkSummary" class="check-summary"></p>
+    <ul id="checkList" class="check-list"></ul>
+    <p class="hint">Each light that is on dims for a moment, one at a time, so you can see which is which, and has to
+      confirm the change. Lights that are off or running an effect aren't flashed; they pass if they've answered in the last few seconds.</p>
+    <div class="row"><button id="checkRun" class="btn">Run again</button></div>
   </section>
 </dialog>
 
@@ -328,7 +367,9 @@
       <li>Use the sliders, or tap a <b>Look</b> or <b>Effect</b>.</li>
       <li><b>Blackout</b> (or <kbd>B</kbd>) takes the light out; press again to restore. Set a fade time to fade instead of snapping.</li>
       <li>For a show, open <b>☰ Cue list</b> (<kbd>C</kbd>) on the Show tab: set the lights, press <b>Record</b>, repeat. During the show press <b>GO</b> (<kbd>Space</kbd>) for each cue. <b>Pop out</b> puts the list in its own window, e.g. on a second screen.</li>
-      <li>More lights: Settings → Lights → <b>Add another light</b>. Chips at the top choose which light the controls change (<kbd>Tab</kbd> cycles them); <b>double-click a chip to rename</b> a light, e.g. “Key”, “Fill”.</li>
+      <li>More lights: press <b>+</b> next to the light chips (or Settings → Lights → Add another light). Chips at the top choose which light the controls change (<kbd>Tab</kbd> cycles them); <b>double-click a chip to rename</b> a light, e.g. “Key”, “Fill”.</li>
+      <li>The <b>Gel</b> menu applies gel-style colors; the <b>Effects</b> tab lets you build your own effects from color steps.</li>
+      <li>Before the show press <b>Check</b>: every light must answer, and each one dims briefly so you can see which is which.</li>
       <li>Press <b>Lock</b> before the show so nothing changes by accident — GO, Back and Blackout still work.</li>
     </ol>
     <button id="helpSetupBtn" class="btn">Run setup again</button>
@@ -365,13 +406,25 @@
       <li>Lower the effect’s Speed.</li>
       <li>Keep the light closer to the computer.</li></ul></details>
     <details><summary>Changes don’t show up after an update</summary><ul class="steps">
-      <li>Reload with <kbd>⌘</kbd>/<kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>R</kbd>, or close and reopen the installed app.</li></ul></details>
+      <li>Reload with <kbd>⌘</kbd>/<kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>R</kbd>, or close and reopen the installed app.</li>
+      <li>The version in the lower-right corner tells you which version is running.</li></ul></details>
+  </section>
+  <section>
+    <h3>Feedback &amp; updates</h3>
+    <p>Found a problem or have an idea? <b>Report a problem</b> opens a GitHub issue with your app version and browser
+      filled in. For connection problems, include the log: Settings → Advanced → “Show the Debug tab”, reproduce it,
+      and copy the last lines.</p>
+    <p class="links"><a class="lnk-changelog" target="_blank" rel="noopener">What’s new</a> ·
+      <a class="lnk-bug" target="_blank" rel="noopener">Report a problem</a> ·
+      <a class="lnk-idea" target="_blank" rel="noopener">Suggest a feature</a> ·
+      <a class="lnk-light" target="_blank" rel="noopener">Report another GVM light</a> ·
+      <a class="lnk-repo" target="_blank" rel="noopener">Source code</a></p>
   </section>
 </dialog>
 
 <div id="toasts" class="toasts" aria-live="polite"></div>
 
 <script type="module" src="app.js"></script>
-<div id="versionBadge" class="version-badge" title="GVM Show Control version (if this doesn’t change after an update, reload the page)"></div>
+<a id="versionBadge" class="version-badge" target="_blank" rel="noopener" title="GVM Show Control version: click for what’s new (if this doesn’t change after an update, reload the page)"></a>
 </body>
 </html>

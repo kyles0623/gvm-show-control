@@ -7,4 +7,5 @@
 git diff --cached -U0 -- web/setup.js | grep -q "^+export const APP_VERSION" && exit 0
 new=$(scripts/bump-version.sh minor) || exit 1
 git add web/setup.js web/sw.js
+[ -f CHANGELOG.md ] && git add CHANGELOG.md
 echo "pre-commit: version $new"

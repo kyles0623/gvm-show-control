@@ -89,7 +89,7 @@ export const GVMProtocol = {
 };
 
 /** Converts one raw param value to app units. */
-function paramUpdate(p, v) {
+export function paramUpdate(p, v) {
   switch (p) {
     case 0: return { power: v === 1 };
     case 2: return { brightness: v };

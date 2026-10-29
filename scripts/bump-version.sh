@@ -16,4 +16,12 @@ esac
 new="$MA.$MI.$PA"
 perl -pi -e "s/^export const APP_VERSION = '[0-9.]+';/export const APP_VERSION = '$new';/" web/setup.js
 perl -pi -e "s/^const CACHE = '[^']*';/const CACHE = 'gvm-show-$new';/" web/sw.js
+# CHANGELOG.md: if the Unreleased section has notes, they become this version's notes (dated today)
+# and a new empty Unreleased section starts.
+if [ -f CHANGELOG.md ]; then
+  NEW="$new" DAY="$(date +%Y-%m-%d)" perl -0pi -e '
+    if (/^## \[Unreleased\][ \t]*\n(.*?)(?=^## \[|^\[Unreleased\]:|\z)/ms && $1 =~ /\S/) {
+      s/^## \[Unreleased\][ \t]*\n/## [Unreleased]\n\n## [$ENV{NEW}] - $ENV{DAY}\n/m;
+    }' CHANGELOG.md
+fi
 echo "$new"

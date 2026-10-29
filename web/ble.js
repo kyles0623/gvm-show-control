@@ -1,6 +1,6 @@
 // Connection layer: pairing, remembered device, auto-reconnect, GATT discovery,
 // serialized writes, notification decoding, status echo, session log.
-import { GVMProtocol, decode, stateFromFrame, CONTROL_CHAR } from './gvm-protocol.js';
+import { GVMProtocol, decode, stateFromFrame, paramUpdate, CONTROL_CHAR } from './gvm-protocol.js';
 
 export const SERVICE = '00010203-0405-0607-0809-0a0b0c0d1910';
 export const OPTIONAL_SERVICES = ['0000180a-0000-1000-8000-00805f9b34fb', SERVICE];
@@ -11,6 +11,14 @@ const CONNECT_TIMEOUT_MS = 10000;
 // The light sends a status frame every ~5 s while connected. If nothing arrives for this long,
 // the link is dead even though the OS still reports it connected: drop it and reconnect.
 const SILENT_MS = 12000;
+// Lost-command recovery. Seen in the user's logs on the real light: every set that CHANGES a value is
+// acknowledged within ~30-60 ms (cmd 0x02 with the param and value); a set to the value the light already
+// has gets no ack, and the light ignores changes while it is off. So an ack is expected only for a change
+// from the last value the light itself reported, while it is on. Missing ack → resend once.
+const ACK_MS = 500;
+// When a command went unanswered and nothing at all has arrived for this long, reconnect without
+// waiting for SILENT_MS (one status frame, due every 5 s, has been missed by then).
+const EARLY_SILENT_MS = 6000;
 const FRAME_GAP_MS = 60;
 
 const OTA_UUIDS = new Set([
@@ -101,6 +109,14 @@ export class LightConnection extends EventTarget {
     this.lastStatusAt = 0;
     this.lastRxAt = 0;
     this._watchdog = null;
+    this.confirmed = {};         // raw param values the light itself reported (status / ack)
+    this._pending = new Map();   // param → {v, bytes, label, first, at, tries}: sets waiting for an ack
+    this._ackTimer = null;
+    this._waiters = [];          // waitAck() callers
+    this.unansweredAt = 0;       // first send of a command that went unanswered (0 = none)
+    this.missCount = 0;          // commands that stayed unanswered after a resend (this session)
+    this.resendCount = 0;
+    this.sent = {};              // raw param → value the app last sent (what it wants the light to be)
     this.echoStatus = true;
     this.quietStatus = true;
     this.log = [];
@@ -161,6 +177,9 @@ export class LightConnection extends EventTarget {
       if (!this.ctrl) { const e = new Error('control characteristic not found'); e.code = 'not-light'; throw e; }
       this._retry = 0;
       this.lastRxAt = Date.now();
+      this.confirmed = {};
+      this._clearPending();
+      this.unansweredAt = 0;
       this._startWatchdog();
       this._setStatus('connected');
       await this.sendFrames(GVMProtocol.handshake(), 'handshake');
@@ -211,7 +230,7 @@ export class LightConnection extends EventTarget {
     this._watchdog = setInterval(() => {
       if (this.status !== 'connected' || !this.device) return;
       const silent = Date.now() - this.lastRxAt;
-      if (silent < SILENT_MS) return;
+      if (silent < SILENT_MS && !(this.noReply && silent >= EARLY_SILENT_MS)) return;
       clearInterval(this._watchdog);
       this.logLine(`NO RESPONSE for ${Math.round(silent / 1000)}s (status expected every 5s): dropping the link and reconnecting`);
       this.device.removeEventListener('gattserverdisconnected', this._onDisc);   // connect() re-adds it
@@ -222,6 +241,7 @@ export class LightConnection extends EventTarget {
 
   _handleDisconnect() {
     clearInterval(this._watchdog);
+    this._clearPending();
     this.ctrl = null;
     this.chars = [];
     this.dispatchEvent(new Event('gatt'));
@@ -291,7 +311,10 @@ export class LightConnection extends EventTarget {
       return;
     }
     this.lastRxAt = Date.now();
+    this.unansweredAt = 0;              // the light is talking
     for (const f of decode(bytes)) {
+      if (f.ok && f.bytes[5] === 0x03) Array.from(f.bytes.slice(6, -2)).forEach((v, p) => { this.confirmed[p] = v; });
+      if (f.ok && f.bytes[5] === 0x02 && f.bytes.length >= 9) this._onAck(f.bytes[7], f.bytes[8]);
       if (!(f.isStatus && this.quietStatus)) this.logLine(`RX ${toHex(f.bytes)}  → ${f.text}`);
       if (!f.ok) continue;
       const update = stateFromFrame(f.bytes);
@@ -304,6 +327,79 @@ export class LightConnection extends EventTarget {
         this.sendFrames([GVMProtocol.statusEcho(f.bytes)], 'status echo', { quiet: this.quietStatus });
       }
     }
+  }
+
+  // ---------- acks / resend ----------
+
+  /** The light's state with everything the app last sent applied (may include commands that never arrived). */
+  get wanted() {
+    const o = { ...this.light };
+    for (const [p, v] of Object.entries(this.sent)) Object.assign(o, paramUpdate(+p, v));
+    return o;
+  }
+
+  /** True when a command went unanswered and nothing has been received since. */
+  get noReply() { return !!this.unansweredAt && this.lastRxAt < this.unansweredAt; }
+
+  _onAck(p, v) {
+    this.confirmed[p] = v;
+    this._pending.delete(p);
+    for (const w of this._waiters.filter((x) => x.param === p)) w.done(true);
+  }
+
+  /** Resolves true when the light acknowledges `param`, false after `ms`. */
+  waitAck(param, ms = 1000) {
+    return new Promise((resolve) => {
+      const w = { param, done: (ok) => { clearTimeout(w.t); this._waiters = this._waiters.filter((x) => x !== w); resolve(ok); } };
+      w.t = setTimeout(() => w.done(false), ms);
+      this._waiters.push(w);
+    });
+  }
+
+  _clearPending() {
+    this._pending.clear();
+    clearInterval(this._ackTimer);
+    this._ackTimer = null;
+  }
+
+  /** Called after a set frame (cmd 0x57) was written: decide whether an ack is due, and track it. */
+  _track(bytes, label) {
+    const p = bytes[7], v = bytes[9];
+    const was = this.confirmed[p];
+    const ignoredWhileOff = p !== 0 && this.confirmed[0] === 0;
+    const old = this._pending.get(p);
+    if (was === undefined || ignoredWhileOff) { this._pending.delete(p); return; }
+    if (was === v) {
+      // No ack is due for this one. An earlier unacknowledged send of the same param still counts as
+      // evidence (e.g. Cops alternating A/B on a dead link), but must not be resent over this newer value.
+      if (old) old.noResend = true;
+      return;
+    }
+    const now = performance.now();
+    // Only the latest value per param matters; a newer send replaces an older pending one but keeps its
+    // timing, so a fade that keeps sending brightness to a dead link is still noticed after ACK_MS.
+    this._pending.set(p, { v, bytes, label, first: old?.first ?? now, at: old?.at ?? now, tries: old?.tries ?? 0 });
+    if (!this._ackTimer) this._ackTimer = setInterval(() => this._checkAcks(), 100);
+  }
+
+  _checkAcks() {
+    const now = performance.now();
+    for (const [p, e] of this._pending) {
+      if (now - e.at < ACK_MS) continue;
+      if (this.confirmed[p] === e.v) { this._pending.delete(p); continue; }    // a status frame confirmed it
+      if (e.tries < 1 && !e.noResend) {
+        e.tries++; e.at = now; this.resendCount++;
+        this.logLine(`NO ACK for ${e.label}: resending`);
+        this.write(this.ctrl, e.bytes, `resend ${e.label}`, false, { resend: true });
+        continue;
+      }
+      this._pending.delete(p);
+      this.missCount++;
+      this.logLine(`NO ACK for ${e.label} after resending`);
+      const firstMs = Date.now() - (now - e.first);
+      if (this.lastRxAt < firstMs && !this.unansweredAt) this.unansweredAt = firstMs;
+    }
+    if (!this._pending.size) { clearInterval(this._ackTimer); this._ackTimer = null; }
   }
 
   // ---------- writes ----------
@@ -327,7 +423,7 @@ export class LightConnection extends EventTarget {
   }
 
   /** Writes raw bytes to a characteristic (default: control). Refuses OTA-like / non-writable targets. */
-  async write(info, bytes, label, quiet = false) {
+  async write(info, bytes, label, quiet = false, { resend = false } = {}) {
     if (!this.device?.gatt.connected) { if (!quiet) this.logLine(`TX blocked [${label}]: not connected`); return false; }
     if (!info) { this.logLine(`TX blocked [${label}]: no target characteristic`); return false; }
     if (info.ota) { this.logLine(`TX blocked [${label}]: ${info.uuid} looks like OTA/DFU`); return false; }
@@ -342,6 +438,7 @@ export class LightConnection extends EventTarget {
         if (wwr) await info.ch.writeValueWithoutResponse(bytes);
         else await info.ch.writeValueWithResponse(bytes);
         if (!quiet) this.logLine(`TX [${label}] ${wwr ? 'WWR' : 'WR'} ${shortUuid(info.uuid)}: ${toHex(bytes)}`);
+        if (!resend && info === this.ctrl && bytes[5] === 0x57) { this.sent[bytes[7]] = bytes[9]; this._track(bytes, label); }
         return true;
       } catch (e) {
         this.logLine(`TX error [${label}]: ${toHex(bytes)}  ${e.name}: ${e.message}`);

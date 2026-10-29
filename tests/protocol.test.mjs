@@ -134,3 +134,53 @@ test('looks and cues are rounded to what the light can show', () => {
   assert.deepEqual(normState({ mode: 'hsi', hue: 362, sat: 101, bri: -3, cct: 9000 }), { mode: 'hsi', cct: 5600, hue: 360, sat: 100, bri: 0 });
   assert.deepEqual(normState({ mode: 'cct', cct: 3149, power: 0 }), { mode: 'cct', cct: 3200, hue: 0, sat: 100, bri: 50, power: false });
 });
+
+// ---------- custom effects and gels ----------
+import { GELS } from '../web/effects.js';
+import { toEffect, normStep, cycleSeconds } from '../web/customfx.js';
+
+test('custom effect: never faster than MIN_STEP_MS, one cycle takes hold + fade of every step', () => {
+  const def = { id: 't', name: 'T', steps: [
+    normStep({ mode: 'hsi', hue: 250, sat: 100, bri: 40, hold: 1, fade: 0 }),
+    normStep({ mode: 'hsi', hue: 0, sat: 100, bri: 40, hold: 0.5, fade: 2 }),
+    normStep({ mode: 'cct', cct: 3200, bri: 60, hold: 0.1, fade: 1 }),        // hold below the minimum → clamped
+  ] };
+  const e = toEffect(def);
+  for (const speed of [1, 4]) {
+    const gen = e.steps({ speed, duration: 0 });
+    const cycle = [];
+    // First pass has no previous step to fade from; measure the second pass.
+    for (let i = 0; i < 200; i++) { const s = gen.next().value; cycle.push(s); }
+    for (const s of cycle) assert.ok(s.wait >= MIN_STEP_MS, `step wait ${s.wait} at speed ${speed}`);
+  }
+  // At speed 1 a steady-state cycle is 1 + 8 + 4 = 13 yields (step 2 fades 2 s in 250 ms parts, step 3 fades 1 s);
+  // the first pass is also 13 (only the very first step has nothing to fade from, and it has no fade anyway).
+  const gen = e.steps({ speed: 1, duration: 0 });
+  const waits = Array.from({ length: 26 }, () => gen.next().value.wait);
+  const cycle2 = waits.slice(13).reduce((a, b) => a + b, 0);
+  assert.ok(Math.abs(cycle2 - cycleSeconds(def) * 1000) < 1, `cycle ${cycle2} ms vs ${cycleSeconds(def) * 1000} ms`);
+  assert.equal(def.steps[2].hold, MIN_STEP_MS / 1000);
+});
+
+test('custom effect: fades take the short way round the hue circle', () => {
+  const def = { id: 't', name: 'T', steps: [normStep({ mode: 'hsi', hue: 250, sat: 100, bri: 40, hold: 1 }), normStep({ mode: 'hsi', hue: 0, sat: 100, bri: 40, hold: 1, fade: 1 })] };
+  const gen = toEffect(def).steps({ speed: 1, duration: 0 });
+  const hues = Array.from({ length: 8 }, () => gen.next().value.state.hue);
+  assert.ok(hues.every((h) => h === 0 || h >= 250), hues.join(' '));     // 250 → 360/0, never through 120
+});
+
+test('gels: valid values for the light (hue in 5° steps, CCT 3200–5600 in 100 K steps)', () => {
+  assert.ok(GELS.length >= 10);
+  for (const g of GELS) {
+    if (g.state.mode === 'cct') assert.ok(g.state.cct >= 3200 && g.state.cct <= 5600 && g.state.cct % 100 === 0, g.id);
+    else assert.ok(g.state.hue % 5 === 0 && g.state.hue >= 0 && g.state.hue < 360 && g.state.sat >= 0 && g.state.sat <= 100, g.id);
+    assert.equal(g.state.bri, undefined, `${g.id} must not set brightness`);
+  }
+});
+
+test('repo link: this repo by default, a fork when served from <user>.github.io/<repo>/', async () => {
+  const { repoUrl, REPO_URL } = await import('../web/setup.js');
+  assert.equal(repoUrl({ hostname: 'localhost', pathname: '/' }), REPO_URL);
+  assert.equal(repoUrl({ hostname: 'kyles0623.github.io', pathname: '/gvm-show-control/' }), 'https://github.com/kyles0623/gvm-show-control');
+  assert.equal(repoUrl({ hostname: 'someone.github.io', pathname: '/my-fork/index.html' }), 'https://github.com/someone/my-fork');
+});

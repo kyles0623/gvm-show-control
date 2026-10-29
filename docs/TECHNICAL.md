@@ -62,6 +62,20 @@ Web Bluetooth only works on `https://` or `http://localhost`.
 
 ## Multiple lights (`rig.js`)
 - Every paired light has its own connection (own write queue, reconnect and status), so lights are driven in parallel.
+- Acknowledgements and resend: the light acknowledges every set that changes a value (cmd 0x02 with the param and
+  value, seen within ~30–60 ms in real logs). It does not acknowledge a set to the value it already has, and it ignores
+  changes while off. So the app expects an ack only for a change from the last value the light itself reported, while
+  it is on. No ack within 500 ms → the command is sent once more. Still no ack, and nothing received since → the light
+  is shown as "no reply" (about 1–2 s after the command).
+- After "no reply", 6 s without anything from the light → the link is dropped and reconnected (otherwise 12 s; see below).
+- Restore after reconnect: when a link drops, the app remembers what it last sent the light (including commands that may
+  not have arrived). After reconnecting and the first status frame, it powers the light on/off to match and resends the
+  color and brightness; a light that was running an effect is picked up by the effect. Changes made to other lights
+  while it was away (e.g. a cue) are not replayed to it.
+- Pre-show check (Check button): per light, connected? Lights that are on get a brightness dip (to 10 %, or +40 % if
+  already low) and must acknowledge it within 1.5 s; then the level goes back. Lights that are off, fading or running an
+  effect aren't flashed; they pass if anything arrived in the last 7 s. Cues that reference unpaired or disconnected
+  lights are listed as warnings.
 - Silent-link watchdog: the light sends a status frame every ~5 s. If a connected light sends nothing for 7 s its
   blackout button shows "no reply"; after 12 s the app drops that link and reconnects it (macOS can keep a dead link
   "connected" for 20 s or more, while writes to it go nowhere).
@@ -105,24 +119,24 @@ Default looks (editable, see Looks library):
 
 | Key | Look | State |
 |---|---|---|
-| 1 | Daylight | CCT 5600 K, 80 % |
-| 2 | Tungsten | CCT 3200 K, 80 % |
-| 3 | Sunset | HSI 25°, sat 90, 60 % |
+| 1 | Daylight | CCT 5600 K, 50 % |
+| 2 | Tungsten | CCT 3200 K, 50 % |
+| 3 | Sunset | HSI 25°, sat 90, 50 % |
 | 4 | Moonlight | HSI 215°, sat 45, 25 % |
 | 5 | Night | HSI 235°, sat 100, 10 % |
 | 6 | Romance | HSI 330°, sat 70, 40 % |
 
 | Key | Effect | Pattern |
 |---|---|---|
-| Q | Cops | red ↔ blue every 400 ms, 25 % |
-| W | Television | cool tint, level 15–50 %, changes every 250–700 ms, occasional scene cut |
-| E | Fire | hue 10–30°, level 15–35 %, every 300–500 ms |
+| Q | Cops | red ↔ blue every 400 ms, 25 %; dim steps (A A / B B, strobe) 20 % |
+| W | Television | cool tint, level 20–50 %, changes every 250–700 ms, occasional scene cut |
+| E | Fire | hue 10–30°, level 20–35 %, every 300–500 ms |
 | R | Candle | hue 30°, level 20–35 %, every 350–700 ms |
-| T | Party | saturated color changes: Jump (new color every ~450 ms), Flow (glides around the palette), Beat (color on / dim, ~260 ms each); palettes Rainbow, Warm, Cool, Pink/Blue; level 15–30 %; each light runs its own sequence |
-| Y | Breathe | brightness sine 10–50 %, 6 s period, current color |
+| T | Party | saturated color changes: Jump (new color every ~450 ms), Flow (glides around the palette), Beat (color on / dim, ~260 ms each); palettes Rainbow, Warm, Cool, Pink/Blue; level 20–30 %; each light runs its own sequence |
+| Y | Breathe | brightness sine 20–50 %, 6 s period, current color |
 
 Default max brightness is kept low: fast effects (Cops, Party) 25–30 %, saturated colors (Fire, Candle) under 40 %,
-others 50 %. Each effect's settings panel can raise it.
+others 50 %. Default min brightness is 20 % for every effect. Each effect's settings panel can change both.
 
 - Looks send only the params that differ from the light's current state.
 - A look pressed during blackout is sent to the light; Restore powers on at that look's brightness.
@@ -132,6 +146,13 @@ others 50 %. Each effect's settings panel can raise it.
 - The board follows the selection: look/effect tiles are lit when every selected light has them, dashed when only some do.
   The effect settings panel shows the selected light's running values; edits apply to the selected lights' runs and are
   saved as the defaults for next time.
+- Custom effects (Effects tab, `localStorage['gvm.customfx']`): `{id, name, steps: [{mode, cct|hue+sat, bri, hold s,
+  fade s}]}`, looped. A fade is sent as intermediate steps of ≥ 250 ms (hue the short way round; White↔Color dips
+  through dark); holds are at least 200 ms. Settings: Speed (0.25–4×) and Run for. The running effect re-reads the
+  steps every cycle, so edits apply live. Effect ids are `custom:<id>`; a cue that uses a deleted custom effect skips it.
+- Gels: approximate gel-style colors (`GELS` in effects.js). Corrections are color temperature (Full CTO 3200 K,
+  ¾ 3500, ½ 3800, ¼ 4500, ⅛ 4900, ½ CTB on tungsten 4100, Full CTB 5600); colors are hue/saturation. Applying a gel
+  changes color only and crossfades with the Fade time.
 - Cues record every running effect with its lights (`effects: [{id, params, lightIds}]`; single-effect cues keep `effect`).
 - Effects: tapping a lit effect stops it on the selected lights and returns them to their look from before; Esc stops all effects. Grabbing a slider, a chip,
   or a look on a light takes that light out of the effect and leaves it where it is (other lights keep running).
@@ -142,7 +163,7 @@ others 50 %. Each effect's settings panel can raise it.
 - **Effect settings** (panel under the effect tiles; pick the effect in "Settings for"). Edits apply live, persist per effect, Reset restores defaults, editable while disconnected:
   | Effect | Controls |
   |---|---|
-  | Cops | Max brightness, Speed, Color A, Color B, Pattern (A/B · double flash · strobe with dark gaps) |
+  | Cops | Max brightness, Dim brightness, Speed, Color A, Color B, Pattern (A/B · double flash · strobe with dark gaps) |
   | Television | Max brightness, Min brightness, Speed, Tint, Color strength, Scene cuts |
   | Fire | Max brightness, Min brightness, Speed, Base color, Color spread |
   | Candle | Max brightness, Min brightness, Speed, Color, Saturation |
