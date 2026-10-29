@@ -23,6 +23,7 @@ const PARTY_PALETTES = {
 const t = (ms, p) => Math.max(MIN_STEP_MS, ms / (p.speed ?? 1));
 
 // Shared param definitions.
+// Default max brightness: fast effects (Cops, Party) 25–30 %, saturated colors (Fire, Candle) under 40 %, others 50 %.
 const LEVEL = (def) => ({ id: 'level', label: 'Max brightness', min: 10, max: 100, step: 1, def, unit: '%', kind: 'bri' });
 const FLOOR = (def, label = 'Min brightness') => ({ id: 'floor', label, min: 10, max: 100, step: 1, def, unit: '%', kind: 'bri' });
 const SPEED = (def = 1, max = 2.5) => ({ id: 'speed', label: 'Speed', min: 0.25, max, step: 0.05, def, unit: '×', kind: 'speed' });
@@ -32,9 +33,9 @@ const SAT = (def, label = 'Saturation') => ({ id: 'sat', label, min: 0, max: 100
 const DURATION = { id: 'duration', label: 'Run for', min: 0, max: 120, step: 1, def: 0, unit: 's', kind: 'plain' };
 
 export const LOOKS = [
-  { id: 'daylight',  name: 'Daylight',  swatch: '#f4f1ff', state: { mode: 'cct', cct: 5600, bri: 80 } },
-  { id: 'tungsten',  name: 'Tungsten',  swatch: '#ffb46b', state: { mode: 'cct', cct: 3200, bri: 80 } },
-  { id: 'sunset',    name: 'Sunset',    swatch: 'hsl(25 95% 55%)',  state: { mode: 'hsi', hue: 25, sat: 90, bri: 60 } },
+  { id: 'daylight',  name: 'Daylight',  swatch: '#f4f1ff', state: { mode: 'cct', cct: 5600, bri: 50 } },
+  { id: 'tungsten',  name: 'Tungsten',  swatch: '#ffb46b', state: { mode: 'cct', cct: 3200, bri: 50 } },
+  { id: 'sunset',    name: 'Sunset',    swatch: 'hsl(25 95% 55%)',  state: { mode: 'hsi', hue: 25, sat: 90, bri: 50 } },
   { id: 'moonlight', name: 'Moonlight', swatch: 'hsl(215 50% 60%)', state: { mode: 'hsi', hue: 215, sat: 45, bri: 25 } },
   { id: 'night',     name: 'Night',     swatch: 'hsl(235 100% 35%)', state: { mode: 'hsi', hue: 235, sat: 100, bri: 10 } },
   { id: 'romance',   name: 'Romance',   swatch: 'hsl(330 70% 55%)', state: { mode: 'hsi', hue: 330, sat: 70, bri: 40 } },
@@ -44,7 +45,7 @@ export const EFFECTS = [
   {
     id: 'cops', name: 'Cops', swatch: 'linear-gradient(90deg, hsl(0 100% 50%) 50%, hsl(240 100% 55%) 50%)',
     desc: 'Alternates between two colors',
-    params: [LEVEL(100), SPEED(1), HUE('hueA', 'Color A', 0), HUE('hueB', 'Color B', 240),
+    params: [LEVEL(25), SPEED(1), HUE('hueA', 'Color A', 0), HUE('hueB', 'Color B', 240),
       { id: 'pattern', label: 'Pattern', kind: 'choice', def: 'alternate',
         options: [['alternate', 'A / B'], ['double', 'A A / B B'], ['strobe', 'A / dark / B / dark']] },
       { id: 'multi', label: 'Multiple lights', kind: 'choice', def: 'alternate',
@@ -74,7 +75,7 @@ export const EFFECTS = [
     id: 'tv', name: 'Television', swatch: 'hsl(210 35% 55%)',
     desc: 'Flicker with random level and tint changes, occasional scene cuts',
     perLight: true,
-    params: [LEVEL(60), FLOOR(15), SPEED(1), HUE('hue', 'Tint', 210), SAT(30, 'Color strength'),
+    params: [LEVEL(50), FLOOR(15), SPEED(1), HUE('hue', 'Tint', 210), SAT(30, 'Color strength'),
       { id: 'cuts', label: 'Scene cuts', min: 0, max: 50, step: 1, def: 15, unit: '%', kind: 'plain' }, DURATION],
     *steps(p) {
       let bri = (p.floor + p.level) / 2, hueOff = 0;
@@ -92,7 +93,7 @@ export const EFFECTS = [
     id: 'fire', name: 'Fire', swatch: 'hsl(20 100% 50%)',
     desc: 'Orange flicker',
     perLight: true,
-    params: [LEVEL(75), FLOOR(35), SPEED(1), HUE('hue', 'Base color', 20),
+    params: [LEVEL(35), FLOOR(15), SPEED(1), HUE('hue', 'Base color', 20),
       { id: 'spread', label: 'Color spread', min: 0, max: 30, step: 5, def: 10, unit: '°', kind: 'plain' }, DURATION],
     *steps(p) {
       for (;;) {
@@ -106,7 +107,7 @@ export const EFFECTS = [
     id: 'candle', name: 'Candle', swatch: 'hsl(32 100% 60%)',
     desc: 'Gentle warm flicker',
     perLight: true,
-    params: [LEVEL(45), FLOOR(30), SPEED(1), HUE('hue', 'Color', 30), SAT(85), DURATION],
+    params: [LEVEL(35), FLOOR(20), SPEED(1), HUE('hue', 'Color', 30), SAT(85), DURATION],
     *steps(p) {
       for (;;) {
         const [lo, hi] = lohi(p.floor, p.level);
@@ -120,7 +121,7 @@ export const EFFECTS = [
     desc: 'Club-style color changes: Jump between colors, Flow around the palette, or pulse to a Beat',
     perLight: true,   // every light runs its own sequence, so several lights show different colors
     params: [
-      LEVEL(100), FLOOR(15), SPEED(1),
+      LEVEL(30), FLOOR(15), SPEED(1),
       { id: 'palette', label: 'Colors', kind: 'choice', def: 'rainbow',
         options: [['rainbow', 'Rainbow'], ['warm', 'Warm'], ['cool', 'Cool'], ['pinkblue', 'Pink / Blue']] },
       { id: 'style', label: 'Style', kind: 'choice', def: 'jump',
@@ -158,7 +159,7 @@ export const EFFECTS = [
   {
     id: 'breathe', name: 'Breathe', swatch: 'radial-gradient(circle, #ffd9b3, #3a2a1a)',
     desc: 'Slow brightness pulse, keeps the current color',
-    params: [LEVEL(80), FLOOR(10),
+    params: [LEVEL(50), FLOOR(10),
       { id: 'period', label: 'Cycle time', min: 2, max: 20, step: 0.5, def: 6, unit: 's', kind: 'plain' }, DURATION],
     *steps(p) {
       const step = 300;

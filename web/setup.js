@@ -2,7 +2,7 @@
 // Web Bluetooth problems. No DOM access here; app.js renders what these return.
 
 // Shown in the lower-right corner and in Settings. Bump it (and CACHE in sw.js) with every release.
-export const APP_VERSION = '1.1.0';
+export const APP_VERSION = '1.2.0';
 
 /** Detects OS, browser and Web Bluetooth readiness. */
 export function detectEnv(nav = navigator, win = window) {

@@ -114,12 +114,15 @@ Default looks (editable, see Looks library):
 
 | Key | Effect | Pattern |
 |---|---|---|
-| Q | Cops | red ↔ blue every 400 ms |
-| W | Television | cool tint, level 15–60 %, changes every 250–700 ms, occasional scene cut |
-| E | Fire | hue 10–30°, level 35–75 %, every 300–500 ms |
-| R | Candle | hue 30°, level 30–45 %, every 350–700 ms |
-| T | Party | saturated color changes: Jump (new color every ~450 ms), Flow (glides around the palette), Beat (color on / dim, ~260 ms each); palettes Rainbow, Warm, Cool, Pink/Blue; each light runs its own sequence |
-| Y | Breathe | brightness sine 10–80 %, 6 s period, current color |
+| Q | Cops | red ↔ blue every 400 ms, 25 % |
+| W | Television | cool tint, level 15–50 %, changes every 250–700 ms, occasional scene cut |
+| E | Fire | hue 10–30°, level 15–35 %, every 300–500 ms |
+| R | Candle | hue 30°, level 20–35 %, every 350–700 ms |
+| T | Party | saturated color changes: Jump (new color every ~450 ms), Flow (glides around the palette), Beat (color on / dim, ~260 ms each); palettes Rainbow, Warm, Cool, Pink/Blue; level 15–30 %; each light runs its own sequence |
+| Y | Breathe | brightness sine 10–50 %, 6 s period, current color |
+
+Default max brightness is kept low: fast effects (Cops, Party) 25–30 %, saturated colors (Fire, Candle) under 40 %,
+others 50 %. Each effect's settings panel can raise it.
 
 - Looks send only the params that differ from the light's current state.
 - A look pressed during blackout is sent to the light; Restore powers on at that look's brightness.
