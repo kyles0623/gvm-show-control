@@ -9,7 +9,13 @@ the minor version (see [CONTRIBUTING.md](CONTRIBUTING.md#versions-and-the-change
 
 ## [Unreleased]
 
-## [1.4.0] - 2026-10-29
+## [1.5.0] - 2026-10-29
+
+### Added
+- Effects tab: click a step's color square to open a color picker (color field for hue and saturation,
+  strip for white 3200–5600 K). Picks snap to what the light accepts.
+- Effects tab: Level, Hold and Fade can each be a random range (the ~ button next to the value). A new value
+  is picked from the range every time the step runs, for natural-looking flicker.
 
 ### Changed
 - Custom effects can hold a step for as little as 0.06 s (was 0.2 s), for fast flicker and strobe-like effects.

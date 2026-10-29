@@ -194,3 +194,27 @@ test('custom effect: brightness-only flicker can step every 60 ms; changed value
   assert.equal(changedValues(a, b), 1);                                                    // brightness only
   assert.equal(changedValues(a, normStep({ mode: 'hsi', hue: 0, sat: 100, bri: 60 })), 4); // mode, hue, sat, bri
 });
+
+test('custom effect: random Level / Hold / Fade stay within their ranges and vary', async () => {
+  const { pick, hasRandom } = await import('../web/customfx.js');
+  const s = normStep({ mode: 'hsi', hue: 0, sat: 100, bri: 20, briTo: 70, hold: 0.1, holdTo: 0.5, fade: 0, fadeTo: 2 });
+  assert.deepEqual([s.bri, s.briTo, s.hold, s.holdTo, s.fade, s.fadeTo], [20, 70, 0.1, 0.5, 0, 2]);
+  assert.deepEqual([pick(s, 'bri', () => 0), pick(s, 'bri', () => 0.999)], [20, 70]);
+  const back = normStep({ bri: 80, briTo: 30 });                       // entered backwards → swapped
+  assert.deepEqual([back.bri, back.briTo], [30, 80]);
+  const def = { id: 'r', name: 'R', steps: [s, normStep({ mode: 'hsi', hue: 240, sat: 100, bri: 50, hold: 0.2 })] };
+  assert.ok(hasRandom(def));
+  const gen = toEffect(def).steps({ speed: 1, duration: 0 });
+  const bris = new Set(), waits = [];
+  for (let k = 0; k < 400; k++) {
+    const st = gen.next().value;
+    if (st.state.hue === 0) { bris.add(st.state.bri); assert.ok(st.state.bri >= 20 && st.state.bri <= 70, `bri ${st.state.bri}`); }
+    waits.push(st.wait);
+  }
+  assert.ok(bris.size > 5, `only ${bris.size} distinct levels`);
+  assert.ok(waits.every((w) => w >= FAST_STEP_MS));
+  // fixed steps are unchanged by the random support
+  const fixed = normStep({ bri: 40, hold: 1 });
+  assert.equal(fixed.briTo, undefined);
+  assert.equal(pick(fixed, 'bri'), 40);
+});

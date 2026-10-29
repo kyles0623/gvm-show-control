@@ -3,7 +3,7 @@ import { parseHex, toHex, shortUuid, sleep } from './ble.js';
 import { Rig } from './rig.js';
 import { Show, describeState, normState, stateAt } from './show.js';
 import { EFFECTS, GELS, defaults } from './effects.js';
-import { CustomEffects, PREFIX as CUSTOM, stepColor, normStep, cycleSeconds, changedValues } from './customfx.js';
+import { CustomEffects, PREFIX as CUSTOM, stepColor, normStep, cycleSeconds, changedValues, hasRandom, RANGES } from './customfx.js';
 import { APP_VERSION, repoUrl, detectEnv, blockReason, bluetoothSteps, explainProblem, LIGHT_STEPS, OS_NAME, BROWSER_NAME } from './setup.js';
 
 const env = detectEnv();
@@ -612,7 +612,7 @@ function renderEffectEditor() {
   const del = btn('Delete', 'danger', 'Delete this effect', () => {});
   confirmButton(del, 'Sure?', () => { customFx.remove(d.id); toast({ level: 'ok', title: `Deleted “${d.name}”` }); });
   head.append(name, play, dup, del);
-  const info = mk('p', 'hint fxb-info', `${d.steps.length} step${d.steps.length === 1 ? '' : 's'} · ${cycleSeconds(d).toFixed(1)} s per cycle at speed 1× · loops until stopped (or its Run for time). Speed and Run for are in the Effects settings on the Show tab.`);
+  const info = mk('p', 'hint fxb-info', `${d.steps.length} step${d.steps.length === 1 ? '' : 's'} · ${hasRandom(d) ? 'about ' : ''}${cycleSeconds(d).toFixed(1)} s per cycle at speed 1× · loops until stopped (or its Run for time). Speed and Run for are in the Effects settings on the Show tab.`);
 
   // Steps
   const table = mk('div', 'fxb-steps');
@@ -623,7 +623,9 @@ function renderEffectEditor() {
   const move = (i, k) => { const steps = d.steps.map((s) => ({ ...s })); const j = i + k; if (j < 0 || j >= steps.length) return; [steps[i], steps[j]] = [steps[j], steps[i]]; customFx.setSteps(d.id, steps); };
   d.steps.forEach((s, i) => {
     const row = mk('div', 'fxb-row');
-    const sw = mk('span', 'cfx-sw'); sw.style.background = stepColor(s);
+    const sw = mk('button', 'cfx-sw sw-btn'); sw.style.background = stepColor(s);
+    sw.title = 'Pick a color'; sw.setAttribute('aria-label', `Step ${i + 1} color`);
+    sw.addEventListener('click', (ev) => { ev.stopPropagation(); openStepPicker(sw, d.id, i); });
     const mode = mk('select', 'fxb-mode');
     mode.add(new Option('White', 'cct')); mode.add(new Option('Color', 'hsi'));
     mode.value = s.mode; mode.dataset.focus = `${i}:mode`;
@@ -636,15 +638,40 @@ function renderEffectEditor() {
       val.append(n(s.hue, { min: 0, max: 360, step: 5 }, (v) => set(i, { hue: v }), 'hue'), mk('small', '', '°'),
         n(s.sat, { min: 0, max: 100, step: 1 }, (v) => set(i, { sat: v }), 'sat'), mk('small', '', '%'));
     }
-    const bri = n(s.bri, { min: 0, max: 100, step: 1 }, (v) => set(i, { bri: v }), 'bri');
-    const hold = n(s.hold, { min: 0.06, max: 600, step: 0.01 }, (v) => set(i, { hold: v }), 'hold');
+    // Level / Hold / Fade: a fixed value, or (toggle ~) a random range picked anew each time the step runs.
+    const ranged = (key, opts, input) => {
+      const [base, to] = RANGES[key];
+      const wrap = mk('span', 'fxb-rng');
+      const tog = mk('button', 'fxb-rnd' + (s[to] != null ? ' on' : ''), '~');
+      tog.title = s[to] != null ? 'Random range: on (click for a fixed value)' : 'Use a random value from a range';
+      tog.setAttribute('aria-pressed', String(s[to] != null));
+      tog.dataset.focus = `${i}:${key}~`;
+      tog.addEventListener('click', () => {
+        if (s[to] != null) { set(i, { [to]: null }); return; }
+        const span = { bri: Math.min(100, s.bri + 30), hold: Math.min(600, s.hold * 3), fade: Math.min(60, s.fade + 1) }[key];
+        set(i, { [to]: span > s[base] ? span : Math.min(opts.max, s[base] + opts.step) });
+      });
+      wrap.append(input);
+      if (s[to] != null) {
+        input.title = 'From';
+        const up = n(s[to], opts, (v) => set(i, { [to]: v }), `${key}To`);
+        up.title = 'To';
+        wrap.classList.add('on');
+        wrap.append(mk('small', '', '–'), up);
+      }
+      wrap.append(tog);
+      return wrap;
+    };
+    const briIn = n(s.bri, { min: 0, max: 100, step: 1 }, (v) => set(i, { bri: v }), 'bri');
+    const holdIn = n(s.hold, { min: 0.06, max: 600, step: 0.01 }, (v) => set(i, { hold: v }), 'hold');
+    const hold = holdIn;
     // A step needs one write (60 ms) per value it changes; flag holds shorter than that.
     const need = changedValues(d.steps[(i - 1 + d.steps.length) % d.steps.length], s) * 0.06;
     if (d.steps.length > 1 && s.hold < need - 1e-9) {
       hold.classList.add('fxb-warn');
       hold.title = `This step changes ${Math.round(need / 0.06)} values, so it takes at least ${need.toFixed(2)} s to send.`;
     }
-    const fade = n(s.fade, { min: 0, max: 60, step: 0.1 }, (v) => set(i, { fade: v }), 'fade');
+    const fadeIn = n(s.fade, { min: 0, max: 60, step: 0.1 }, (v) => set(i, { fade: v }), 'fade');
     const gel = mk('select', 'fxb-gel');
     gel.add(new Option('—', ''));
     for (const g of GELS) gel.add(new Option(g.name, g.id));
@@ -653,7 +680,10 @@ function renderEffectEditor() {
     const tools = mk('span', 'fxb-tools');
     tools.append(btn('↑', '', 'Move up', () => move(i, -1)), btn('↓', '', 'Move down', () => move(i, 1)),
       btn('✕', 'danger', 'Remove this step', () => customFx.setSteps(d.id, d.steps.filter((_, k) => k !== i))));
-    row.append(mk('span', 'fxb-num', String(i + 1)), sw, mode, val, bri, hold, fade, gel, tools);
+    row.append(mk('span', 'fxb-num', String(i + 1)), sw, mode, val,
+      ranged('bri', { min: 0, max: 100, step: 1 }, briIn),
+      ranged('hold', { min: 0.06, max: 600, step: 0.01 }, holdIn),
+      ranged('fade', { min: 0, max: 60, step: 0.1 }, fadeIn), gel, tools);
     table.append(row);
   });
 
@@ -711,6 +741,99 @@ function initLinks() {
     toast({ level: 'ok', title: `Updated to v${APP_VERSION}`, body: `You were on v${last}.`, actions: [{ label: 'What’s new', fn: () => window.open(`${base}/blob/main/CHANGELOG.md`, '_blank', 'noopener') }] });
   }
   prefs.set('lastVersion', APP_VERSION);
+}
+
+// ---------- color picker for custom effect steps ----------
+
+/**
+ * Popover next to a step's color square: a color field (hue across, saturation down) and a white strip
+ * (3200–5600 K). Values snap to what the light accepts (hue in 5° steps, CCT in 100 K). Saved on release.
+ */
+function openStepPicker(anchor, defId, i) {
+  closeStepPicker();
+  const step = customFx.get(defId)?.steps[i];
+  if (!step) return;
+  let cur = { ...step };
+  const pop = document.createElement('div');
+  pop.id = 'stepPicker';
+  pop.className = 'step-picker';
+  pop.setAttribute('role', 'dialog');
+  pop.setAttribute('aria-label', `Step ${i + 1} color`);
+  pop.innerHTML = `
+    <div class="sp-head"><span class="sp-prev"></span><span class="sp-val"></span><span class="hint">Step ${i + 1}</span></div>
+    <div class="sp-label">Color</div>
+    <div class="sp-area sp-hs"><canvas width="256" height="128"></canvas><span class="sp-dot"></span></div>
+    <div class="sp-label">White</div>
+    <div class="sp-area sp-cct"><canvas width="256" height="20"></canvas><span class="sp-dot"></span></div>`;
+  document.body.appendChild(pop);
+
+  const [hsCanvas, cctCanvas] = pop.querySelectorAll('canvas');
+  let g = hsCanvas.getContext('2d');
+  for (let x = 0; x < 256; x++) {
+    const grad = g.createLinearGradient(0, 0, 0, 128);
+    const h = (x / 256) * 360;
+    grad.addColorStop(0, `hsl(${h} 100% 50%)`);
+    grad.addColorStop(1, `hsl(${h} 0% 96%)`);
+    g.fillStyle = grad;
+    g.fillRect(x, 0, 1, 128);
+  }
+  g = cctCanvas.getContext('2d');
+  const wg = g.createLinearGradient(0, 0, 256, 0);
+  wg.addColorStop(0, stepColor({ mode: 'cct', cct: 3200 }));
+  wg.addColorStop(1, stepColor({ mode: 'cct', cct: 5600 }));
+  g.fillStyle = wg;
+  g.fillRect(0, 0, 256, 20);
+
+  const show = () => {
+    pop.querySelector('.sp-prev').style.background = stepColor(cur);
+    pop.querySelector('.sp-val').textContent = cur.mode === 'cct' ? `White ${cur.cct} K` : `Hue ${cur.hue}° · Sat ${cur.sat}%`;
+    const [dHs, dCct] = pop.querySelectorAll('.sp-dot');
+    dHs.hidden = cur.mode !== 'hsi';
+    dCct.hidden = cur.mode !== 'cct';
+    dHs.style.left = `${(cur.hue / 360) * 100}%`;
+    dHs.style.top = `${100 - cur.sat}%`;
+    dCct.style.left = `${((cur.cct - 3200) / 2400) * 100}%`;
+    dCct.style.top = '50%';
+  };
+  const commit = () => {
+    const d = customFx.get(defId);
+    if (!d?.steps[i]) return;
+    const steps = d.steps.map((x) => ({ ...x }));
+    Object.assign(steps[i], cur.mode === 'cct' ? { mode: 'cct', cct: cur.cct } : { mode: 'hsi', hue: cur.hue, sat: cur.sat });
+    customFx.setSteps(defId, steps);
+  };
+  const drag = (area, fromXY) => {
+    const at = (ev) => {
+      const r = area.getBoundingClientRect();
+      const fx = clamp((ev.clientX - r.left) / r.width, 0, 1), fy = clamp((ev.clientY - r.top) / r.height, 0, 1);
+      cur = { ...cur, ...fromXY(fx, fy) };
+      show();
+    };
+    area.addEventListener('pointerdown', (ev) => { area.setPointerCapture(ev.pointerId); at(ev); });
+    area.addEventListener('pointermove', (ev) => { if (area.hasPointerCapture(ev.pointerId)) at(ev); });
+    area.addEventListener('pointerup', (ev) => { at(ev); commit(); });
+  };
+  drag(pop.querySelector('.sp-hs'), (fx, fy) => ({ mode: 'hsi', hue: (Math.round((fx * 360) / 5) * 5) % 360, sat: Math.round((1 - fy) * 100) }));
+  drag(pop.querySelector('.sp-cct'), (fx) => ({ mode: 'cct', cct: Math.round((3200 + fx * 2400) / 100) * 100 }));
+  show();
+
+  // Place it under the square, inside the window.
+  const r = anchor.getBoundingClientRect(), pw = pop.offsetWidth, ph = pop.offsetHeight;
+  pop.style.left = `${clamp(r.left, 8, innerWidth - pw - 8)}px`;
+  pop.style.top = `${r.bottom + ph + 8 < innerHeight ? r.bottom + 6 : Math.max(8, r.top - ph - 6)}px`;
+
+  const outside = (ev) => { if (!pop.contains(ev.target)) closeStepPicker(); };
+  const esc = (ev) => { if (ev.key === 'Escape') { ev.preventDefault(); ev.stopImmediatePropagation(); closeStepPicker(); } };
+  document.addEventListener('pointerdown', outside, true);   // the opening click's pointerdown has already happened
+  window.addEventListener('keydown', esc, true);
+  pop._cleanup = () => { document.removeEventListener('pointerdown', outside, true); window.removeEventListener('keydown', esc, true); };
+}
+
+function closeStepPicker() {
+  const pop = $('stepPicker');
+  if (!pop) return;
+  pop._cleanup?.();
+  pop.remove();
 }
 
 // ---------- gels ----------
@@ -2056,6 +2179,7 @@ function initHelp() {
 // ---------- wiring ----------
 
 function showTab(name) {
+  closeStepPicker();
   if (name === 'debug' && !prefs.get('showDebug', false)) name = 'show';
   if (!['show', 'looks', 'effects', 'debug'].includes(name)) name = 'show';
   for (const t of document.querySelectorAll('.tab')) t.classList.toggle('active', t.dataset.tab === name);
