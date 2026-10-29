@@ -43,6 +43,20 @@ function normDef(d) {
   return { id: String(d.id || uid()), name: String(d.name || 'Custom effect').slice(0, 40), steps: (Array.isArray(d.steps) ? d.steps : []).slice(0, 64).map(normStep) };
 }
 
+/** Ready-made custom effects to start from (Effects tab → Start from…). Plain steps, so they can be edited. */
+export const TEMPLATES = [
+  {
+    id: 'paparazzi', name: 'Paparazzi',
+    desc: 'Camera flashes: dim, then short white flashes at random moments, sometimes a double flash',
+    steps: [
+      { mode: 'cct', cct: 5600, bri: 5, hold: 0.4, holdTo: 2.5, fade: 0 },              // dim pause between bursts
+      { mode: 'cct', cct: 5600, bri: 25, briTo: 30, hold: 0.06, holdTo: 0.1, fade: 0 }, // flash
+      { mode: 'cct', cct: 5600, bri: 5, hold: 0.08, holdTo: 0.5, fade: 0 },             // short gap
+      { mode: 'cct', cct: 5600, bri: 5, briTo: 30, hold: 0.06, fade: 0 },               // maybe a second flash
+    ],
+  },
+];
+
 /** CSS color for a step (for swatches). */
 export function stepColor(s) {
   if (s.mode === 'hsi') return `hsl(${s.hue} ${s.sat}% ${Math.round(85 - s.sat * 0.35)}%)`;

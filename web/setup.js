@@ -2,7 +2,7 @@
 // Web Bluetooth problems. No DOM access here; app.js renders what these return.
 
 // Shown in the lower-right corner and in Settings. Bump it (and CACHE in sw.js) with every release.
-export const APP_VERSION = '1.5.0';
+export const APP_VERSION = '1.6.0';
 
 /** Where the project lives (changelog, issues). A fork served from <user>.github.io/<repo>/ links to itself. */
 export const REPO_URL = 'https://github.com/kyles0623/gvm-show-control';

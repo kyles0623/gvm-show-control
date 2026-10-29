@@ -218,3 +218,15 @@ test('custom effect: random Level / Hold / Fade stay within their ranges and var
   assert.equal(fixed.briTo, undefined);
   assert.equal(pick(fixed, 'bri'), 40);
 });
+
+test('templates: Paparazzi is valid and flashes at random moments', async () => {
+  const { TEMPLATES } = await import('../web/customfx.js');
+  const t = TEMPLATES.find((x) => x.id === 'paparazzi');
+  const steps = t.steps.map(normStep);
+  assert.deepEqual(steps.map((s) => [s.bri, s.briTo ?? null, s.hold, s.holdTo ?? null]), t.steps.map((s) => [s.bri, s.briTo ?? null, s.hold, s.holdTo ?? null]));
+  const gen = toEffect({ id: 'p', name: 'P', steps }).steps({ speed: 1, duration: 0 });
+  const seq = Array.from({ length: 400 }, () => gen.next().value);
+  assert.ok(seq.every((s) => s.wait >= FAST_STEP_MS && s.state.mode === 'cct' && s.state.bri <= 30));
+  const pauses = seq.filter((s, k) => k % 4 === 0).map((s) => s.wait);
+  assert.ok(new Set(pauses.map(Math.round)).size > 20, 'pauses between bursts should vary');
+});

@@ -528,7 +528,7 @@ body.popout { overflow: hidden; height: 100vh; }
   border: 1px solid var(--border); border-radius: 8px; padding: 6px 10px; }
 .fxb-info { margin: 6px 0 10px; }
 .fxb-steps { display: grid; gap: 4px; overflow-x: auto; }
-.fxb-row { display: grid; grid-template-columns: 22px 18px 90px 172px 132px 132px 132px minmax(110px, 1fr) auto; gap: 6px; align-items: center; }
+.fxb-row { display: grid; grid-template-columns: 22px 18px 90px 172px 140px 140px 140px minmax(100px, 1fr) auto; gap: 6px; align-items: center; }
 .fxb-row select, .fxb-row input { height: 30px; }
 .fxb-hdr span { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
 .fxb-row input, .fxb-row select { width: 100%; min-width: 0; background: var(--panel-2); color: var(--text); border: 1px solid var(--border);
@@ -563,6 +563,11 @@ body.popout { overflow: hidden; height: 100vh; }
 .fxb-rng { display: flex; align-items: center; gap: 3px; min-width: 0; }
 .fxb-rng input { flex: 1; min-width: 0; }
 .fxb-rng small { color: var(--muted); }
+/* In range mode the two boxes are narrow: drop the spinner arrows so values like 0.06 stay readable. */
+.fxb-rng.on input { padding: 4px; -moz-appearance: textfield; }
+.fxb-rng.on input::-webkit-inner-spin-button, .fxb-rng.on input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
 .fxb-rnd { flex: none; width: 24px; height: 30px; padding: 0; border-radius: 6px; border: 1px solid var(--border); background: transparent;
   color: var(--muted); font: 600 15px/1 var(--mono); cursor: pointer; }
 .fxb-rnd.on { border-color: var(--accent); color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); }
+
+.fxb-template { width: 100%; margin-top: 8px; background: var(--panel-2); color: var(--text); border: 1px solid var(--border); border-radius: 8px; padding: 4px 6px; font: inherit; font-size: 12px; }

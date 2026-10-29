@@ -3,7 +3,7 @@ import { parseHex, toHex, shortUuid, sleep } from './ble.js';
 import { Rig } from './rig.js';
 import { Show, describeState, normState, stateAt } from './show.js';
 import { EFFECTS, GELS, defaults } from './effects.js';
-import { CustomEffects, PREFIX as CUSTOM, stepColor, normStep, cycleSeconds, changedValues, hasRandom, RANGES } from './customfx.js';
+import { CustomEffects, PREFIX as CUSTOM, stepColor, normStep, cycleSeconds, changedValues, hasRandom, RANGES, TEMPLATES } from './customfx.js';
 import { APP_VERSION, repoUrl, detectEnv, blockReason, bluetoothSteps, explainProblem, LIGHT_STEPS, OS_NAME, BROWSER_NAME } from './setup.js';
 
 const env = detectEnv();
@@ -564,6 +564,18 @@ const fxb = { sel: prefs.get('fxb.sel', null) };
 
 function initEffectEditor() {
   customFx.addEventListener('change', onCustomFxChange);
+  const tpl = $('fxbTemplate');
+  tpl.add(new Option('Start from…', ''));
+  for (const t of TEMPLATES) { const o = new Option(t.name, t.id); o.title = t.desc; tpl.add(o); }
+  tpl.addEventListener('change', () => {
+    const t = TEMPLATES.find((x) => x.id === tpl.value);
+    tpl.value = '';
+    if (!t) return;
+    const d = customFx.add(customFx._uniqueName(t.name), structuredClone(t.steps));
+    fxb.sel = d.id; prefs.set('fxb.sel', d.id);
+    renderEffectEditor();
+    toast({ level: 'ok', title: `Added “${d.name}”`, body: `${t.desc}. It’s now under Custom on the Show tab; edit any step here.` });
+  });
   $('fxbNew').addEventListener('click', () => {
     const d = customFx.add();
     fxb.sel = d.id; prefs.set('fxb.sel', d.id);
