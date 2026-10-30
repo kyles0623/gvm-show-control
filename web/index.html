@@ -8,6 +8,10 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/icon-192.png">
 <link rel="stylesheet" href="styles.css">
+<!-- Visit counter (GoatCounter: no cookies, no personal data). Skipped on localhost and when the
+     "Count my visits" setting is off (localStorage skipgc = 't'). Not needed for the app to work. -->
+<script data-goatcounter="https://kyles0623.goatcounter.com/count"
+        async src="//gc.zgo.at/count.js"></script>
 </head>
 <body>
 <header class="bar">
@@ -336,8 +340,10 @@
   <section class="about">
     <h3>About</h3>
     <p><b>GVM Show Control</b> <span id="appVersion"></span> · <span id="envInfo"></span></p>
-    <p class="hint">Unofficial controller, not affiliated with or endorsed by GVM. Runs entirely in your browser:
-      nothing is sent anywhere except Bluetooth commands to your light. Works offline once installed.</p>
+    <p class="hint">Unofficial controller, not affiliated with or endorsed by GVM. Runs in your browser: your lights,
+      looks, cues and effects never leave it. The hosted app counts visits with GoatCounter (no cookies, no personal
+      data; page, browser, screen size and country only); turn that off below. Works offline once installed.</p>
+    <label class="switch"><input id="setCount" type="checkbox"> Count my visits (anonymous)</label>
     <p class="links"><a class="lnk-changelog" target="_blank" rel="noopener">What’s new</a> ·
       <a class="lnk-bug" target="_blank" rel="noopener">Report a problem</a> ·
       <a class="lnk-idea" target="_blank" rel="noopener">Suggest a feature</a> ·

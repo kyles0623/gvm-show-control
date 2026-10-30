@@ -3,7 +3,8 @@
 Run one or more GVM LED lights from your laptop like a small lighting console: a cue list with a GO
 button, color crossfades, your own saved looks, a big Blackout / Restore button, and animated effects
 (police lights, TV flicker, fire, party colors…). It's a web page that talks to the light over Bluetooth — nothing to
-install, works offline, and no account.
+install, works offline, and no account. (The hosted app counts visits anonymously with GoatCounter; you can turn
+that off in Settings.)
 
 > **Unofficial.** Not affiliated with, endorsed by, or supported by GVM. Use at your own risk.
 

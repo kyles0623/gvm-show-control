@@ -9,9 +9,11 @@ the minor version (see [CONTRIBUTING.md](CONTRIBUTING.md#versions-and-the-change
 
 ## [Unreleased]
 
-## [1.6.0] - 2026-10-29
+## [1.8.0] - 2026-10-30
 
 ### Added
+- Anonymous visit counting on the hosted app with GoatCounter (no cookies, no personal data). Settings → About →
+  "Count my visits" turns it off. Local copies (localhost) are never counted.
 - Effects tab: click a step's color square to open a color picker (color field for hue and saturation,
   strip for white 3200–5600 K). Picks snap to what the light accepts.
 - Effects tab: Level, Hold and Fade can each be a random range (the ~ button next to the value). A new value

@@ -2144,6 +2144,12 @@ function syncSettingsForm() {
 function initSettings() {
   $('appVersion').textContent = APP_VERSION;
   $('versionBadge').textContent = `v${APP_VERSION}`;
+  // Visit counter opt-out: GoatCounter's script skips counting when localStorage skipgc is 't' (next load).
+  try { $('setCount').checked = localStorage.getItem('skipgc') !== 't'; } catch {}
+  $('setCount').addEventListener('change', () => {
+    try { if ($('setCount').checked) localStorage.removeItem('skipgc'); else localStorage.setItem('skipgc', 't'); } catch {}
+    toast({ level: 'ok', title: $('setCount').checked ? 'Visits will be counted' : 'Visits won’t be counted', body: 'Takes effect the next time the app opens.' });
+  });
   initLinks();
   $('envInfo').textContent = `${BROWSER_NAME[env.browser]} on ${OS_NAME[env.os]}${env.supported ? '' : ' (no Web Bluetooth)'}`;
   $('settingsBtn').addEventListener('click', () => openDialog('settingsDlg'));
