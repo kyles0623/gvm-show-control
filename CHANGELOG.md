@@ -9,9 +9,8 @@ the minor version (see [CONTRIBUTING.md](CONTRIBUTING.md#versions-and-the-change
 
 ## [Unreleased]
 
-## [1.8.0] - 2026-10-30
-
 ### Added
+- Setup, Help, connection-problem messages and the README now say the light must be in App mode.
 - Anonymous visit counting on the hosted app with GoatCounter (no cookies, no personal data). Settings → About →
   "Count my visits" turns it off. Local copies (localhost) are never counted.
 - Effects tab: click a step's color square to open a color picker (color field for hue and saturation,

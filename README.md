@@ -14,6 +14,7 @@ that off in Settings.)
 - A **GVM 800-RGB** (shows up as `BT_LED`). Other GVM models may use the same protocol but are untested — see [Other lights](#other-lights).
 - **Google Chrome or Microsoft Edge** on macOS, Windows, ChromeOS or Android.
   Safari, Firefox and all iPhone/iPad browsers can't use Bluetooth from a web page; the app tells you this and suggests alternatives.
+- Set the light to **App mode** on the light itself; in other modes it doesn't take Bluetooth control.
 - Close the GVM phone app first — the light accepts only one connection at a time.
 
 ## Use it
