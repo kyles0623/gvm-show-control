@@ -138,6 +138,7 @@ function renderConn() {
     el.disabled = !on;
   }
   renderChips();
+  renderGel();
   renderCueBar();
   updateWakeLock();
   renderLight();
@@ -892,19 +893,56 @@ function initGels() {
   }
   sel.addEventListener('change', () => {
     const g = GELS.find((x) => x.id === sel.value);
-    sel.value = '';
     sel.blur();
-    if (g) applyGel(g);
+    if (g) applyGel(g); else renderGel();
   });
+  $('gelReset').addEventListener('click', resetGel);
+}
+
+/** Gel menu + Reset follow the selected light(s): the gel they all have, else the placeholder. */
+function renderGel() {
+  const sel = $('gelSel');
+  if (!sel.options.length) return;
+  const t = targets();
+  const ids = [...new Set(t.map((l) => l.gel ?? ''))];
+  sel.value = ids.length === 1 ? ids[0] : '';
+  sel.options[0].textContent = ids.length > 1 && ids.some(Boolean) ? 'Mixed gels' : 'Gel… (approximate)';
+  $('gelReset').disabled = !t.some((l) => l.gel) || !rig.anyConnected;
+}
+
+/** A light's color changed some other way: it no longer has its gel. */
+function clearGel(lights) {
+  for (const l of lights) { l.gel = null; l.preGel = null; }
+  renderGel();
 }
 
 /** Changes only the color of the selected lights (brightness stays), fading with the Fade time. */
 async function applyGel(g, { fadeMs = ui.fadeMs } = {}) {
   const lights = targets();
   if (!lights.length) return;
+  // The color before the first gel, so Reset can take it off again (switching gels keeps the original).
+  const before = new Map(lights.map((l) => {
+    const s = runOf(l)?.snapshot.get(l.id) ?? stateOf(l);
+    return [l, l.preGel ?? { mode: s.mode === 'hsi' ? 'hsi' : 'cct', cct: s.cct, hue: s.hue, sat: s.sat }];
+  }));
   takeover();
+  for (const l of lights) { l.gel = g.id; l.preGel = before.get(l); }
+  renderGel();
   rig.logLine(`GEL ${g.name}${fadeMs ? ` (fade ${fadeMs / 1000}s)` : ''}${rig.lights.length > 1 ? ` → ${lights.map((l) => l.label).join(', ')}` : ''}`);
   await crossfade(lights.map((l) => ({ light: l, to: { ...stateOf(l), ...g.state } })), fadeMs, { label: `GEL ${g.name}` });
+  syncFromLight();
+}
+
+/** Reset: takes the gel off the selected lights, back to their color before it (brightness stays). */
+async function resetGel({ fadeMs = ui.fadeMs } = {}) {
+  const lights = targets().filter((l) => l.gel && l.preGel);
+  if (!lights.length) return;
+  const back = new Map(lights.map((l) => [l, l.preGel]));
+  releaseFromEffect(lights);
+  clearFollow();
+  clearGel(lights);
+  rig.logLine(`GEL off${rig.lights.length > 1 ? ` → ${lights.map((l) => l.label).join(', ')}` : ''}`);
+  await crossfade(lights.map((l) => ({ light: l, to: { ...stateOf(l), ...back.get(l) } })), fadeMs, { label: 'GEL off' });
   syncFromLight();
 }
 
@@ -1008,6 +1046,7 @@ async function applyLook(look, { fadeMs = ui.fadeMs } = {}) {
   releaseFromEffect(lights);
   clearFollow();
   for (const l of lights) l.look = look.id;
+  clearGel(lights);
   renderPresets();
   rig.logLine(`LOOK ${look.name}${fadeMs ? ` (fade ${fadeMs / 1000}s)` : ''}${rig.lights.length > 1 ? ` → ${lights.map((l) => l.label).join(', ')}` : ''}`);
   await crossfade(lights.map((l) => ({ light: l, to: look.state })), fadeMs, { label: `LOOK ${look.name}` });
@@ -1070,7 +1109,7 @@ async function toggleEffect(e, { params = null, lights = targets(), fromCue = fa
   // Each light's "before" look: if it was running another effect, the look from before that one.
   const snapshot = new Map(lights.map((l) => [l.id, runOf(l)?.snapshot.get(l.id) ?? stateOf(l)]));
   stopEffectOn(lights, { restore: false, quietLog: true, keepScene: !!e.builtin });
-  for (const l of lights) { l.fadeTok = null; l.look = null; }   // stop fades on these lights only
+  for (const l of lights) { l.fadeTok = null; l.look = null; l.gel = null; l.preGel = null; }   // stop fades on these lights only
   if (!fromCue) clearFollow();
   params = { ...(params ?? fx.params[e.id]) };
   const run = { e, params, lights: [...lights], snapshot, deadline: params.duration > 0 ? performance.now() + params.duration * 1000 : Infinity, dead: false };
@@ -1193,7 +1232,7 @@ let fxParamsTimer = null;
 function renderFxParamsSoon() { clearTimeout(fxParamsTimer); fxParamsTimer = setTimeout(renderFxParams, 250); }
 
 /** Manual control: takes the selected lights out of their effects (they stay where they are), clears their look highlight. */
-function takeover() { releaseFromEffect(targets()); clearFollow(); clearLookMark(targets()); }
+function takeover() { releaseFromEffect(targets()); clearFollow(); clearLookMark(targets()); clearGel(targets()); }
 
 function clearLookMark(lights) {
   if (!lights.some((l) => l.look)) return;
@@ -1429,6 +1468,7 @@ function renderPresets() {
   show.looks.slice(0, LOOK_KEYS.length).forEach((l, i) => looks.appendChild(tile(l, LOOK_KEYS[i], 'look')));
   if (!effects.children.length) BUILTIN.forEach((e, i) => effects.appendChild(tile(e, EFFECT_KEYS[i], 'effect')));
   renderCustomChips();
+  renderGel();
   // The board shows the selected light(s): a tile is lit when every selected light has it,
   // half-lit ("partial") when only some do.
   const sel = targets();
@@ -1508,6 +1548,7 @@ async function goCue(i, { fade } = {}) {
   cue.index = i;
   cue.selected = c.id;
   for (const l of rig.lights) l.look = null;
+  clearGel(rig.lights);
   renderPresets();
   rig.logLine(`GO cue ${i + 1}${c.name ? ` · ${c.name}` : ''}`);
   if (c.follow != null && c.follow !== '') scheduleFollow(i, +c.follow);

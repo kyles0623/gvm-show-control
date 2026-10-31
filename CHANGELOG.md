@@ -9,6 +9,17 @@ the minor version (see [CONTRIBUTING.md](CONTRIBUTING.md#versions-and-the-change
 
 ## [Unreleased]
 
+## [1.10.0] - 2026-10-31
+
+### Added
+- **Gel Reset** button next to the Gel menu: takes the gel off the selected light(s), back to the color they had
+  before it (brightness stays, uses the Fade time).
+
+### Changed
+- The Gel menu now keeps showing the gel that's on the selected light(s). Changing the color any other way
+  (sliders, swatches, a look, a cue, an effect) clears it.
+- Effect tiles are bigger and taller, with names shrunk to fit on one line.
+
 ## [1.9.0] - 2026-10-31
 
 ### Added
