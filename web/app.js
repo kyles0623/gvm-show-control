@@ -341,6 +341,13 @@ async function ensureModeOn(l, m, quiet = true) {
 /** Sends one control value to every target light. */
 async function sendValue(id, v, { quiet = true } = {}) {
   const e = encoders[id](v);
+  // A light running a built-in effect: Brightness is the effect's own brightness (BRG), so it stays in the effect
+  // and the effect's setting follows the slider.
+  if (id === 'bri') {
+    const runs = new Set(targets().map(runOf).filter((r) => r?.e.builtin));
+    for (const r of runs) r.params.level = v;
+    if (runs.size) renderFxParamsSoon();
+  }
   if (e.mode) setMode(e.mode);
   await each(targets(), async (l) => {
     if (id === 'bri' && isDarkLight(l)) l.blackoutPre = null;   // a level set while dark is what Restore returns to
@@ -380,7 +387,7 @@ function bindLiveSlider(id) {
     lastSent = v;
     sendValue(id, v);
   };
-  el.addEventListener('pointerdown', () => { takeover(); ui.dragging = id; lastSent = null; if (id === 'bri') cancelFade(); });
+  el.addEventListener('pointerdown', () => { if (id === 'bri') takeoverForBrightness(); else takeover(); ui.dragging = id; lastSent = null; if (id === 'bri') cancelFade(); });
   el.addEventListener('input', () => {
     renderValues();
     const now = performance.now();
@@ -1151,6 +1158,17 @@ async function stopEffectOn(lights, { restore = false, quietLog = false, keepSce
 /** Stops every running effect (Esc, GO). */
 function stopAllEffects(restore) { return stopEffectOn(fx.runs.flatMap((r) => r.lights), { restore }); }
 
+/** Brightness slider / ↑↓: like takeover, but lights running a built-in effect stay in it (Brightness is its BRG). */
+function takeoverForBrightness() {
+  const ls = targets();
+  releaseFromEffect(ls.filter((l) => !runOf(l)?.e.builtin));
+  clearFollow();
+  clearLookMark(ls);
+}
+
+let fxParamsTimer = null;
+function renderFxParamsSoon() { clearTimeout(fxParamsTimer); fxParamsTimer = setTimeout(renderFxParams, 250); }
+
 /** Manual control: takes the selected lights out of their effects (they stay where they are), clears their look highlight. */
 function takeover() { releaseFromEffect(targets()); clearFollow(); clearLookMark(targets()); }
 
@@ -1854,7 +1872,7 @@ let nudgeTimer = null;
 function nudgeBrightness(delta) {
   const el = $('bri');
   if (el.disabled) return;
-  takeover();
+  takeoverForBrightness();
   cancelFade();
   el.value = clamp(+el.value + delta, 0, 100);
   el.dispatchEvent(new Event('input'));

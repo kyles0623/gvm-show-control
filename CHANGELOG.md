@@ -9,7 +9,7 @@ the minor version (see [CONTRIBUTING.md](CONTRIBUTING.md#versions-and-the-change
 
 ## [Unreleased]
 
-## [1.6.0] - 2026-10-30
+## [1.7.0] - 2026-10-30
 
 These notes also cover versions 1.4.0 and 1.5.0, which were released without their own notes.
 
