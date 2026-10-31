@@ -1555,7 +1555,7 @@ function snapshotRig() {
 }
 
 function clearFollow() {
-  if (cue.followTimer) { clearTimeout(cue.followTimer); cue.followTimer = null; rig.logLine('auto-GO cancelled'); }
+  if (cue.followTimer) { clearTimeout(cue.followTimer); cue.followTimer = null; rig.logLine('auto next cue cancelled'); }
   renderCueBar();
 }
 
@@ -1640,7 +1640,7 @@ function updateCueProgress() {
   if (cue.followTimer) {
     const left = Math.max(0, cue.followAt - performance.now());
     pct = 100 * (1 - left / cue.followTotal);
-    text = `auto-GO in ${(left / 1000).toFixed(1)} s`;
+    text = `next cue in ${(left / 1000).toFixed(1)} s`;
   } else if (ui.fading) {
     pct = ui.fadeT * 100;
     text = `fading ${Math.round(pct)}%`;
@@ -1694,7 +1694,7 @@ function buildCueEditor(root, d, { popped = false } = {}) {
 
   const strip = mk('div', 'cue-fx-strip');
   fillCueFxStrip(strip, d);
-  const hint = mk('p', 'hint cue-hint', 'Set the lights (sliders, looks, an effect), then Record. A cue saves every connected light, a fade, an optional effect with a run time, and an optional auto-GO.');
+  const hint = mk('p', 'hint cue-hint', 'Set the lights (sliders, looks, an effect), then Record. A cue saves every connected light, a fade, an optional effect with a run time, and optionally when to go to the next cue on its own.');
   const list = mk('div', 'cue-list' + (popped ? ' wide' : ''));
   root.append(head, tools, strip, hint, list);
   return { d, root, list, rec, upd, up, down, del, top, strip, popped };
@@ -1813,8 +1813,8 @@ function renderCueList() {
     name.addEventListener('change', () => { show.updateCue(c.id, { name: name.value.trim() }); renderCueBar(); });
     const fade = numInput(d, c.fade, { min: 0, max: 60, step: 0.5 }, (v) => show.updateCue(c.id, { fade: v ?? 0 }));
     fade.title = 'Fade time (s)';
-    const follow = numInput(d, c.follow, { min: 0, max: 600, step: 0.5, placeholder: '—' }, (v) => show.updateCue(c.id, { follow: v }));
-    follow.title = 'Auto-GO: run the next cue this many seconds after this one starts (blank = wait for GO)';
+    const follow = numInput(d, c.follow, { min: 0, max: 600, step: 0.5, placeholder: 'GO' }, (v) => show.updateCue(c.id, { follow: v }));
+    follow.title = 'Go to the next cue on its own this many seconds after this cue starts. Blank (GO) = wait for you to press GO.';
 
     const effSel = d.createElement('select');
     effSel.className = 'cue-fx';
@@ -1852,7 +1852,7 @@ function renderCueList() {
     const line1 = d.createElement('div'); line1.className = 'cue-line1';
     line1.append(num, name, lightsSummary(d, c.lights), go);
     const line2 = d.createElement('div'); line2.className = 'cue-line2';
-    line2.append(cell('Fade s', fade), cell('Auto-GO s', follow), cell('Effect', effSel, 'grow'), cell('Run s', dur));
+    line2.append(cell('Fade s', fade), cell('Next cue in s', follow), cell('Effect', effSel, 'grow'), cell('Run s', dur));
     row.append(line1, line2);
     list.appendChild(row);
   });

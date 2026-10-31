@@ -9,6 +9,12 @@ the minor version (see [CONTRIBUTING.md](CONTRIBUTING.md#versions-and-the-change
 
 ## [Unreleased]
 
+### Changed
+- Cue list: the **Auto-GO s** box is now **Next cue in s** (blank shows "GO": wait for the GO button), with a clearer
+  tooltip; the countdown reads "next cue in 3.0 s".
+
+## [1.13.0] - 2026-10-31
+
 ### Added
 - **Backup export / import** (Settings → Backup): saves looks, cues, Effects-tab effects, effect settings and
   preferences to a JSON file, and loads them back, in this browser or another one. Import can add to what's

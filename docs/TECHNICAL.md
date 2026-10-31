@@ -106,8 +106,8 @@ Web Bluetooth only works on `https://` or `http://localhost`.
 - **Record** saves every connected light after the selected cue. If an effect is running, the cue stores the effect (with its
   current settings) and, as each light's base look, the look from before the effect started.
 - **GO** (`Space`): lights recorded as on but currently dark are powered on at 0 and faded in; others crossfade; lights
-  recorded as off fade out and power off; then the cue's effect starts. **Auto-GO** counts from the start of the cue.
-  **Back** (`Shift+Space`) runs the previous cue. Esc cancels a pending auto-GO, a running fade and the effect.
+  recorded as off fade out and power off; then the cue's effect starts. **Next cue in** (auto follow) counts from the start of the cue.
+  **Back** (`Shift+Space`) runs the previous cue. Esc cancels a pending automatic next cue, a running fade and the effect.
 - Lights in a cue that aren't connected are skipped (logged).
 
 ## Looks library (Looks tab)

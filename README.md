@@ -35,7 +35,7 @@ On Windows/Linux, any static server works, e.g. `cd web && python -m http.server
 ## Features
 | | |
 |---|---|
-| **Cue list + GO** (`Space`) | Open **☰ Cue list** (`C`) on the Show tab — it takes the place of the Effects column, so the sliders and looks stay next to it. Set the lights, press Record, repeat. **Pop out** puts the list in its own window (e.g. on a second screen); GO/Back keys work there too. Each cue saves every light's look, a fade time, an optional effect with a run time, and an optional auto-GO that fires the next cue by itself. `Shift+Space` goes back. |
+| **Cue list + GO** (`Space`) | Open **☰ Cue list** (`C`) on the Show tab — it takes the place of the Effects column, so the sliders and looks stay next to it. Set the lights, press Record, repeat. **Pop out** puts the list in its own window (e.g. on a second screen); GO/Back keys work there too. Each cue saves every light's look, a fade time, an optional effect with a run time, and an optional **Next cue in** time that goes to the next cue by itself. `Shift+Space` goes back. |
 | **Multiple lights** | Pair as many as you have (Settings → Lights → Add another light). Chips at the top pick which lights the controls change; `Tab` / `⇧Tab` cycles All → Light 1 → Light 2. Double-click a chip (or the light name in the header) to rename it. The big Blackout covers every light; small per-light buttons under it black out one light at a time. |
 | **Color crossfades** | Looks and cues fade brightness, color temperature, hue (the short way round) and saturation together. White ↔ Color changes dip through dark at the midpoint. |
 | **Your own looks** (`1`–`9`) | **+ Save look** on the Show tab; rename, reorder, update or delete on the Looks tab. The first nine are one tap / one key away. |
