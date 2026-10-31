@@ -9,7 +9,7 @@ the minor version (see [CONTRIBUTING.md](CONTRIBUTING.md#versions-and-the-change
 
 ## [Unreleased]
 
-## [1.8.0] - 2026-10-31
+## [1.9.0] - 2026-10-31
 
 ### Added
 - **What's new** (version number, Help, Settings, the after-update notice) opens an in-app list of the best recent
