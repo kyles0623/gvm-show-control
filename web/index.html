@@ -350,10 +350,21 @@
       looks, cues and effects never leave it. The hosted app counts visits with GoatCounter (no cookies, no personal
       data; page, browser, screen size and country only); turn that off below. Works offline once installed.</p>
     <label class="switch"><input id="setCount" type="checkbox"> Count my visits (anonymous)</label>
-    <p class="links"><a class="lnk-changelog" target="_blank" rel="noopener">What’s new</a> ·
+    <p class="links"><a class="lnk-changelog" target="_blank" rel="noopener" title="Highlights of recent versions">What’s new</a> ·
       <a class="lnk-bug" target="_blank" rel="noopener">Report a problem</a> ·
       <a class="lnk-idea" target="_blank" rel="noopener">Suggest a feature</a> ·
       <a class="lnk-repo" target="_blank" rel="noopener">Source code</a></p>
+  </section>
+</dialog>
+
+<!-- What's new -->
+<dialog id="newsDlg" class="dlg">
+  <div class="dlg-head"><h2>What’s new <span id="newsVersion" class="hint"></span></h2><button class="btn sm" data-close>Close</button></div>
+  <section>
+    <ol id="newsList" class="news-list"></ol>
+  </section>
+  <section class="news-more">
+    <a id="newsMore" target="_blank" rel="noopener">More: every change, version by version (changelog on GitHub) →</a>
   </section>
 </dialog>
 
@@ -427,7 +438,7 @@
     <p>Found a problem or have an idea? <b>Report a problem</b> opens a GitHub issue with your app version and browser
       filled in. For connection problems, include the log: Settings → Advanced → “Show the Debug tab”, reproduce it,
       and copy the last lines.</p>
-    <p class="links"><a class="lnk-changelog" target="_blank" rel="noopener">What’s new</a> ·
+    <p class="links"><a class="lnk-changelog" target="_blank" rel="noopener" title="Highlights of recent versions">What’s new</a> ·
       <a class="lnk-bug" target="_blank" rel="noopener">Report a problem</a> ·
       <a class="lnk-idea" target="_blank" rel="noopener">Suggest a feature</a> ·
       <a class="lnk-light" target="_blank" rel="noopener">Report another GVM light</a> ·
@@ -438,6 +449,6 @@
 <div id="toasts" class="toasts" aria-live="polite"></div>
 
 <script type="module" src="app.js"></script>
-<a id="versionBadge" class="version-badge" target="_blank" rel="noopener" title="GVM Show Control version: click for what’s new (if this doesn’t change after an update, reload the page)"></a>
+<a id="versionBadge" class="version-badge" target="_blank" rel="noopener" title="GVM Show Control version: click for what’s new (if it doesn’t change after an update, reload the page)"></a>
 </body>
 </html>

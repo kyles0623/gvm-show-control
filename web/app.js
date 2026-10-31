@@ -3,6 +3,7 @@ import { parseHex, toHex, shortUuid, sleep } from './ble.js';
 import { Rig } from './rig.js';
 import { Show, describeState, normState, stateAt } from './show.js';
 import { EFFECTS, GELS, BUILTIN, ALIASES, defaults } from './effects.js';
+import { HIGHLIGHTS } from './whatsnew.js';
 import { CustomEffects, PREFIX as CUSTOM, stepColor, normStep, cycleSeconds, changedValues, hasRandom, RANGES, TEMPLATES } from './customfx.js';
 import { APP_VERSION, repoUrl, detectEnv, blockReason, bluetoothSteps, explainProblem, LIGHT_STEPS, OS_NAME, BROWSER_NAME } from './setup.js';
 
@@ -730,7 +731,24 @@ function renderEffectEditor() {
   if (keep) ed.querySelector(`[data-focus="${keep}"]`)?.focus();
 }
 
-// ---------- links: changelog, issues ----------
+// ---------- links: what's new, changelog, issues ----------
+
+function openWhatsNew() {
+  const list = $('newsList');
+  if (!list.children.length) {
+    for (const h of HIGHLIGHTS) {
+      const li = document.createElement('li');
+      li.innerHTML = '<b></b><p></p><span class="hint"></span>';
+      li.querySelector('b').textContent = h.title;
+      li.querySelector('p').textContent = h.text;
+      li.querySelector('.hint').textContent = h.where;
+      list.appendChild(li);
+    }
+  }
+  $('newsVersion').textContent = `· v${APP_VERSION}`;
+  document.querySelectorAll('dialog[open]').forEach((d) => { if (d.id !== 'newsDlg') closeDialog(d); });
+  openDialog('newsDlg');
+}
 
 function issueUrl(template) {
   const chrome = /(?:Chrome|Edg|CriOS)\/(\d+)/.exec(navigator.userAgent)?.[1];
@@ -746,6 +764,11 @@ function initLinks() {
   const base = repoUrl();
   const set = (cls, href) => { for (const a of document.querySelectorAll(cls)) a.href = href; };
   set('.lnk-changelog', `${base}/blob/main/CHANGELOG.md`);
+  // "What's new" opens the in-app highlights; the full changelog is linked at the bottom of that dialog.
+  $('newsMore').href = `${base}/blob/main/CHANGELOG.md`;
+  for (const a of [...document.querySelectorAll('.lnk-changelog'), $('versionBadge')]) {
+    a.addEventListener('click', (ev) => { if (ev.metaKey || ev.ctrlKey || ev.shiftKey) return; ev.preventDefault(); openWhatsNew(); });
+  }
   set('.lnk-idea', issueUrl('feature_request.yml'));
   set('.lnk-light', issueUrl('light_report.yml'));
   set('.lnk-repo', base);
@@ -758,7 +781,7 @@ function initLinks() {
   // One notice after an update (not on first run).
   const last = prefs.get('lastVersion', null);
   if (last && last !== APP_VERSION) {
-    toast({ level: 'ok', title: `Updated to v${APP_VERSION}`, body: `You were on v${last}.`, actions: [{ label: 'What’s new', fn: () => window.open(`${base}/blob/main/CHANGELOG.md`, '_blank', 'noopener') }] });
+    toast({ level: 'ok', title: `Updated to v${APP_VERSION}`, body: `You were on v${last}.`, actions: [{ label: 'What’s new', fn: openWhatsNew }] });
   }
   prefs.set('lastVersion', APP_VERSION);
 }

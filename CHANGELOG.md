@@ -9,7 +9,20 @@ the minor version (see [CONTRIBUTING.md](CONTRIBUTING.md#versions-and-the-change
 
 ## [Unreleased]
 
+## [1.8.0] - 2026-10-31
+
+### Added
+- **What's new** (version number, Help, Settings, the after-update notice) opens an in-app list of the best recent
+  features with where to find them, and a link to this full changelog at the bottom.
+
 ## [1.7.0] - 2026-10-30
+
+### Changed
+- While a built-in effect runs, the Brightness slider and the ↑/↓ keys set the effect's brightness instead of taking
+  the light out of the effect, so the effect keeps running and its tile can still be tapped to stop it. App effects
+  (Breathe, custom) still stop when you move Brightness, since they set brightness themselves.
+
+## [1.6.0] - 2026-10-30
 
 These notes also cover versions 1.4.0 and 1.5.0, which were released without their own notes.
 

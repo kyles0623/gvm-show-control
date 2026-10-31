@@ -600,3 +600,10 @@ body.popout { overflow: hidden; height: 100vh; }
 @media (max-width: 959px) { .effects-card #effects { overflow: visible; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); } }
 .effects-card #effects .tile .key { top: auto; bottom: 1px; right: 2px; font-size: 8px; padding: 0 2px; line-height: 1.2; opacity: .75; }
 @media (max-width: 1100px) { .effects-card > .row-between > .hint { display: none; } }
+
+/* What's new */
+.news-list { margin: 0; padding-left: 20px; display: grid; gap: 12px; }
+.news-list li b { font-size: 14px; }
+.news-list li p { margin: 2px 0 3px; color: var(--text); font-size: 13px; line-height: 1.4; }
+.news-list li .hint { font-size: 12px; }
+.news-more a { color: var(--accent); }
