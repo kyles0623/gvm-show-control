@@ -586,3 +586,17 @@ body.popout { overflow: hidden; height: 100vh; }
 .builtin-select.running { border-color: var(--accent); color: var(--accent); }
 .builtin-select.partial { border-color: var(--accent); border-style: dashed; }
 .cue-fx-strip .cue-builtin { flex: none; width: auto; padding: 3px 6px; font-size: 12px; }
+
+/* Effects column: the light's 20 built-in effects as compact tiles (scroll inside if the window is short),
+   app effects as a row of chips below, settings at the bottom. */
+.effects-card #effects { flex: 1 1 55%; min-height: 96px; overflow-y: auto; align-content: start;
+  grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 5px; padding-right: 2px; }
+.effects-card #effects .tile { min-height: 34px; padding: 4px 6px; gap: 6px; border-width: 1.5px; border-radius: 8px; }
+.effects-card #effects .tile .sw { width: 14px; height: 14px; }
+.effects-card #effects .tile .nm { font-size: 12px; }
+.effects-card #effects .tile .sub { font-size: 10px; }
+.effects-card .fx-settings { flex: 1 1 45%; }
+@media (min-width: 960px) and (max-width: 1100px) { .effects-card #effects { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 959px) { .effects-card #effects { overflow: visible; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); } }
+.effects-card #effects .tile .key { top: auto; bottom: 1px; right: 2px; font-size: 8px; padding: 0 2px; line-height: 1.2; opacity: .75; }
+@media (max-width: 1100px) { .effects-card > .row-between > .hint { display: none; } }

@@ -8,6 +8,7 @@ const LOG_CAP = 500;
 const BASE = '-0000-1000-8000-00805f9b34fb';
 const RETRY_DELAYS_MS = [1000, 2000, 4000, 8000, 15000, 30000];
 const CONNECT_TIMEOUT_MS = 10000;
+const DISCOVER_TIMEOUT_MS = 10000;
 // The light sends a status frame every ~5 s while connected. If nothing arrives for this long,
 // the link is dead even though the OS still reports it connected: drop it and reconnect.
 const SILENT_MS = 12000;
@@ -177,7 +178,11 @@ export class LightConnection extends EventTarget {
         sleep(CONNECT_TIMEOUT_MS).then(() => { throw new Error('connect timeout'); }),
       ]);
       this.logLine('CONNECTED');
-      await this._enqueue(() => this._discover(server));
+      // Reading the services normally takes well under a second; if the link is stuck it can hang forever.
+      await Promise.race([
+        this._enqueue(() => this._discover(server)),
+        sleep(DISCOVER_TIMEOUT_MS).then(() => { if (!this.ctrl) throw new Error(`the light didn't list its services within ${DISCOVER_TIMEOUT_MS / 1000} s`); }),
+      ]);
       if (!this.ctrl) {
         // Reading the services failed (link dropped, light busy): a connection problem, retry. Only a light whose
         // services were read and lack the control characteristic is "not a supported light".

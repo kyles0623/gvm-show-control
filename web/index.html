@@ -173,15 +173,11 @@
   <section class="col col-c">
     <div id="effectsCard" class="group effects-card lockable">
       <div class="row-between">
-        <div class="label">Effects</div>
+        <div class="label" title="These run on the light itself: smooth, and they keep going if Bluetooth drops">Effects <span class="hint">· built into the light</span></div>
         <span class="hint">tap again or Esc to stop</span>
       </div>
       <div id="effects" class="tiles"></div>
       <div id="customFx" class="custom-fx" hidden></div>
-      <div class="builtin-fx" title="The light's own built-in effects: they run on the light itself, with no Bluetooth traffic while running">
-        <span class="hint">On the light</span>
-        <select id="builtinSel" class="builtin-select" aria-label="Built-in effect (runs on the light)"></select>
-      </div>
       <div class="fx-settings">
         <div class="row-between">
           <div class="row fx-head">
@@ -400,7 +396,7 @@
       <tr><td><kbd>Tab</kbd> / <kbd>⇧</kbd> <kbd>Tab</kbd></td><td>Cycle which light the controls change: All → each light → All</td></tr>
       <tr><td><kbd>↑</kbd> <kbd>↓</kbd></td><td>Brightness ±5 (hold <kbd>⇧</kbd> for ±1)</td></tr>
       <tr><td><kbd>1</kbd>–<kbd>9</kbd></td><td>Looks (fade in with the Fade time)</td></tr>
-      <tr><td><kbd>Q</kbd>–<kbd>Y</kbd></td><td>Start / stop effects</td></tr>
+      <tr><td><kbd>Q</kbd>–<kbd>Y</kbd></td><td>Start / stop the first six built-in effects (Lightning, Cop Car, Candle, TV, Bad Bulb, Party)</td></tr>
       <tr><td><kbd>Esc</kbd></td><td>Stop: effect (back to the previous look), running fade, pending auto-GO</td></tr>
       <tr><td><kbd>C</kbd></td><td>Show / hide the cue list</td></tr>
       <tr><td><kbd>L</kbd></td><td>Lock / unlock (GO, Back and Blackout still work)</td></tr>

@@ -9,10 +9,12 @@ the minor version (see [CONTRIBUTING.md](CONTRIBUTING.md#versions-and-the-change
 
 ## [Unreleased]
 
-## [1.5.0] - 2026-10-30
+## [1.6.0] - 2026-10-30
+
+These notes also cover versions 1.4.0 and 1.5.0, which were released without their own notes.
 
 ### Added
-- **The light's 20 built-in effects** ("On the light" menu in the Effects column and the cue panel): Lightning,
+- **The light's 20 built-in effects** (tiles in the Effects column; a menu in the cue panel): Lightning,
   Cop Car, Candle, TV, Bad Bulb, Party, Disco, Paparazzi, Explosion, Pulsing, Fire, Fireworks, Welding, CCT Loop,
   Hue Loop, Ambulance, Fire Engine, SOS, Strobe, Strobe II. They run on the light itself (smooth, and they keep
   going if Bluetooth drops), per light, with the same settings as the official app (brightness; color temperature,
@@ -29,15 +31,23 @@ the minor version (see [CONTRIBUTING.md](CONTRIBUTING.md#versions-and-the-change
   strip for white 3200–5600 K). Picks snap to what the light accepts.
 - Effects tab: Level, Hold and Fade can each be a random range (the ~ button next to the value). A new value
   is picked from the range every time the step runs, for natural-looking flicker.
-- Effects tab: **Start from…** templates. First one: **Paparazzi** (camera flashes: dim pauses of random length,
-  short white flashes, sometimes a double flash), built from editable steps with random ranges.
 
 ### Changed
+- **The Effects column now shows the light's 20 built-in effects** as its main tiles (keys Q–Y start the first six).
+  The app's own effects are a secondary "App effects" row: Breathe and your custom effects.
 - Custom effects can hold a step for as little as 0.06 s (was 0.2 s), for fast flicker and strobe-like effects.
   A step needs 0.06 s per value it changes (brightness only: 0.06 s; color and brightness: up to 0.24 s); shorter
   holds are shown in orange. The built-in effects keep their 0.2 s minimum.
 
+### Removed
+- The app's Cops, Television, Fire, Candle and Party effects: the light has its own (Cop Car, TV, Fire, Candle,
+  Party). Saved cues and settings that used them are moved to the built-in ones.
+
 ### Fixed
+- A light whose Bluetooth link dropped while its services were being read was treated as "not a supported light"
+  and forgotten. It is now a normal connection failure: the app retries and keeps the light.
+- If the light connects but never lists its services (a stuck Bluetooth link), the app no longer waits forever: after
+  10 s it drops the link and retries.
 - Lights that use a protocol address other than 0x30 (e.g. 0x33) are now controlled: the app uses the address each
   light reports (from its handshake reply, or its first status if it doesn't answer the handshake), as the official
   app does.

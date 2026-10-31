@@ -126,22 +126,18 @@ Default looks (editable, see Looks library):
 | 5 | Night | HSI 235°, sat 100, 10 % |
 | 6 | Romance | HSI 330°, sat 70, 40 % |
 
-| Key | Effect | Pattern |
-|---|---|---|
-| Q | Cops | red ↔ blue every 400 ms, 25 %; dim steps (A A / B B, strobe) 20 % |
-| W | Television | cool tint, level 20–50 %, changes every 250–700 ms, occasional scene cut |
-| E | Fire | hue 10–30°, level 20–35 %, every 300–500 ms |
-| R | Candle | hue 30°, level 20–35 %, every 350–700 ms |
-| T | Party | saturated color changes: Jump (new color every ~450 ms), Flow (glides around the palette), Beat (color on / dim, ~260 ms each); palettes Rainbow, Warm, Cool, Pink/Blue; level 20–30 %; each light runs its own sequence |
-| Y | Breathe | brightness sine 20–50 %, 6 s period, current color |
+**Effects column.** The main tiles are the light's 20 built-in effects, in the official app's order; keys Q–Y start the
+first six (Lightning, Cop Car, Candle, TV, Bad Bulb, Party). Below them, **App effects** are the effects this app runs
+step by step: Breathe (brightness sine 20–50 %, 6 s, any color, which the built-in Pulsing can't do) and your custom
+effects. The app's former Cops, Television, Fire, Candle and Party were removed in favour of the built-in Cop Car, TV,
+Fire, Candle and Party; cues and settings that used them are moved to those (`ALIASES` in effects.js).
 
-Default max brightness is kept low: fast effects (Cops, Party) 25–30 %, saturated colors (Fire, Candle) under 40 %,
-others 50 %. Default min brightness is 20 % for every effect. Each effect's settings panel can change both.
+Default brightness: built-in fast effects 30 %, Candle/Fire 35 %, the others 50 %; app effects 50 % max, 20 % min.
 
 - Looks send only the params that differ from the light's current state.
 - A look pressed during blackout is sent to the light; Restore powers on at that look's brightness.
 - Effects run per light: each light runs at most one effect, and different lights can run different effects at once.
-  Lights started together share one run (in sync, Cops A/B alternation). Starting an effect on a light moves it out of
+  Lights started together share one run (in sync). Starting an effect on a light moves it out of
   its previous run; the rest of that run keeps going.
 - The board follows the selection: look/effect tiles are lit when every selected light has them, dashed when only some do.
   The effect settings panel shows the selected light's running values; edits apply to the selected lights' runs and are
@@ -176,17 +172,14 @@ others 50 %. Default min brightness is 20 % for every effect. Each effect's sett
 - **Effect settings** (panel under the effect tiles; pick the effect in "Settings for"). Edits apply live, persist per effect, Reset restores defaults, editable while disconnected:
   | Effect | Controls |
   |---|---|
-  | Cops | Max brightness, Dim brightness, Speed, Color A, Color B, Pattern (A/B · double flash · strobe with dark gaps) |
-  | Television | Max brightness, Min brightness, Speed, Tint, Color strength, Scene cuts |
-  | Fire | Max brightness, Min brightness, Speed, Base color, Color spread |
-  | Candle | Max brightness, Min brightness, Speed, Color, Saturation |
-  | Party | Max brightness, Min brightness, Speed, Colors, Style, Saturation, Run for |
-  | Breathe | Max brightness, Min brightness, Cycle time |
+  | Built-in effects | Max brightness (BRG) + the effect's own settings as in the official app (see below), Run for |
+  | Breathe | Max brightness, Min brightness, Cycle time, Run for |
+  | Custom effects | Speed, Run for (steps are edited on the Effects tab) |
 - Speed scales step timing; any step is ≥ 200 ms regardless of speed.
 - **Run for** (every effect): 0 = until stopped; otherwise the effect stops after that many seconds and the lights return
   to the look from before it. In a cue, the run time is set in the cue row.
-- With several lights: Cops' "Multiple lights" setting alternates colors between lights (A on odd, B on even);
-  Television, Fire and Candle run an independent random pattern on each light; the others stay in sync.
+- With several lights: built-in effects run on each light independently (each light runs its own copy); app
+  effects started together stay in sync.
 - Edit or add entries in `effects.js` (a look is a state; an effect is a generator of `{state, wait}` steps).
 
 Connection: remembers the light, auto-connects on open, sends the handshake, echoes status frames like

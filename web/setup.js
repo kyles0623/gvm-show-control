@@ -2,7 +2,7 @@
 // Web Bluetooth problems. No DOM access here; app.js renders what these return.
 
 // Shown in the lower-right corner and in Settings. Bump it (and CACHE in sw.js) with every release.
-export const APP_VERSION = '1.5.0';
+export const APP_VERSION = '1.6.0';
 
 /** Where the project lives (changelog, issues). A fork served from <user>.github.io/<repo>/ links to itself. */
 export const REPO_URL = 'https://github.com/kyles0623/gvm-show-control';
@@ -109,7 +109,7 @@ export function bluetoothSteps(env) {
 
 export const LIGHT_STEPS = [
   'Turn the light on.',
-  'Set the light to App mode: press the CCT/Mode knob on the back until the display shows APP. Switching to any other mode disconnects it.',
+  'Set the light to App mode: press the small mode button on the light (it cycles through the modes) until the display shows APP. Switching to any other mode disconnects it.',
   'Close the GVM app on your phone (swipe it away) — the light accepts only one connection at a time. If it still won’t show up, turn the phone’s Bluetooth off.',
   'Keep the light within about 10 m / 30 ft of this device.',
   'In the device list, the light appears as “BT_LED”.',
@@ -152,9 +152,9 @@ export function explainProblem(code, err, env) {
         steps: ['Press “Pair light” and choose BT_LED.'],
       };
     case 'lost':
-      return { level: 'warn', title: 'Connection lost — reconnecting', body: 'The app keeps trying automatically.', steps: ['Check the light’s display still shows APP: turning the CCT/Mode knob out of App mode disconnects it. Press the knob until APP shows again.', 'Check the light is still on and in range.', 'Make sure the phone app hasn’t taken over the light.'] };
+      return { level: 'warn', title: 'Connection lost — reconnecting', body: 'The app keeps trying automatically.', steps: ['Check the light’s display still shows APP: switching it out of App mode with the mode button disconnects it. Press the mode button until APP shows again.', 'Check the light is still on and in range.', 'Make sure the phone app hasn’t taken over the light.'] };
     case 'retrying':
-      return { level: 'error', title: 'Still can’t reach the light', body: 'Automatic reconnection is still running, but several attempts have failed.', steps: ['Does the light’s display show APP? Leaving App mode disconnects it; press the CCT/Mode knob until APP shows.', 'Is the light on and within range?', 'Close the GVM phone app or turn the phone’s Bluetooth off.', 'Power-cycle the light, then press Retry now.'] };
+      return { level: 'error', title: 'Still can’t reach the light', body: 'Automatic reconnection is still running, but several attempts have failed.', steps: ['Does the light’s display show APP? Leaving App mode disconnects it; press the mode button until APP shows.', 'Is the light on and within range?', 'Close the GVM phone app or turn the phone’s Bluetooth off.', 'Power-cycle the light, then press Retry now.'] };
     default:
       return { level: 'error', title: 'Something went wrong', body: err?.message ?? String(code), steps: [] };
   }

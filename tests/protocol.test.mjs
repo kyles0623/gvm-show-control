@@ -219,14 +219,25 @@ test('custom effect: random Level / Hold / Fade stay within their ranges and var
   assert.equal(pick(fixed, 'bri'), 40);
 });
 
-test('templates: Paparazzi is valid and flashes at random moments', async () => {
-  const { TEMPLATES } = await import('../web/customfx.js');
-  const t = TEMPLATES.find((x) => x.id === 'paparazzi');
-  const steps = t.steps.map(normStep);
-  assert.deepEqual(steps.map((s) => [s.bri, s.briTo ?? null, s.hold, s.holdTo ?? null]), t.steps.map((s) => [s.bri, s.briTo ?? null, s.hold, s.holdTo ?? null]));
+test('custom effect: random holds give flashes at random moments (camera-flash style)', async () => {
+  const raw = [
+    { mode: 'cct', cct: 5600, bri: 5, hold: 0.4, holdTo: 2.5, fade: 0 },
+    { mode: 'cct', cct: 5600, bri: 25, briTo: 30, hold: 0.06, holdTo: 0.1, fade: 0 },
+    { mode: 'cct', cct: 5600, bri: 5, hold: 0.08, holdTo: 0.5, fade: 0 },
+    { mode: 'cct', cct: 5600, bri: 5, briTo: 30, hold: 0.06, fade: 0 },
+  ];
+  const steps = raw.map(normStep);
+  assert.deepEqual(steps.map((s) => [s.bri, s.briTo ?? null, s.hold, s.holdTo ?? null]), raw.map((s) => [s.bri, s.briTo ?? null, s.hold, s.holdTo ?? null]));
   const gen = toEffect({ id: 'p', name: 'P', steps }).steps({ speed: 1, duration: 0 });
   const seq = Array.from({ length: 400 }, () => gen.next().value);
   assert.ok(seq.every((s) => s.wait >= FAST_STEP_MS && s.state.mode === 'cct' && s.state.bri <= 30));
   const pauses = seq.filter((s, k) => k % 4 === 0).map((s) => s.wait);
   assert.ok(new Set(pauses.map(Math.round)).size > 20, 'pauses between bursts should vary');
+});
+
+test('removed app effects map to the light’s built-in equivalents', async () => {
+  const { ALIASES, BUILTIN, EFFECTS } = await import('../web/effects.js');
+  const names = Object.fromEntries(Object.entries(ALIASES).map(([k, v]) => [k, BUILTIN.find((b) => b.id === v)?.name]));
+  assert.deepEqual(names, { cops: 'Cop Car', tv: 'TV', fire: 'Fire', candle: 'Candle', party: 'Party' });
+  assert.deepEqual(EFFECTS.map((e) => e.id), ['breathe']);
 });

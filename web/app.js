@@ -2,7 +2,7 @@ import { GVMProtocol as P } from './gvm-protocol.js';
 import { parseHex, toHex, shortUuid, sleep } from './ble.js';
 import { Rig } from './rig.js';
 import { Show, describeState, normState, stateAt } from './show.js';
-import { EFFECTS, GELS, BUILTIN, defaults } from './effects.js';
+import { EFFECTS, GELS, BUILTIN, ALIASES, defaults } from './effects.js';
 import { CustomEffects, PREFIX as CUSTOM, stepColor, normStep, cycleSeconds, changedValues, hasRandom, RANGES, TEMPLATES } from './customfx.js';
 import { APP_VERSION, repoUrl, detectEnv, blockReason, bluetoothSteps, explainProblem, LIGHT_STEPS, OS_NAME, BROWSER_NAME } from './setup.js';
 
@@ -565,6 +565,7 @@ const fxb = { sel: prefs.get('fxb.sel', null) };
 function initEffectEditor() {
   customFx.addEventListener('change', onCustomFxChange);
   const tpl = $('fxbTemplate');
+  tpl.hidden = !TEMPLATES.length;
   tpl.add(new Option('Start from…', ''));
   for (const t of TEMPLATES) { const o = new Option(t.name, t.id); o.title = t.desc; tpl.add(o); }
   tpl.addEventListener('change', () => {
@@ -1003,8 +1004,8 @@ const fx = { runs: [], selected: null, params: {} };
 // Built-in effects plus the ones built on the Effects tab.
 const customFx = new CustomEffects();
 let customList = customFx.effects();
-const allEffects = () => [...EFFECTS, ...customList, ...BUILTIN];
-const findEffect = (id) => allEffects().find((x) => x.id === id) ?? null;
+const allEffects = () => [...BUILTIN, ...EFFECTS, ...customList];
+const findEffect = (id) => allEffects().find((x) => x.id === (ALIASES[id] ?? id)) ?? null;
 
 // Saved settings per effect: the starting values for new runs (each run gets its own copy).
 function ensureParams() {
@@ -1016,8 +1017,8 @@ function ensureParams() {
   }
 }
 ensureParams();
-fx.selected = prefs.get('fx.selected', EFFECTS[0].id);
-if (!findEffect(fx.selected)) fx.selected = EFFECTS[0].id;
+fx.selected = ALIASES[prefs.get('fx.selected', '')] ?? prefs.get('fx.selected', BUILTIN[0].id);
+if (!findEffect(fx.selected)) fx.selected = BUILTIN[0].id;
 
 const runOf = (l) => fx.runs.find((r) => r.lights.includes(l)) ?? null;
 const fxName = (id) => findEffect(id)?.name ?? (id.startsWith(CUSTOM) ? 'deleted effect' : id);
@@ -1211,7 +1212,7 @@ function fxRunningText(id) {
 
 function renderFxParams() {
   if (!$('fxSelect').options.length) return;
-  const e = findEffect(fx.selected) ?? EFFECTS[0];
+  const e = findEffect(fx.selected) ?? BUILTIN[0];
   // Show the values of the selected light's own run if it is running this effect, else the saved settings.
   const runs = selectedRuns(e.id);
   const p = runs[0]?.params ?? fx.params[e.id];
@@ -1273,18 +1274,10 @@ function renderFxParams() {
 function fillFxSelect() {
   const sel = $('fxSelect');
   sel.innerHTML = '';
-  for (const e of EFFECTS) sel.add(new Option(e.name, e.id));
-  if (customList.length) {
-    const og = document.createElement('optgroup');
-    og.label = 'Custom';
-    for (const e of customList) og.appendChild(new Option(e.name, e.id));
-    sel.appendChild(og);
-  }
-  const ob = document.createElement('optgroup');
-  ob.label = 'On the light (built-in)';
-  for (const e of BUILTIN) ob.appendChild(new Option(e.name, e.id));
-  sel.appendChild(ob);
-  if (!findEffect(fx.selected)) fx.selected = EFFECTS[0].id;
+  const group = (label, list) => { const og = document.createElement('optgroup'); og.label = label; for (const e of list) og.appendChild(new Option(e.name, e.id)); sel.appendChild(og); };
+  group('On the light', BUILTIN);
+  group('App effects', [...EFFECTS, ...customList]);
+  if (!findEffect(fx.selected)) fx.selected = BUILTIN[0].id;
   sel.value = fx.selected;
 }
 
@@ -1305,23 +1298,23 @@ function initFxSettings() {
   selectEffect(fx.selected);
 }
 
-/** Custom effects as a compact row of chips under the built-in tiles (keeps the Show tab on one screen). */
+/** App effects (Breathe and the ones built on the Effects tab) as a compact row of chips under the built-in tiles. */
 function renderCustomChips() {
   const box = $('customFx');
-  const key = customList.map((e) => e.id + e.name + e.swatch).join('|');
+  const list = [...EFFECTS, ...customList];
+  const key = list.map((e) => e.id + e.name + e.swatch).join('|');
   if (box.dataset.key !== key) {
     box.dataset.key = key;
     box.innerHTML = '';
-    box.hidden = !customList.length;
-    if (customList.length) {
-      const h = document.createElement('span'); h.className = 'hint'; h.textContent = 'Custom';
-      box.appendChild(h);
-    }
-    for (const e of customList) {
+    box.hidden = !list.length;
+    const h = document.createElement('span'); h.className = 'hint'; h.textContent = 'App effects';
+    h.title = 'Effects the app runs step by step (it keeps sending commands while they run). Build your own on the Effects tab.';
+    box.appendChild(h);
+    for (const e of list) {
       const b = document.createElement('button');
       b.className = 'chip cfx';
       b.dataset.id = e.id;
-      b.title = `${e.desc}\nTap to start / stop on the selected light(s). Edit it on the Effects tab.`;
+      b.title = `${e.desc}\nTap to start / stop on the selected light(s).${e.custom ? ' Edit it on the Effects tab.' : ''}`;
       b.innerHTML = '<span class="cfx-sw"></span><span class="cfx-nm"></span>';
       b.querySelector('.cfx-sw').style.background = e.swatch;
       b.querySelector('.cfx-nm').textContent = e.name;
@@ -1336,34 +1329,6 @@ function renderCustomChips() {
     b.classList.toggle('partial', st === 'some');
     b.disabled = !rig.anyConnected;
   }
-}
-
-/** "On the light" menu: start / switch / stop the light's built-in effects on the selected lights. */
-function renderBuiltinRow() {
-  const sel = $('builtinSel');
-  if (!sel.options.length) {
-    sel.add(new Option('Built-in effect…', ''));
-    BUILTIN.forEach((e) => sel.add(new Option(`${e.scene}. ${e.name}`, e.id)));
-    sel.add(new Option('(some selected lights)', '__some'));
-    sel.lastElementChild.disabled = true;
-    sel.add(new Option('■ Stop', '__stop'));
-    sel.addEventListener('change', () => {
-      const v = sel.value;
-      sel.blur();
-      const lights = targets().filter((l) => runOf(l)?.e.builtin);
-      if (v === '__stop') { if (lights.length) stopEffectOn(lights, { restore: true }); }
-      else { const e = findEffect(v); if (e && effectState(e.id) !== 'all') toggleEffect(e); }
-      renderBuiltinRow();
-    });
-  }
-  const t = targets();
-  const ids = [...new Set(t.map((l) => runOf(l)?.e).filter((e) => e?.builtin).map((e) => e.id))];
-  const all = ids.length === 1 && effectState(ids[0], t) === 'all';
-  sel.value = all ? ids[0] : ids.length ? '__some' : '';
-  sel.querySelector('option[value="__stop"]').hidden = !ids.length;
-  sel.classList.toggle('running', all);
-  sel.classList.toggle('partial', !all && ids.length > 0);
-  sel.disabled = !rig.anyConnected;
 }
 
 /** Effect chips in the cue panel's strip (ours and custom; built-in ones are in the Effects column). */
@@ -1421,9 +1386,8 @@ function renderPresets() {
   const looks = $('looks'), effects = $('effects');
   looks.innerHTML = '';
   show.looks.slice(0, LOOK_KEYS.length).forEach((l, i) => looks.appendChild(tile(l, LOOK_KEYS[i], 'look')));
-  if (!effects.children.length) EFFECTS.forEach((e, i) => effects.appendChild(tile(e, EFFECT_KEYS[i], 'effect')));
+  if (!effects.children.length) BUILTIN.forEach((e, i) => effects.appendChild(tile(e, EFFECT_KEYS[i], 'effect')));
   renderCustomChips();
-  renderBuiltinRow();
   // The board shows the selected light(s): a tile is lit when every selected light has it,
   // half-lit ("partial") when only some do.
   const sel = targets();
@@ -1737,7 +1701,7 @@ function renderCueList() {
     const effSel = d.createElement('select');
     effSel.className = 'cue-fx';
     effSel.add(new (d.defaultView.Option)('No effect', ''));
-    for (const e of allEffects()) effSel.add(new (d.defaultView.Option)(e.custom ? `${e.name} (custom)` : e.builtin ? `${e.name} (on the light)` : e.name, e.id));
+    for (const e of allEffects()) effSel.add(new (d.defaultView.Option)(e.custom ? `${e.name} (custom)` : e.builtin ? e.name : `${e.name} (app)`, e.id));
     for (const ce of cueEffects(c)) if (!findEffect(ce.id)) effSel.add(new (d.defaultView.Option)('(deleted effect)', ce.id));
     const effs = cueEffects(c);
     if (effs.length > 1) {
@@ -1812,7 +1776,20 @@ function runningEffectsForCue() {
 function cueEffects(c) { return c.effects?.length ? c.effects : c.effect ? [c.effect] : []; }
 function cueEffectsLabel(effs) { return effs.map((ce) => fxName(ce.id)).join(' + '); }
 
+/** Cues saved with an app effect that was replaced by a built-in one (e.g. Cops → Cop Car) are moved over. */
+function migrateCueEffects() {
+  const fix = (ce) => (ce && ALIASES[ce.id] ? { ...ce, id: ALIASES[ce.id] } : ce);
+  for (const c of show.cues) {
+    const effs = c.effects?.map(fix), eff = fix(c.effect);
+    if (eff !== c.effect || (effs && effs.some((x, i) => x !== c.effects[i]))) {
+      show.updateCue(c.id, { effect: eff ?? null, ...(effs ? { effects: effs } : {}) });
+      rig.logLine(`cue “${c.name || c.id}”: effect moved to the light’s built-in ${findEffect((eff ?? effs[0]).id)?.name}`);
+    }
+  }
+}
+
 function initCues() {
+  migrateCueEffects();
   $('cueGo').addEventListener('click', goNext);
   $('cueBack').addEventListener('click', goBack);
   $('cueListBtn').addEventListener('click', () => setCuePanel(!cuePanel.open));
@@ -1902,7 +1879,7 @@ function onKeyDown(e) {
   if (k === 'c') { e.preventDefault(); if (isPopped()) cuePanel.win.focus(); else { if ($('tab-show').hidden) showTab('show'); setCuePanel(!cuePanel.open); } return; }
   if ($('tab-show').hidden || ui.locked) return;
   if (LOOK_KEYS.includes(k)) { const look = show.looks[LOOK_KEYS.indexOf(k)]; if (look) { e.preventDefault(); applyLook(look); } }
-  else if (EFFECT_KEYS.includes(k)) { e.preventDefault(); toggleEffect(EFFECTS[EFFECT_KEYS.indexOf(k)]); }
+  else if (EFFECT_KEYS.includes(k)) { e.preventDefault(); toggleEffect(BUILTIN[EFFECT_KEYS.indexOf(k)]); }
   else if ((k === 'arrowup' || k === 'arrowdown') && !t.matches?.('input[type=range]')) {
     e.preventDefault();
     nudgeBrightness((k === 'arrowup' ? 1 : -1) * (e.shiftKey ? 1 : 5));
