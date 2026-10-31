@@ -164,8 +164,12 @@
     <div class="group looks-card lockable">
       <div class="row-between">
         <div class="label">Looks <span class="hint">· keys 1–9</span></div>
-        <button id="saveLookBtn" class="btn sm" title="Save the selected light’s current look">+ Save look</button>
+        <span class="row look-actions">
+          <button id="updateLookBtn" class="btn sm" title="Pick a look to replace with the selected light’s current color and brightness">Update look</button>
+          <button id="saveLookBtn" class="btn sm" title="Save the selected light’s current look">+ Save look</button>
+        </span>
       </div>
+      <div id="lookPickHint" class="hint look-pick-hint" hidden>Tap the look to replace (or press its number) · Esc to cancel</div>
       <div id="looks" class="tiles"></div>
     </div>
   </section>
@@ -367,6 +371,21 @@
   <section class="news-more">
     <a id="newsMore" target="_blank" rel="noopener">More: every change, version by version (changelog on GitHub) →</a>
   </section>
+</dialog>
+
+<!-- Name a new look -->
+<dialog id="lookNameDlg" class="dlg dlg-sm">
+  <form id="lookNameForm" method="dialog">
+    <div class="dlg-head"><h2>Save look</h2></div>
+    <section>
+      <label class="field">Name<input id="lookNameInput" type="text" maxlength="40" autocomplete="off" required></label>
+      <p id="lookNameDesc" class="hint"></p>
+      <div class="row dlg-actions">
+        <button type="button" class="btn" data-close>Cancel</button>
+        <button type="submit" class="btn primary">Save</button>
+      </div>
+    </section>
+  </form>
 </dialog>
 
 <!-- Pre-show check -->

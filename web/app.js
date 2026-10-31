@@ -1052,13 +1052,46 @@ async function applyLook(look, { fadeMs = ui.fadeMs } = {}) {
   await crossfade(lights.map((l) => ({ light: l, to: look.state })), fadeMs, { label: `LOOK ${look.name}` });
 }
 
+/** + Save look: asks for a name, then saves the selected light's current look. */
 function saveCurrentLook() {
   const p = primary();
   if (!p?.conn.connected) return;
-  const look = show.addLook(stateOf(p));
+  setLookPick(false);
+  const state = stateOf(p);
+  const input = $('lookNameInput');
+  input.value = `Look ${show.looks.length + 1}`;
+  $('lookNameDesc').textContent = `${p.label}: ${describeState(state)}`;
+  const form = $('lookNameForm');
+  form.onsubmit = (e) => {
+    e.preventDefault();
+    const name = input.value.trim();
+    if (!name) return;
+    closeDialog($('lookNameDlg'));
+    const look = show.addLook(state, name);
+    p.look = look.id;
+    renderPresets();
+    toast({ level: 'ok', title: `Saved “${look.name}”`, body: show.looks.length > LOOK_KEYS.length ? 'Only the first 9 looks show on the Show tab; reorder them on the Looks tab.' : '' });
+  };
+  openDialog('lookNameDlg');
+  input.focus(); input.select();
+}
+
+/** Update look: the next look tile tapped (or number pressed) takes the selected light's current look. */
+function setLookPick(on) {
+  ui.lookPick = !!on;
+  $('looks').closest('.looks-card').classList.toggle('picking', ui.lookPick);
+  $('lookPickHint').hidden = !ui.lookPick;
+  $('updateLookBtn').textContent = ui.lookPick ? 'Cancel' : 'Update look';
+}
+
+function updateLookFromLight(look) {
+  setLookPick(false);
+  const p = primary();
+  if (!p?.conn.connected) return;
+  show.updateLook(look.id, { state: stateOf(p) });
   p.look = look.id;
   renderPresets();
-  toast({ level: 'ok', title: `Saved “${look.name}”`, body: 'Rename, reorder or delete it on the Looks tab.', actions: [{ label: 'Open Looks tab', fn: () => showTab('looks') }] });
+  toast({ level: 'ok', title: `Updated “${look.name}”`, body: describeState(stateOf(p)) });
 }
 
 // ---------- effects ----------
@@ -1259,7 +1292,7 @@ function tile(item, key, kind) {
   }
   b.querySelector('.key').textContent = key ? key.toUpperCase() : '';
   if (!key) b.querySelector('.key').remove();
-  b.addEventListener('click', () => (kind === 'look' ? applyLook(item) : toggleEffect(item)));
+  b.addEventListener('click', () => (kind !== 'look' ? toggleEffect(item) : ui.lookPick ? updateLookFromLight(item) : applyLook(item)));
   return b;
 }
 
@@ -1494,6 +1527,8 @@ function renderPresets() {
   const on = rig.anyConnected;
   for (const b of document.querySelectorAll('#tab-show .tile')) b.disabled = !on;
   $('saveLookBtn').disabled = !on;
+  $('updateLookBtn').disabled = !on || !show.looks.length;
+  if (ui.lookPick && $('updateLookBtn').disabled) setLookPick(false);
   if ($('fxSelect').options.length) $('fxRunning').textContent = fxRunningText(fx.selected);
   if (cuePanel.hosts.panel) updateCueTools();
   const pb = document.querySelector('#fxbEdit .fxb-head .btn.primary');
@@ -1919,6 +1954,7 @@ function renderLookList() {
 function initLookLibrary() {
   $('lookSave').addEventListener('click', saveCurrentLook);
   $('saveLookBtn').addEventListener('click', saveCurrentLook);
+  $('updateLookBtn').addEventListener('click', () => setLookPick(!ui.lookPick));
   confirmButton($('lookReset'), 'Click again to restore defaults', () => { show.resetLooks(); toast({ level: 'ok', title: 'Default looks restored' }); });
   renderLookList();
 }
@@ -1956,11 +1992,12 @@ function onKeyDown(e) {
   // Show-running keys work on the Show and Cues tabs, and while locked.
   if (k === ' ' || e.code === 'Space') { e.preventDefault(); if (e.shiftKey) goBack(); else if (!$('cueGo').disabled) goNext(); return; }
   if (k === 'b') { e.preventDefault(); toggleBlackout(); return; }
+  if (k === 'escape' && ui.lookPick) { e.preventDefault(); setLookPick(false); return; }
   if (k === 'escape') { e.preventDefault(); clearFollow(); cancelFade(); stopAllEffects(true); return; }
   if (k === 'l') { e.preventDefault(); setLocked(!ui.locked); return; }
   if (k === 'c') { e.preventDefault(); if (isPopped()) cuePanel.win.focus(); else { if ($('tab-show').hidden) showTab('show'); setCuePanel(!cuePanel.open); } return; }
   if ($('tab-show').hidden || ui.locked) return;
-  if (LOOK_KEYS.includes(k)) { const look = show.looks[LOOK_KEYS.indexOf(k)]; if (look) { e.preventDefault(); applyLook(look); } }
+  if (LOOK_KEYS.includes(k)) { const look = show.looks[LOOK_KEYS.indexOf(k)]; if (look) { e.preventDefault(); if (ui.lookPick) updateLookFromLight(look); else applyLook(look); } }
   else if (EFFECT_KEYS.includes(k)) { e.preventDefault(); toggleEffect(BUILTIN[EFFECT_KEYS.indexOf(k)]); }
   else if ((k === 'arrowup' || k === 'arrowdown') && !t.matches?.('input[type=range]')) {
     e.preventDefault();

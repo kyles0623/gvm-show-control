@@ -9,7 +9,7 @@ the minor version (see [CONTRIBUTING.md](CONTRIBUTING.md#versions-and-the-change
 
 ## [Unreleased]
 
-## [1.10.0] - 2026-10-31
+## [1.11.0] - 2026-10-31
 
 ### Added
 - **Gel Reset** button next to the Gel menu: takes the gel off the selected light(s), back to the color they had

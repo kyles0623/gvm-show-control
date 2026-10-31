@@ -298,6 +298,12 @@ li.ok .chk-body.collapsible { color: var(--muted); }
   background: var(--panel); color: var(--text); border: 1px solid var(--border); border-radius: 16px;
   box-shadow: 0 20px 60px #000a; user-select: text;
 }
+.dlg-sm { width: min(380px, calc(100vw - 32px)); }
+.dlg-sm .field input { max-width: none; }
+.dlg-actions { justify-content: flex-end; gap: 8px; margin-top: 6px; }
+.look-actions { gap: 6px; }
+.look-pick-hint { margin: 2px 0 6px; color: var(--accent); }
+.looks-card.picking #looks .tile { border-color: var(--accent); border-style: dashed; }
 .dlg::backdrop { background: rgba(5, 5, 6, .7); }
 .dlg-head {
   position: sticky; top: 0; display: flex; justify-content: space-between; align-items: center;
