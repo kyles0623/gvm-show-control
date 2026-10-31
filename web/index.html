@@ -178,6 +178,10 @@
       </div>
       <div id="effects" class="tiles"></div>
       <div id="customFx" class="custom-fx" hidden></div>
+      <div class="builtin-fx" title="The light's own built-in effects: they run on the light itself, with no Bluetooth traffic while running">
+        <span class="hint">On the light</span>
+        <select id="builtinSel" class="builtin-select" aria-label="Built-in effect (runs on the light)"></select>
+      </div>
       <div class="fx-settings">
         <div class="row-between">
           <div class="row fx-head">
@@ -249,6 +253,12 @@
         <button id="disconnectBtn" class="btn">Disconnect</button>
         <button id="forgetBtn" class="btn">Forget light</button>
       </div>
+    </div>
+    <div class="group">
+      <div class="row-between"><div class="label">Status watch</div><span class="hint">read-only · updates every ~5 s</span></div>
+      <p class="hint">Values the light reports. <b>p1</b> isn’t decoded yet: if it ever changes, it turns orange and the change is
+        written to the log.</p>
+      <div id="statusWatch" class="status-watch">(not connected)</div>
     </div>
     <div class="group grow">
       <div class="row-between"><div class="label">GATT</div><button id="copyGattBtn" class="btn sm">Copy</button></div>
@@ -369,7 +379,7 @@
   <section>
     <h3>Quick start</h3>
     <ol class="steps">
-      <li>Turn the light on, set it to <b>App mode</b> (on the light’s own controls), and close the GVM phone app.</li>
+      <li>Turn the light on and set it to <b>App mode</b>: press the small <b>mode button</b> on the light (it cycles through the modes) until the display shows <b>APP</b>. Close the GVM phone app.</li>
       <li>Press <b>Pair light</b> (top left) and choose <b>BT_LED</b>.</li>
       <li>Use the sliders, or tap a <b>Look</b> or <b>Effect</b>.</li>
       <li><b>Blackout</b> (or <kbd>B</kbd>) takes the light out; press again to restore. Set a fade time to fade instead of snapping.</li>

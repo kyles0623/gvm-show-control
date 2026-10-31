@@ -571,3 +571,18 @@ body.popout { overflow: hidden; height: 100vh; }
 .fxb-rnd.on { border-color: var(--accent); color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); }
 
 .fxb-template { width: 100%; margin-top: 8px; background: var(--panel-2); color: var(--text); border: 1px solid var(--border); border-radius: 8px; padding: 4px 6px; font: inherit; font-size: 12px; }
+
+/* Debug: status watch */
+.status-watch table { border-collapse: collapse; font: 12px var(--mono); width: 100%; }
+.status-watch th, .status-watch td { text-align: left; padding: 2px 8px 2px 0; }
+.status-watch td small { color: var(--muted); }
+.status-watch tr.unk td:first-child { color: var(--accent); }
+.status-watch td.hot { color: var(--warn); font-weight: 700; }
+
+/* Built-in effects (run on the light) */
+.builtin-fx { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
+.builtin-select { flex: 1; min-width: 0; background: var(--panel-2); color: var(--text); border: 1px solid var(--border);
+  border-radius: 8px; padding: 4px 8px; font: inherit; font-size: 13px; }
+.builtin-select.running { border-color: var(--accent); color: var(--accent); }
+.builtin-select.partial { border-color: var(--accent); border-style: dashed; }
+.cue-fx-strip .cue-builtin { flex: none; width: auto; padding: 3px 6px; font-size: 12px; }

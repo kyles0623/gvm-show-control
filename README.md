@@ -14,7 +14,7 @@ that off in Settings.)
 - A **GVM 800-RGB** (shows up as `BT_LED`). Other GVM models may use the same protocol but are untested — see [Other lights](#other-lights).
 - **Google Chrome or Microsoft Edge** on macOS, Windows, ChromeOS or Android.
   Safari, Firefox and all iPhone/iPad browsers can't use Bluetooth from a web page; the app tells you this and suggests alternatives.
-- Set the light to **App mode** on the light itself; in other modes it doesn't take Bluetooth control.
+- Set the light to **App mode**: press the small **mode button** on the light (it cycles through the modes) until the display shows **APP**. In other modes it doesn't take Bluetooth control.
 - Close the GVM phone app first — the light accepts only one connection at a time.
 
 ## Use it
@@ -43,6 +43,7 @@ On Windows/Linux, any static server works, e.g. `cd web && python -m http.server
 | **Effects** (`Q`–`Y`) | Cops, Television, Fire, Candle, Party, Breathe — each with its own settings (brightness range, speed, colors, pattern, **run for N seconds**). Each light can run its own effect at the same time (e.g. Cops on one, Fire on another); the board shows the selected light's effect, look and settings. With several lights on one effect, Cops can alternate colors and the flicker effects run independently per light. |
 | **Live controls** | Brightness, color temperature (3200–5600 K), hue, saturation |
 | **Show safety** | Lock (`L`) leaves only GO, Back and Blackout working; auto-reconnect per light; keeps the screen awake; dim UI for dark rooms |
+| **Built-in effects** | The light's own 20 effects (Lightning, Cop Car, Paparazzi, Fireworks, Strobe…) from the **On the light** menu. They run on the light itself, so they stay smooth and keep going if Bluetooth drops; settings as in the official app; recordable in cues. |
 | **Custom effects** | Build your own on the **Effects** tab: a looping list of steps (color or gel, brightness, hold time, fade time). They sit under the built-in effects on the Show tab, run per light, and can be recorded into cues. |
 | **Gels** | The **Gel** menu applies approximate gel-style colors (CTO/CTB corrections, ambers, pinks, lavenders, blues, greens) to the selected lights, keeping their brightness. |
 | **Pre-show check** | **Check** (top right) confirms every light is connected and answering, dims each one briefly so you can see which is which, and flags cues that use missing lights. |

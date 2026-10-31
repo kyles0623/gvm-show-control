@@ -9,10 +9,18 @@ the minor version (see [CONTRIBUTING.md](CONTRIBUTING.md#versions-and-the-change
 
 ## [Unreleased]
 
-## [1.4.0] - 2026-10-30
-
 ### Added
-- Setup, Help, connection-problem messages and the README now say the light must be in App mode.
+- **The light's 20 built-in effects** ("On the light" menu in the Effects column and the cue panel): Lightning,
+  Cop Car, Candle, TV, Bad Bulb, Party, Disco, Paparazzi, Explosion, Pulsing, Fire, Fireworks, Welding, CCT Loop,
+  Hue Loop, Ambulance, Fire Engine, SOS, Strobe, Strobe II. They run on the light itself (smooth, and they keep
+  going if Bluetooth drops), per light, with the same settings as the official app (brightness; color temperature,
+  cycle time or color where the app has them), and can be recorded into cues. Decoded from a capture of the
+  official app.
+- Connection-lost messages point out that switching the light out of App mode (with its mode button) disconnects it.
+- Debug tab: **Status watch**, a live table of every value each light reports, with changes highlighted and the
+  three undecoded values (p1, p7, p8) logged whenever they change. Read-only; it sends nothing.
+- Setup, Help, connection-problem messages and the README now say the light must be in App mode (press the mode
+  button until the display shows APP).
 - Anonymous visit counting on the hosted app with GoatCounter (no cookies, no personal data). Settings → About →
   "Count my visits" turns it off. Local copies (localhost) are never counted.
 - Effects tab: click a step's color square to open a color picker (color field for hue and saturation,
@@ -26,6 +34,10 @@ the minor version (see [CONTRIBUTING.md](CONTRIBUTING.md#versions-and-the-change
 - Custom effects can hold a step for as little as 0.06 s (was 0.2 s), for fast flicker and strobe-like effects.
   A step needs 0.06 s per value it changes (brightness only: 0.06 s; color and brightness: up to 0.24 s); shorter
   holds are shown in orange. The built-in effects keep their 0.2 s minimum.
+
+### Fixed
+- Lights that use a protocol address other than 0x30 (e.g. 0x33) are now controlled: the app uses the address each
+  light gives when it connects, as the official app does.
 
 ## [1.3.0] - 2026-10-29
 

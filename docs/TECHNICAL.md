@@ -153,6 +153,16 @@ others 50 %. Default min brightness is 20 % for every effect. Each effect's sett
   steps every cycle, so edits apply live.
   Level, Hold and Fade may be random ranges (`briTo`, `holdTo`, `fadeTo` as upper bounds); each time the step runs a
   value is picked uniformly from the range (Level as a whole %). Cycle times with ranges are shown as averages. Effect ids are `custom:<id>`; a cue that uses a deleted custom effect skips it.
+- Built-in effects (`BUILTIN` in effects.js, ids `scene:1`…`scene:20`): started per light with mode 3 + the effect
+  number (only the number when the light is already in Scene mode, as the official app does), then the effect's
+  settings: brightness; color temperature (Bad Bulb, Explosion, Pulsing, Fireworks, Strobe), cycle time (Party,
+  Disco, CCT Loop, Hue Loop, Strobe, Strobe II), hue + saturation (Strobe II), matching the official app's screens.
+  Settings changed while running are sent live. The light then runs the effect itself. Taking a light out of a
+  built-in effect (manual control, a look, another effect) switches it back to the mode it had before; Stop also
+  restores its previous look. While a light is off or away nothing is sent, and everything is sent again when it is
+  back. Captured: effect numbers 2, 8, 20 and Strobe II's settings; the rest use the same commands untested.
+- Address: each light's handshake reply gives its protocol address (0x30, 0x33 seen); every set command is sent to
+  that address (the encoders build frames for 0x30 and `ble.js` rewrites the address byte and CRC).
 - Gels: approximate gel-style colors (`GELS` in effects.js). Corrections are color temperature (Full CTO 3200 K,
   ¾ 3500, ½ 3800, ¼ 4500, ⅛ 4900, ½ CTB on tungsten 4100, Full CTB 5600); colors are hue/saturation. Applying a gel
   changes color only and crossfades with the Fade time.
@@ -193,7 +203,7 @@ controlling the light; the extracted control frames (no other Bluetooth traffic)
 | Control characteristic | `00010203-0405-0607-0809-0a0b0c0d2b10` (read, write without response, notify; described as "Ai-Thinker SPP") |
 | Frame | `4C 54` · length · `00` · address `30` · command · payload · CRC-16/XMODEM (big-endian) |
 | Set parameter | command `57`, payload `00 <param> 01 <value>` |
-| Params | `00` power · `02` brightness % · `03` CCT ÷ 100 · `04` hue ÷ 5 · `05` saturation % · `06` mode (1 CCT, 2 HSI) |
+| Params | `00` power · `02` brightness % · `03` CCT ÷ 100 · `04` hue ÷ 5 · `05` saturation % · `06` mode (1 CCT, 2 HSI, 3 Scene) · `07` built-in effect number (1–20) · `08` scene cycle time (0.1 s) |
 | Light → app | `02` ack · `03` status every 5 s (params 0–8); the app echoes status with command `48` |
 | Handshake | `4C 54 09 00 00 53 00 00 01 00 94 74` |
 
@@ -202,8 +212,13 @@ controlling the light; the extracted control frames (no other Bluetooth traffic)
 | Frame format, CRC-16/XMODEM | matches all 169 captured frames |
 | Handshake, power, brightness, sliders | verified on hardware |
 | CCT 3200–5600 K, hue (5° units), saturation, mode | encoders reproduce captured frames; driven via sliders on hardware |
-| Brightness 0 % | not in capture (min seen 10 %); used as the fade floor |
-| Params 0x01, 0x07, 0x08 | unknown, never written |
+| Brightness 0 % | sent by the official app in capture 2 (Scene BRG 0 %); used as the fade floor |
+| Params 0x07, 0x08 | decoded from capture 2 (Scene tab): 0x07 = built-in effect number, 1-based in the official app's order (2 Cop Car, 8 Paparazzi, 20 Strobe II written); 0x08 = cycle time in 0.1 s (Strobe II "Cycle" 0.1/2.5/5 s = 1/25/50). Capture 1's 08/1B = Paparazzi, 2.7 s left over from earlier use |
+| Mode 3 (Scene) | in Scene mode, brightness (0x02) is the effect's BRG; Strobe II also uses hue (0x04) and saturation (0x05). The light keeps separate color values per mode (switching back to CCT restored its earlier CCT values); brightness is shared |
+| Param 0x01 | unknown, never written: `02` on the light in capture 1, `0A` on the light in capture 2, constant in both |
+| Address byte | the light's handshake reply comes from its address: `30` in capture 1, `33` in capture 2; the official app sends every command to that address, and so does this app |
+| Leaving App mode | switching the light away from APP with its mode button drops the Bluetooth connection (seen on hardware); the app reconnects when it returns to APP |
+| Handshake reply data `02 20 38` | probably capabilities: `20`/`38` = 32/56 matches the CCT range 3200–5600 K (×100); `02` equals status p1. Not yet confirmed (needs a light with a different range) |
 | Status echo required? | unknown; sent by default |
 
 ## Files

@@ -204,3 +204,46 @@ export const EFFECTS = [
 
 /** Default params for an effect. */
 export const defaults = (e) => Object.fromEntries(e.params.map((d) => [d.id, d.def]));
+
+// ---------- built-in effects (the light's own Scene mode) ----------
+// Started with mode 3 + the effect number (capture 2); the light then runs the effect by itself, so there is
+// no per-step Bluetooth traffic. Each effect gets the settings the official app shows for it (screenshots,
+// 2026-10-30): brightness (BRG) for all; some add color temperature, cycle time, or hue + saturation.
+// Captured: effect numbers 2, 8, 20; brightness, hue, saturation and cycle (param 0x08) on Strobe II. Not
+// captured: the other effect numbers (same command, number = position in the app's list), cycle on other
+// effects (same param 0x08) and color temperature in Scene mode (param 0x03, as in CCT mode).
+import { SCENES } from './gvm-protocol.js';
+
+const FAST = new Set([1, 2, 5, 6, 7, 8, 9, 12, 13, 16, 17, 18, 19, 20]);
+const WARM = new Set([3, 11]);
+const SCENE_SWATCH = {
+  1: 'linear-gradient(135deg, #223 40%, #eef 50%, #223 60%)', 2: 'linear-gradient(90deg, hsl(0 100% 50%) 50%, hsl(240 100% 55%) 50%)',
+  3: 'hsl(32 100% 60%)', 4: 'hsl(210 35% 55%)', 5: 'linear-gradient(90deg, #ffd9a0 60%, #333 60%)',
+  6: 'conic-gradient(red, yellow, lime, cyan, blue, magenta, red)', 7: 'conic-gradient(magenta, cyan, yellow, magenta)',
+  8: 'radial-gradient(circle, #fff 30%, #333 70%)', 9: 'radial-gradient(circle, #ffe08a 20%, #e0461a 60%, #222 80%)',
+  10: 'radial-gradient(circle, #fff 10%, #555 80%)', 11: 'hsl(20 100% 50%)', 12: 'radial-gradient(circle, #ffd400 15%, #e03 45%, #22a 75%)',
+  13: 'radial-gradient(circle, #bfe9ff 25%, #2a6 70%)', 14: 'linear-gradient(90deg, #ffb46b, #f4f1ff)',
+  15: 'conic-gradient(red, yellow, lime, cyan, blue, magenta, red)', 16: 'linear-gradient(90deg, #e22 50%, #fff 50%)',
+  17: 'linear-gradient(90deg, #e22 50%, #f80 50%)', 18: 'repeating-linear-gradient(90deg, #fff 0 3px, #222 3px 6px)',
+  19: 'repeating-linear-gradient(90deg, #fff 0 2px, #111 2px 6px)', 20: 'repeating-linear-gradient(90deg, hsl(280 100% 60%) 0 2px, #111 2px 6px)',
+};
+export const CYCLE = { id: 'cycle', label: 'Cycle', min: 0.1, max: 5, step: 0.1, def: 1, unit: 's', kind: 'plain' };
+const SCENE_CCT = { id: 'cct', label: 'Color temperature', min: 3200, max: 5600, step: 100, def: 5600, unit: 'K', kind: 'cct' };
+// Extra settings per effect number, as in the official app.
+const SCENE_SETTINGS = {
+  5: [SCENE_CCT], 9: [SCENE_CCT], 10: [SCENE_CCT], 12: [SCENE_CCT],         // Bad Bulb, Explosion, Pulsing, Fireworks
+  6: [CYCLE], 7: [CYCLE], 14: [CYCLE], 15: [CYCLE],                        // Party, Disco, CCT Loop, Hue Loop
+  19: [SCENE_CCT, CYCLE],                                                  // Strobe
+  20: [CYCLE, HUE('hue', 'Color', 0), SAT(100)],                           // Strobe II
+};
+
+export const BUILTIN = SCENES.map((name, i) => {
+  const n = i + 1;
+  const level = FAST.has(n) ? 30 : WARM.has(n) ? 35 : 50;
+  return {
+    id: `scene:${n}`, name, scene: n, builtin: true,
+    swatch: SCENE_SWATCH[n] ?? '#888',
+    desc: `${name}: the light's own built-in effect (runs on the light, no Bluetooth traffic while it runs)`,
+    params: [{ ...LEVEL(level), min: 0 }, ...(SCENE_SETTINGS[n] ?? []), DURATION],
+  };
+});

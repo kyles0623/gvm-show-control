@@ -1,6 +1,6 @@
 // Connection layer: pairing, remembered device, auto-reconnect, GATT discovery,
 // serialized writes, notification decoding, status echo, session log.
-import { GVMProtocol, decode, stateFromFrame, paramUpdate, CONTROL_CHAR } from './gvm-protocol.js';
+import { GVMProtocol, decode, stateFromFrame, paramUpdate, withAddress, CONTROL_CHAR, LIGHT_ADDR } from './gvm-protocol.js';
 
 export const SERVICE = '00010203-0405-0607-0809-0a0b0c0d1910';
 export const OPTIONAL_SERVICES = ['0000180a-0000-1000-8000-00805f9b34fb', SERVICE];
@@ -117,6 +117,10 @@ export class LightConnection extends EventTarget {
     this.missCount = 0;          // commands that stayed unanswered after a resend (this session)
     this.resendCount = 0;
     this.sent = {};              // raw param → value the app last sent (what it wants the light to be)
+    this.statusRaw = null;       // latest status payload (params 0x00..0x08), raw bytes
+    this.statusChangedAt = [];   // per param: when it last changed (ms), for the Debug tab's watch table
+    this.handshakeReply = null;  // data bytes of the light's handshake reply (e.g. 02 20 38)
+    this.addr = LIGHT_ADDR;      // the light's protocol address, from its handshake reply (0x30, 0x33, … seen)
     this.echoStatus = true;
     this.quietStatus = true;
     this.log = [];
@@ -182,7 +186,10 @@ export class LightConnection extends EventTarget {
       this.unansweredAt = 0;
       this._startWatchdog();
       this._setStatus('connected');
+      this.handshakeReply = null;
       await this.sendFrames(GVMProtocol.handshake(), 'handshake');
+      // Wait (briefly) for the reply, which gives the light's address, before anything else is sent.
+      for (let i = 0; i < 20 && !this.handshakeReply && this.device?.gatt.connected; i++) await sleep(50);
     } catch (e) {
       this.logLine(`CONNECT FAILED: ${e.name ?? 'Error'}: ${e.message}`);
       if (device.gatt.connected) device.gatt.disconnect();
@@ -313,7 +320,18 @@ export class LightConnection extends EventTarget {
     this.lastRxAt = Date.now();
     this.unansweredAt = 0;              // the light is talking
     for (const f of decode(bytes)) {
-      if (f.ok && f.bytes[5] === 0x03) Array.from(f.bytes.slice(6, -2)).forEach((v, p) => { this.confirmed[p] = v; });
+      if (f.ok && f.bytes[5] === 0x03) {
+        const raw = Array.from(f.bytes.slice(6, -2));
+        raw.forEach((v, p) => { this.confirmed[p] = v; });
+        this._watchStatus(raw);
+      }
+      if (f.ok && f.bytes[5] === 0x53 && f.bytes[4] !== 0x00) {
+        this.handshakeReply = Array.from(f.bytes.slice(8, -2));
+        // Every light answers the handshake from its own address; the official app then sends all commands
+        // there (0x30 and 0x33 in the two captures). Do the same.
+        if (this.addr !== f.bytes[4]) this.logLine(`address 0x${f.bytes[4].toString(16).toUpperCase()} (from the handshake reply)`);
+        this.addr = f.bytes[4];
+      }
       if (f.ok && f.bytes[5] === 0x02 && f.bytes.length >= 9) this._onAck(f.bytes[7], f.bytes[8]);
       if (!(f.isStatus && this.quietStatus)) this.logLine(`RX ${toHex(f.bytes)}  → ${f.text}`);
       if (!f.ok) continue;
@@ -327,6 +345,26 @@ export class LightConnection extends EventTarget {
         this.sendFrames([GVMProtocol.statusEcho(f.bytes)], 'status echo', { quiet: this.quietStatus });
       }
     }
+  }
+
+  // ---------- status watch (decoding the unknown params) ----------
+
+  /**
+   * Params 0x01, 0x07 and 0x08 of the status frame were constant (02, 08, 1B) in the whole capture, so their
+   * meaning is unknown. Log every change of them, even with status lines hidden, so that changing something on
+   * the light can be matched to the value that moved. Read-only: nothing is sent.
+   */
+  _watchStatus(raw) {
+    const prev = this.statusRaw;
+    const now = Date.now();
+    raw.forEach((v, p) => { if (!prev || prev[p] !== v) this.statusChangedAt[p] = prev ? now : 0; });
+    if (prev) {
+      const hx = (v) => '0x' + v.toString(16).padStart(2, '0').toUpperCase();
+      const unknown = [1].filter((p) => prev[p] !== raw[p]);   // p7/p8 decoded in capture 2 (scene #, cycle)
+      if (unknown.length) this.logLine(`STATUS WATCH: unknown ${unknown.map((p) => `p${p} ${hx(prev[p])} → ${hx(raw[p])}`).join(', ')} (note what you just changed on the light)`);
+      if (raw.length !== prev.length) this.logLine(`STATUS WATCH: status length ${prev.length} → ${raw.length}`);
+    }
+    this.statusRaw = raw;
   }
 
   // ---------- acks / resend ----------
@@ -429,6 +467,8 @@ export class LightConnection extends EventTarget {
     if (info.ota) { this.logLine(`TX blocked [${label}]: ${info.uuid} looks like OTA/DFU`); return false; }
     const wwr = info.props.includes('writeWithoutResponse');
     if (!wwr && !info.props.includes('write')) { this.logLine(`TX blocked [${label}]: not writable`); return false; }
+    // Set commands go to this light's address (encoders build them for the default 0x30).
+    if (info === this.ctrl && bytes[5] === 0x57 && bytes[4] !== this.addr) bytes = withAddress(bytes, this.addr);
     return this._enqueue(async () => {
       try {
         // Minimum spacing between any two writes (the official app never sent faster than this).

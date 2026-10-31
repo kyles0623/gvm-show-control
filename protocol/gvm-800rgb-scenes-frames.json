@@ -1,0 +1,2213 @@
+{
+ "description": "GVM 800-RGB BLE control traffic between the official iOS app and a light, Scene mode (built-in effects), extracted from an Apple PacketLogger trace (2026-10-30). Only ATT Write Command / Notification payloads on the control characteristic are included; no device addresses or other Bluetooth traffic.",
+ "light": {
+  "model": "GVM 800-RGB",
+  "advertisedName": "BT_LED",
+  "protocolAddress": "0x33 (from its handshake reply; the light in capture 1 used 0x30)"
+ },
+ "captureSequence": [
+  "connect (light in CCT, scene memory = 1 Lightning)",
+  "Scene tab: mode=3",
+  "BRG 0 → ~27 → 50 → 100",
+  "Cop Car: scene=2",
+  "Paparazzi: scene=8",
+  "Strobe II: scene=20",
+  "BRG 100 → 0",
+  "Hue → 360 (72)",
+  "BRG → 10",
+  "Hue → 270 (54)",
+  "Saturation → 100",
+  "Saturation → 50",
+  "Cycle → 5 s (50)",
+  "Cycle → 2.5 s (25)",
+  "Cycle → 0.1 s (1)",
+  "Custom Colorful Scenes menu, back, Save (no traffic)",
+  "CCT tab: mode=1"
+ ],
+ "frames": [
+  {
+   "t": 0,
+   "dir": "app→light",
+   "hex": "4C 54 09 00 00 53 00 00 01 00 94 74",
+   "crcOk": true,
+   "decoded": "handshake reply addr=0x0 data=01 00"
+  },
+  {
+   "t": 0.08,
+   "dir": "light→app",
+   "hex": "4C 54 0A 00 33 53 00 00 02 20 38 F3 9B",
+   "crcOk": true,
+   "decoded": "handshake reply addr=0x33 data=02 20 38"
+  },
+  {
+   "t": 0.08,
+   "dir": "light→app",
+   "hex": "4C 54 0E 00 33 03 01 0A 00 20 09 62 01 01 01 73 E1",
+   "crcOk": true,
+   "decoded": "status power=on p1=0x0a brightness=0% cct=3200K hue=45° saturation=98% mode=CCT scene=1 (Lightning) cycle=0.1s"
+  },
+  {
+   "t": 0.08,
+   "dir": "app→light",
+   "hex": "4C 54 0E 00 33 48 01 0A 00 20 09 62 01 01 01 FA 7F",
+   "crcOk": true,
+   "decoded": "cmd=0x48"
+  },
+  {
+   "t": 1.39,
+   "dir": "light→app",
+   "hex": "4C 54 0E 00 33 03 01 0A 00 20 09 62 01 01 01 73 E1",
+   "crcOk": true,
+   "decoded": "status power=on p1=0x0a brightness=0% cct=3200K hue=45° saturation=98% mode=CCT scene=1 (Lightning) cycle=0.1s"
+  },
+  {
+   "t": 1.39,
+   "dir": "app→light",
+   "hex": "4C 54 0E 00 33 48 01 0A 00 20 09 62 01 01 01 FA 7F",
+   "crcOk": true,
+   "decoded": "cmd=0x48"
+  },
+  {
+   "t": 5.4,
+   "dir": "light→app",
+   "hex": "4C 54 0E 00 33 03 01 0A 00 20 09 62 01 01 01 73 E1",
+   "crcOk": true,
+   "decoded": "status power=on p1=0x0a brightness=0% cct=3200K hue=45° saturation=98% mode=CCT scene=1 (Lightning) cycle=0.1s"
+  },
+  {
+   "t": 5.4,
+   "dir": "app→light",
+   "hex": "4C 54 0E 00 33 48 01 0A 00 20 09 62 01 01 01 FA 7F",
+   "crcOk": true,
+   "decoded": "cmd=0x48"
+  },
+  {
+   "t": 9.45,
+   "dir": "light→app",
+   "hex": "4C 54 0E 00 33 03 01 0A 00 20 09 62 01 01 01 73 E1",
+   "crcOk": true,
+   "decoded": "status power=on p1=0x0a brightness=0% cct=3200K hue=45° saturation=98% mode=CCT scene=1 (Lightning) cycle=0.1s"
+  },
+  {
+   "t": 9.45,
+   "dir": "app→light",
+   "hex": "4C 54 0E 00 33 48 01 0A 00 20 09 62 01 01 01 FA 7F",
+   "crcOk": true,
+   "decoded": "cmd=0x48"
+  },
+  {
+   "t": 13.46,
+   "dir": "light→app",
+   "hex": "4C 54 0E 00 33 03 01 0A 00 20 09 62 01 01 01 73 E1",
+   "crcOk": true,
+   "decoded": "status power=on p1=0x0a brightness=0% cct=3200K hue=45° saturation=98% mode=CCT scene=1 (Lightning) cycle=0.1s"
+  },
+  {
+   "t": 13.46,
+   "dir": "app→light",
+   "hex": "4C 54 0E 00 33 48 01 0A 00 20 09 62 01 01 01 FA 7F",
+   "crcOk": true,
+   "decoded": "cmd=0x48"
+  },
+  {
+   "t": 17.51,
+   "dir": "light→app",
+   "hex": "4C 54 0E 00 33 03 01 0A 00 20 09 62 01 01 01 73 E1",
+   "crcOk": true,
+   "decoded": "status power=on p1=0x0a brightness=0% cct=3200K hue=45° saturation=98% mode=CCT scene=1 (Lightning) cycle=0.1s"
+  },
+  {
+   "t": 17.51,
+   "dir": "app→light",
+   "hex": "4C 54 0E 00 33 48 01 0A 00 20 09 62 01 01 01 FA 7F",
+   "crcOk": true,
+   "decoded": "cmd=0x48"
+  },
+  {
+   "t": 19.94,
+   "dir": "app→light",
+   "hex": "4C 54 09 00 33 57 00 06 01 03 7E DD",
+   "crcOk": true,
+   "decoded": "set mode=Scene"
+  },
+  {
+   "t": 19.97,
+   "dir": "light→app",
+   "hex": "4C 54 08 00 33 02 00 06 03 28 FC",
+   "crcOk": true,
+   "decoded": "ack mode=Scene"
+  },
+  {
+   "t": 21.52,
+   "dir": "light→app",
+   "hex": "4C 54 0E 00 33 03 01 0A 00 38 00 00 03 01 01 16 81",
+   "crcOk": true,
+   "decoded": "status power=on p1=0x0a brightness=0% cct=5600K hue=0° saturation=0% mode=Scene scene=1 (Lightning) cycle=0.1s"
+  },
+  {
+   "t": 21.52,
+   "dir": "app→light",
+   "hex": "4C 54 0E 00 33 48 01 0A 00 38 00 00 03 01 01 9F 1F",
+   "crcOk": true,
+   "decoded": "cmd=0x48"
+  },
+  {
+   "t": 25.59,
+   "dir": "light→app",
+   "hex": "4C 54 0E 00 33 03 01 0A 00 38 00 00 03 01 01 16 81",
+   "crcOk": true,
+   "decoded": "status power=on p1=0x0a brightness=0% cct=5600K hue=0° saturation=0% mode=Scene scene=1 (Lightning) cycle=0.1s"
+  },
+  {
+   "t": 25.59,
+   "dir": "app→light",
+   "hex": "4C 54 0E 00 33 48 01 0A 00 38 00 00 03 01 01 9F 1F",
+   "crcOk": true,
+   "decoded": "cmd=0x48"
+  },
+  {
+   "t": 29.61,
+   "dir": "light→app",
+   "hex": "4C 54 0E 00 33 03 01 0A 00 38 00 00 03 01 01 16 81",
+   "crcOk": true,
+   "decoded": "status power=on p1=0x0a brightness=0% cct=5600K hue=0° saturation=0% mode=Scene scene=1 (Lightning) cycle=0.1s"
+  },
+  {
+   "t": 29.61,
+   "dir": "app→light",
+   "hex": "4C 54 0E 00 33 48 01 0A 00 38 00 00 03 01 01 9F 1F",
+   "crcOk": true,
+   "decoded": "cmd=0x48"
+  },
+  {
+   "t": 33.16,
+   "dir": "app→light",
+   "hex": "4C 54 09 00 33 57 00 02 01 00 92 7E",
+   "crcOk": true,
+   "decoded": "set brightness=0%"
+  },
+  {
+   "t": 33.23,
+   "dir": "light→app",
+   "hex": "4C 54 08 00 33 02 00 02 00 D4 5B",
+   "crcOk": true,
+   "decoded": "ack brightness=0%"
+  },
+  {
+   "t": 33.46,
+   "dir": "app→light",
+   "hex": "4C 54 09 00 33 57 00 02 01 11 90 6E",
+   "crcOk": true,
+   "decoded": "set brightness=17%"
+  },
+  {
+   "t": 33.52,
+   "dir": "light→app",
+   "hex": "4C 54 08 00 33 02 00 02 11 D6 4B",
+   "crcOk": true,
+   "decoded": "ack brightness=17%"
+  },
+  {
+   "t": 33.62,
+   "dir": "light→app",
+   "hex": "4C 54 0E 00 33 03 01 0A 11 38 00 00 03 01 01 99 9B",
+   "crcOk": true,
+   "decoded": "status power=on p1=0x0a brightness=17% cct=5600K hue=0° saturation=0% mode=Scene scene=1 (Lightning) cycle=0.1s"
+  },
+  {
+   "t": 33.62,
+   "dir": "app→light",
+   "hex": "4C 54 0E 00 33 48 01 0A 11 38 00 00 03 01 01 10 05",
+   "crcOk": true,
+   "decoded": "cmd=0x48"
+  },
+  {
+   "t": 33.76,
+   "dir": "app→light",
+   "hex": "4C 54 09 00 33 57 00 02 01 19 11 66",
+   "crcOk": true,
+   "decoded": "set brightness=25%"
+  },
+  {
+   "t": 33.83,
+   "dir": "light→app",
+   "hex": "4C 54 08 00 33 02 00 02 19 57 43",
+   "crcOk": true,
+   "decoded": "ack brightness=25%"
+  },
+  {
+   "t": 34.06,
+   "dir": "app→light",
+   "hex": "4C 54 09 00 33 57 00 02 01 00 92 7E",
+   "crcOk": true,
+   "decoded": "set brightness=0%"
+  },
+  {
+   "t": 34.12,
+   "dir": "light→app",
+   "hex": "4C 54 08 00 33 02 00 02 00 D4 5B",
+   "crcOk": true,
+   "decoded": "ack brightness=0%"
+  },
+  {
+   "t": 34.31,
+   "dir": "app→light",
+   "hex": "4C 54 09 00 33 57 00 02 01 00 92 7E",
+   "crcOk": true,
+   "decoded": "set brightness=0%"
+  },
+  {
+   "t": 37.04,
+   "dir": "app→light",
+   "hex": "4C 54 09 00 33 57 00 02 01 00 92 7E",
+   "crcOk": true,
+   "decoded": "set brightness=0%"
+  },
+  {
+   "t": 37.34,
+   "dir": "app→light",
+   "hex": "4C 54 09 00 33 57 00 02 01 16 E0 89",
+   "crcOk": true,
+   "decoded": "set brightness=22%"
+  },
+  {
+   "t": 37.4,
+   "dir": "light→app",
+   "hex": "4C 54 08 00 33 02 00 02 16 A6 AC",
+   "crcOk": true,
+   "decoded": "ack brightness=22%"
+  },
+  {
+   "t": 37.64,
+   "dir": "app→light",
+   "hex": "4C 54 09 00 33 57 00 02 01 1F 71 A0",
+   "crcOk": true,
+   "decoded": "set brightness=31%"
+  },
+  {
+   "t": 37.67,
+   "dir": "light→app",
+   "hex": "4C 54 0E 00 33 03 01 0A 16 38 00 00 03 01 01 80 DF",
+   "crcOk": true,
+   "decoded": "status power=on p1=0x0a brightness=22% cct=5600K hue=0° saturation=0% mode=Scene scene=1 (Lightning) cycle=0.1s"
+  },
+  {
+   "t": 37.67,
+   "dir": "app→light",
+   "hex": "4C 54 0E 00 33 48 01 0A 16 38 00 00 03 01 01 09 41",
+   "crcOk": true,
+   "decoded": "cmd=0x48"
+  },
+  {
+   "t": 37.69,
+   "dir": "light→app",
+   "hex": "4C 54 08 00 33 02 00 02 1F 37 85",
+   "crcOk": true,
+   "decoded": "ack brightness=31%"
+  },
+  {
+   "t": 37.94,
+   "dir": "app→light",
+   "hex": "4C 54 09 00 33 57 00 02 01 22 96 5E",
+   "crcOk": true,
+   "decoded": "set brightness=34%"
+  },
+  {
+   "t": 38.01,
+   "dir": "light→app",
+   "hex": "4C 54 08 00 33 02 00 02 22 D0 7B",
+   "crcOk": true,
+   "decoded": "ack brightness=34%"
+  },
+  {
+   "t": 38.24,
+   "dir": "app→light",
+   "hex": "4C 54 09 00 33 57 00 02 01 1E 61 81",
+   "crcOk": true,
+   "decoded": "set brightness=30%"
+  },
+  {
+   "t": 38.29,
+   "dir": "light→app",
+   "hex": "4C 54 08 00 33 02 00 02 1E 27 A4",
+   "crcOk": true,
+   "decoded": "ack brightness=30%"
+  },
+  {
+   "t": 38.54,
+   "dir": "app→light",
+   "hex": "4C 54 09 00 33 57 00 02 01 1B 31 24",
+   "crcOk": true,
+   "decoded": "set brightness=27%"
+  },
+  {
+   "t": 38.61,
+   "dir": "light→app",
+   "hex": "4C 54 08 00 33 02 00 02 1B 77 01",
+   "crcOk": true,
+   "decoded": "ack brightness=27%"
+  },
+  {
+   "t": 38.84,
+   "dir": "app→light",
+   "hex": "4C 54 09 00 33 57 00 02 01 1B 31 24",
+   "crcOk": true,
+   "decoded": "set brightness=27%"
+  },
+  {
+   "t": 41.68,
+   "dir": "light→app",
+   "hex": "4C 54 0E 00 33 03 01 0A 1B 38 00 00 03 01 01 6A D5",
+   "crcOk": true,
+   "decoded": "status power=on p1=0x0a brightness=27% cct=5600K hue=0° saturation=0% mode=Scene scene=1 (Lightning) cycle=0.1s"
+  },
+  {
+   "t": 41.68,
+   "dir": "app→light",
+   "hex": "4C 54 0E 00 33 48 01 0A 1B 38 00 00 03 01 01 E3 4B",
+   "crcOk": true,
+   "decoded": "cmd=0x48"
+  },
+  {
+   "t": 41.99,
+   "dir": "app→light",
+   "hex": "4C 54 09 00 33 57 00 02 01 1B 31 24",
+   "crcOk": true,
+   "decoded": "set brightness=27%"
+  },
+  {
+   "t": 42.3,
+   "dir": "app→light",
+   "hex": "4C 54 09 00 33 57 00 02 01 23 86 7F",
+   "crcOk": true,
+   "decoded": "set brightness=35%"
+  },
+  {
+   "t": 42.34,
+   "dir": "light→app",
+   "hex": "4C 54 08 00 33 02 00 02 23 C0 5A",
+   "crcOk": true,
+   "decoded": "ack brightness=35%"
+  },
+  {
+   "t": 42.6,
+   "dir": "app→light",
+   "hex": "4C 54 09 00 33 57 00 02 01 2A 17 56",
+   "crcOk": true,
+   "decoded": "set brightness=42%"
+  },
+  {
+   "t": 42.68,
+   "dir": "light→app",
+   "hex": "4C 54 08 00 33 02 00 02 2A 51 73",
+   "crcOk": true,
+   "decoded": "ack brightness=42%"
+  },
+  {
+   "t": 42.89,
+   "dir": "app→light",
+   "hex": "4C 54 09 00 33 57 00 02 01 2C 77 90",
+   "crcOk": true,
+   "decoded": "set brightness=44%"
+  },
+  {
+   "t": 42.94,
+   "dir": "light→app",
+   "hex": "4C 54 08 00 33 02 00 02 2C 31 B5",
+   "crcOk": true,
+   "decoded": "ack brightness=44%"
+  },
+  {
+   "t": 43.19,
+   "dir": "app→light",
+   "hex": "4C 54 09 00 33 57 00 02 01 30 A4 2D",
+   "crcOk": true,
+   "decoded": "set brightness=48%"
+  },
+  {
+   "t": 43.26,
+   "dir": "light→app",
+   "hex": "4C 54 08 00 33 02 00 02 30 E2 08",
+   "crcOk": true,
+   "decoded": "ack brightness=48%"
+  },
+  {
+   "t": 43.5,
+   "dir": "app→light",
+   "hex": "4C 54 09 00 33 57 00 02 01 32 84 6F",
+   "crcOk": true,
+   "decoded": "set brightness=50%"
+  },
+  {
+   "t": 43.54,
+   "dir": "light→app",
+   "hex": "4C 54 08 00 33 02 00 02 32 C2 4A",
+   "crcOk": true,
+   "decoded": "ack brightness=50%"
+  },
+  {
+   "t": 43.8,
+   "dir": "app→light",
+   "hex": "4C 54 09 00 33 57 00 02 01 34 E4 A9",
+   "crcOk": true,
+   "decoded": "set brightness=52%"
+  },
+  {
+   "t": 43.86,
+   "dir": "light→app",
+   "hex": "4C 54 08 00 33 02 00 02 34 A2 8C",
+   "crcOk": true,
+   "decoded": "ack brightness=52%"
+  },
+  {
+   "t": 44.39,
+   "dir": "app→light",
+   "hex": "4C 54 09 00 33 57 00 02 01 32 84 6F",
+   "crcOk": true,
+   "decoded": "set brightness=50%"
+  },
+  {
+   "t": 44.46,
+   "dir": "light→app",
+   "hex": "4C 54 08 00 33 02 00 02 32 C2 4A",
+   "crcOk": true,
+   "decoded": "ack brightness=50%"
+  },
+  {
+   "t": 44.51,
+   "dir": "app→light",
+   "hex": "4C 54 09 00 33 57 00 02 01 32 84 6F",
+   "crcOk": true,
+   "decoded": "set brightness=50%"
+  },
+  {
+   "t": 45.72,
+   "dir": "light→app",
+   "hex": "4C 54 0E 00 33 03 01 0A 32 38 00 00 03 01 01 2F EF",
+   "crcOk": true,
+   "decoded": "status power=on p1=0x0a brightness=50% cct=5600K hue=0° saturation=0% mode=Scene scene=1 (Lightning) cycle=0.1s"
+  },
+  {
+   "t": 45.72,
+   "dir": "app→light",
+   "hex": "4C 54 0E 00 33 48 01 0A 32 38 00 00 03 01 01 A6 71",
+   "crcOk": true,
+   "decoded": "cmd=0x48"
+  },
+  {
+   "t": 49.76,
+   "dir": "light→app",
+   "hex": "4C 54 0E 00 33 03 01 0A 32 38 00 00 03 01 01 2F EF",
+   "crcOk": true,
+   "decoded": "status power=on p1=0x0a brightness=50% cct=5600K hue=0° saturation=0% mode=Scene scene=1 (Lightning) cycle=0.1s"
+  },
+  {
+   "t": 49.77,
+   "dir": "app→light",
+   "hex": "4C 54 0E 00 33 48 01 0A 32 38 00 00 03 01 01 A6 71",
+   "crcOk": true,
+   "decoded": "cmd=0x48"
+  },
+  {
+   "t": 53.4,
+   "dir": "app→light",
+   "hex": "4C 54 09 00 33 57 00 02 01 32 84 6F",
+   "crcOk": true,
+   "decoded": "set brightness=50%"
+  },
+  {
+   "t": 53.7,
+   "dir": "app→light",
+   "hex": "4C 54 09 00 33 57 00 02 01 36 C4 EB",
+   "crcOk": true,
+   "decoded": "set brightness=54%"
+  },
+  {
+   "t": 53.78,
+   "dir": "light→app",
+   "hex": "4C 54 0E 00 33 03 01 0A 32 38 00 00 03 01 01 2F EF",
+   "crcOk": true,
+   "decoded": "status power=on p1=0x0a brightness=50% cct=5600K hue=0° saturation=0% mode=Scene scene=1 (Lightning) cycle=0.1s"
+  },
+  {
+   "t": 53.78,
+   "dir": "light→app",
+   "hex": "4C 54 08 00 33 02 00 02 36 82 CE",
+   "crcOk": true,
+   "decoded": "ack brightness=54%"
+  },
+  {
+   "t": 53.78,
+   "dir": "app→light",
+   "hex": "4C 54 19 00 33 48 01 0A 32 38 00 00 03 01 01 2F EF 4C 54 08 00 33 02 00 02 36 FD AF",
+   "crcOk": true,
+   "decoded": "cmd=0x48"
+  },
+  {
+   "t": 54,
+   "dir": "app→light",
+   "hex": "4C 54 09 00 33 57 00 02 01 5E 29 45",
+   "crcOk": true,
+   "decoded": "set brightness=94%"
+  },
+  {
+   "t": 54.07,
+   "dir": "light→app",
+   "hex": "4C 54 08 00 33 02 00 02 5E 6F 60",
+   "crcOk": true,
+   "decoded": "ack brightness=94%"
+  },
+  {
+   "t": 54.3,
+   "dir": "app→light",
+   "hex": "4C 54 09 00 33 57 00 02 01 64 BE 5C",
+   "crcOk": true,
+   "decoded": "set brightness=100%"
+  },
+  {
+   "t": 54.33,
+   "dir": "light→app",
+   "hex": "4C 54 08 00 33 02 00 02 64 F8 79",
+   "crcOk": true,
+   "decoded": "ack brightness=100%"
+  },
+  {
+   "t": 54.39,
+   "dir": "app→light",
+   "hex": "4C 54 09 00 33 57 00 02 01 64 BE 5C",
+   "crcOk": true,
+   "decoded": "set brightness=100%"
+  },
+  {
+   "t": 57.8,
+   "dir": "light→app",
+   "hex": "4C 54 0E 00 33 03 01 0A 64 38 00 00 03 01 01 64 5D",
+   "crcOk": true,
+   "decoded": "status power=on p1=0x0a brightness=100% cct=5600K hue=0° saturation=0% mode=Scene scene=1 (Lightning) cycle=0.1s"
+  },
+  {
+   "t": 57.8,
+   "dir": "app→light",
+   "hex": "4C 54 0E 00 33 48 01 0A 64 38 00 00 03 01 01 ED C3",
+   "crcOk": true,
+   "decoded": "cmd=0x48"
+  },
+  {
+   "t": 61.87,
+   "dir": "light→app",
+   "hex": "4C 54 0E 00 33 03 01 0A 64 38 00 00 03 01 01 64 5D",
+   "crcOk": true,
+   "decoded": "status power=on p1=0x0a brightness=100% cct=5600K hue=0° saturation=0% mode=Scene scene=1 (Lightning) cycle=0.1s"
+  },
+  {
+   "t": 61.87,
+   "dir": "app→light",
+   "hex": "4C 54 0E 00 33 48 01 0A 64 38 00 00 03 01 01 ED C3",
+   "crcOk": true,
+   "decoded": "cmd=0x48"
+  },
+  {
+   "t": 65.18,
+   "dir": "app→light",
+   "hex": "4C 54 09 00 33 57 00 07 01 02 59 CC",
+   "crcOk": true,
+   "decoded": "set scene=2 (Cop Car)"
+  },
+  {
+   "t": 65.25,
+   "dir": "light→app",
+   "hex": "4C 54 08 00 33 02 00 07 02 0B EC",
+   "crcOk": true,
+   "decoded": "ack scene=2 (Cop Car)"
+  },
+  {
+   "t": 65.86,
+   "dir": "light→app",
+   "hex": "4C 54 0E 00 33 03 01 0A 64 38 00 00 03 02 01 31 0E",
+   "crcOk": true,
+   "decoded": "status power=on p1=0x0a brightness=100% cct=5600K hue=0° saturation=0% mode=Scene scene=2 (Cop Car) cycle=0.1s"
+  },
+  {
+   "t": 65.86,
+   "dir": "app→light",
+   "hex": "4C 54 0E 00 33 48 01 0A 64 38 00 00 03 02 01 B8 90",
+   "crcOk": true,
+   "decoded": "cmd=0x48"
+  },
+  {
+   "t": 69.93,
+   "dir": "light→app",
+   "hex": "4C 54 0E 00 33 03 01 0A 64 38 00 00 03 02 01 31 0E",
+   "crcOk": true,
+   "decoded": "status power=on p1=0x0a brightness=100% cct=5600K hue=0° saturation=0% mode=Scene scene=2 (Cop Car) cycle=0.1s"
+  },
+  {
+   "t": 69.93,
+   "dir": "app→light",
+   "hex": "4C 54 0E 00 33 48 01 0A 64 38 00 00 03 02 01 B8 90",
+   "crcOk": true,
+   "decoded": "cmd=0x48"
+  },
+  {
+   "t": 73.94,
+   "dir": "light→app",
+   "hex": "4C 54 0E 00 33 03 01 0A 64 38 00 00 03 02 01 31 0E",
+   "crcOk": true,
+   "decoded": "status power=on p1=0x0a brightness=100% cct=5600K hue=0° saturation=0% mode=Scene scene=2 (Cop Car) cycle=0.1s"
+  },
+  {
+   "t": 73.94,
+   "dir": "app→light",
+   "hex": "4C 54 0E 00 33 48 01 0A 64 38 00 00 03 02 01 B8 90",
+   "crcOk": true,
+   "decoded": "cmd=0x48"
+  },
+  {
+   "t": 76.45,
+   "dir": "app→light",
+   "hex": "4C 54 09 00 33 57 00 07 01 08 F8 86",
+   "crcOk": true,
+   "decoded": "set scene=8 (Paparazzi)"
+  },
+  {
+   "t": 76.51,
+   "dir": "light→app",
+   "hex": "4C 54 08 00 33 02 00 07 08 AA A6",
+   "crcOk": true,
+   "decoded": "ack scene=8 (Paparazzi)"
+  },
+  {
+   "t": 77.96,
+   "dir": "light→app",
+   "hex": "4C 54 0E 00 33 03 01 0A 64 38 00 00 03 08 01 DE C5",
+   "crcOk": true,
+   "decoded": "status power=on p1=0x0a brightness=100% cct=5600K hue=0° saturation=0% mode=Scene scene=8 (Paparazzi) cycle=0.1s"
+  },
+  {
+   "t": 77.96,
+   "dir": "app→light",
+   "hex": "4C 54 0E 00 33 48 01 0A 64 38 00 00 03 08 01 57 5B",
+   "crcOk": true,
+   "decoded": "cmd=0x48"
+  },
+  {
+   "t": 82.03,
+   "dir": "light→app",
+   "hex": "4C 54 0E 00 33 03 01 0A 64 38 00 00 03 08 01 DE C5",
+   "crcOk": true,
+   "decoded": "status power=on p1=0x0a brightness=100% cct=5600K hue=0° saturation=0% mode=Scene scene=8 (Paparazzi) cycle=0.1s"
+  },
+  {
+   "t": 82.03,
+   "dir": "app→light",
+   "hex": "4C 54 0E 00 33 48 01 0A 64 38 00 00 03 08 01 57 5B",
+   "crcOk": true,
+   "decoded": "cmd=0x48"
+  },
+  {
+   "t": 86.02,
+   "dir": "light→app",
+   "hex": "4C 54 0E 00 33 03 01 0A 64 38 00 00 03 08 01 DE C5",
+   "crcOk": true,
+   "decoded": "status power=on p1=0x0a brightness=100% cct=5600K hue=0° saturation=0% mode=Scene scene=8 (Paparazzi) cycle=0.1s"
+  },
+  {
+   "t": 86.02,
+   "dir": "app→light",
+   "hex": "4C 54 0E 00 33 48 01 0A 64 38 00 00 03 08 01 57 5B",
+   "crcOk": true,
+   "decoded": "cmd=0x48"
+  },
+  {
+   "t": 88.65,
+   "dir": "app→light",
+   "hex": "4C 54 09 00 33 57 00 07 01 14 2B 3B",
+   "crcOk": true,
+   "decoded": "set scene=20 (Strobe II)"
+  },
+  {
+   "t": 88.69,
+   "dir": "light→app",
+   "hex": "4C 54 08 00 33 02 00 07 14 79 1B",
+   "crcOk": true,
+   "decoded": "ack scene=20 (Strobe II)"
+  },
+  {
+   "t": 90.06,
+   "dir": "light→app",
+   "hex": "4C 54 0E 00 33 03 01 0A 64 38 00 00 03 14 01 98 DB",
+   "crcOk": true,
+   "decoded": "status power=on p1=0x0a brightness=100% cct=5600K hue=0° saturation=0% mode=Scene scene=20 (Strobe II) cycle=0.1s"
+  },
+  {
+   "t": 90.06,
+   "dir": "app→light",
+   "hex": "4C 54 0E 00 33 48 01 0A 64 38 00 00 03 14 01 11 45",
+   "crcOk": true,
+   "decoded": "cmd=0x48"
+  },
+  {
+   "t": 94.13,
+   "dir": "light→app",
+   "hex": "4C 54 0E 00 33 03 01 0A 64 38 00 00 03 14 01 98 DB",
+   "crcOk": true,
+   "decoded": "status power=on p1=0x0a brightness=100% cct=5600K hue=0° saturation=0% mode=Scene scene=20 (Strobe II) cycle=0.1s"
+  },
+  {
+   "t": 94.13,
+   "dir": "app→light",
+   "hex": "4C 54 0E 00 33 48 01 0A 64 38 00 00 03 14 01 11 45",
+   "crcOk": true,
+   "decoded": "cmd=0x48"
+  },
+  {
+   "t": 98.12,
+   "dir": "light→app",
+   "hex": "4C 54 0E 00 33 03 01 0A 64 38 00 00 03 14 01 98 DB",
+   "crcOk": true,
+   "decoded": "status power=on p1=0x0a brightness=100% cct=5600K hue=0° saturation=0% mode=Scene scene=20 (Strobe II) cycle=0.1s"
+  },
+  {
+   "t": 98.12,
+   "dir": "app→light",
+   "hex": "4C 54 0E 00 33 48 01 0A 64 38 00 00 03 14 01 11 45",
+   "crcOk": true,
+   "decoded": "cmd=0x48"
+  },
+  {
+   "t": 102.16,
+   "dir": "light→app",
+   "hex": "4C 54 0E 00 33 03 01 0A 64 38 00 00 03 14 01 98 DB",
+   "crcOk": true,
+   "decoded": "status power=on p1=0x0a brightness=100% cct=5600K hue=0° saturation=0% mode=Scene scene=20 (Strobe II) cycle=0.1s"
+  },
+  {
+   "t": 102.16,
+   "dir": "app→light",
+   "hex": "4C 54 0E 00 33 48 01 0A 64 38 00 00 03 14 01 11 45",
+   "crcOk": true,
+   "decoded": "cmd=0x48"
+  },
+  {
+   "t": 104.16,
+   "dir": "app→light",
+   "hex": "4C 54 09 00 33 57 00 02 01 64 BE 5C",
+   "crcOk": true,
+   "decoded": "set brightness=100%"
+  },
+  {
+   "t": 104.21,
+   "dir": "light→app",
+   "hex": "4C 54 08 00 33 02 00 02 64 F8 79",
+   "crcOk": true,
+   "decoded": "ack brightness=100%"
+  },
+  {
+   "t": 104.46,
+   "dir": "app→light",
+   "hex": "4C 54 09 00 33 57 00 02 01 00 92 7E",
+   "crcOk": true,
+   "decoded": "set brightness=0%"
+  },
+  {
+   "t": 104.51,
+   "dir": "app→light",
+   "hex": "4C 54 09 00 33 57 00 02 01 00 92 7E",
+   "crcOk": true,
+   "decoded": "set brightness=0%"
+  },
+  {
+   "t": 104.52,
+   "dir": "light→app",
+   "hex": "4C 54 08 00 33 02 00 02 00 D4 5B",
+   "crcOk": true,
+   "decoded": "ack brightness=0%"
+  },
+  {
+   "t": 106.18,
+   "dir": "light→app",
+   "hex": "4C 54 0E 00 33 03 01 0A 00 38 00 00 03 14 01 EA 07",
+   "crcOk": true,
+   "decoded": "status power=on p1=0x0a brightness=0% cct=5600K hue=0° saturation=0% mode=Scene scene=20 (Strobe II) cycle=0.1s"
+  },
+  {
+   "t": 106.18,
+   "dir": "app→light",
+   "hex": "4C 54 0E 00 33 48 01 0A 00 38 00 00 03 14 01 63 99",
+   "crcOk": true,
+   "decoded": "cmd=0x48"
+  },
+  {
+   "t": 110.3,
+   "dir": "light→app",
+   "hex": "4C 54 0E 00 33 03 01 0A 00 38 00 00 03 14 01 EA 07",
+   "crcOk": true,
+   "decoded": "status power=on p1=0x0a brightness=0% cct=5600K hue=0° saturation=0% mode=Scene scene=20 (Strobe II) cycle=0.1s"
+  },
+  {
+   "t": 110.3,
+   "dir": "app→light",
+   "hex": "4C 54 0E 00 33 48 01 0A 00 38 00 00 03 14 01 63 99",
+   "crcOk": true,
+   "decoded": "cmd=0x48"
+  },
+  {
+   "t": 114.18,
+   "dir": "light→app",
+   "hex": "4C 54 0E 00 33 03 01 0A 00 38 00 00 03 14 01 EA 07",
+   "crcOk": true,
+   "decoded": "status power=on p1=0x0a brightness=0% cct=5600K hue=0° saturation=0% mode=Scene scene=20 (Strobe II) cycle=0.1s"
+  },
+  {
+   "t": 114.18,
+   "dir": "app→light",
+   "hex": "4C 54 0E 00 33 48 01 0A 00 38 00 00 03 14 01 63 99",
+   "crcOk": true,
+   "decoded": "cmd=0x48"
+  },
+  {
+   "t": 118.22,
+   "dir": "light→app",
+   "hex": "4C 54 0E 00 33 03 01 0A 00 38 00 00 03 14 01 EA 07",
+   "crcOk": true,
+   "decoded": "status power=on p1=0x0a brightness=0% cct=5600K hue=0° saturation=0% mode=Scene scene=20 (Strobe II) cycle=0.1s"
+  },
+  {
+   "t": 118.22,
+   "dir": "app→light",
+   "hex": "4C 54 0E 00 33 48 01 0A 00 38 00 00 03 14 01 63 99",
+   "crcOk": true,
+   "decoded": "cmd=0x48"
+  },
+  {
+   "t": 120.23,
+   "dir": "app→light",
+   "hex": "4C 54 09 00 33 57 00 04 01 00 20 DE",
+   "crcOk": true,
+   "decoded": "set hue=0°"
+  },
+  {
+   "t": 120.29,
+   "dir": "light→app",
+   "hex": "4C 54 08 00 33 02 00 04 00 7E FD",
+   "crcOk": true,
+   "decoded": "ack hue=0°"
+  },
+  {
+   "t": 120.54,
+   "dir": "app→light",
+   "hex": "4C 54 09 00 33 57 00 04 01 20 04 BC",
+   "crcOk": true,
+   "decoded": "set hue=160°"
+  },
+  {
+   "t": 120.58,
+   "dir": "light→app",
+   "hex": "4C 54 08 00 33 02 00 04 20 5A 9F",
+   "crcOk": true,
+   "decoded": "ack hue=160°"
+  },
+  {
+   "t": 120.84,
+   "dir": "app→light",
+   "hex": "4C 54 09 00 33 57 00 04 01 43 58 79",
+   "crcOk": true,
+   "decoded": "set hue=335°"
+  },
+  {
+   "t": 120.89,
+   "dir": "light→app",
+   "hex": "4C 54 08 00 33 02 00 04 43 06 5A",
+   "crcOk": true,
+   "decoded": "ack hue=335°"
+  },
+  {
+   "t": 121.03,
+   "dir": "app→light",
+   "hex": "4C 54 09 00 33 57 00 04 01 48 E9 12",
+   "crcOk": true,
+   "decoded": "set hue=360°"
+  },
+  {
+   "t": 121.08,
+   "dir": "light→app",
+   "hex": "4C 54 08 00 33 02 00 04 48 B7 31",
+   "crcOk": true,
+   "decoded": "ack hue=360°"
+  },
+  {
+   "t": 121.75,
+   "dir": "app→light",
+   "hex": "4C 54 09 00 33 57 00 02 01 00 92 7E",
+   "crcOk": true,
+   "decoded": "set brightness=0%"
+  },
+  {
+   "t": 121.79,
+   "dir": "light→app",
+   "hex": "4C 54 08 00 33 02 00 02 00 D4 5B",
+   "crcOk": true,
+   "decoded": "ack brightness=0%"
+  },
+  {
+   "t": 122.05,
+   "dir": "app→light",
+   "hex": "4C 54 09 00 33 57 00 02 01 0C 53 F2",
+   "crcOk": true,
+   "decoded": "set brightness=12%"
+  },
+  {
+   "t": 122.1,
+   "dir": "light→app",
+   "hex": "4C 54 08 00 33 02 00 02 0C 15 D7",
+   "crcOk": true,
+   "decoded": "ack brightness=12%"
+  },
+  {
+   "t": 122.23,
+   "dir": "light→app",
+   "hex": "4C 54 0E 00 33 03 01 0A 0C 38 48 00 03 14 01 AB 29",
+   "crcOk": true,
+   "decoded": "status power=on p1=0x0a brightness=12% cct=5600K hue=360° saturation=0% mode=Scene scene=20 (Strobe II) cycle=0.1s"
+  },
+  {
+   "t": 122.24,
+   "dir": "app→light",
+   "hex": "4C 54 0E 00 33 48 01 0A 0C 38 48 00 03 14 01 22 B7",
+   "crcOk": true,
+   "decoded": "cmd=0x48"
+  },
+  {
+   "t": 122.35,
+   "dir": "app→light",
+   "hex": "4C 54 09 00 33 57 00 02 01 0C 53 F2",
+   "crcOk": true,
+   "decoded": "set brightness=12%"
+  },
+  {
+   "t": 122.95,
+   "dir": "app→light",
+   "hex": "4C 54 09 00 33 57 00 02 01 0B 23 15",
+   "crcOk": true,
+   "decoded": "set brightness=11%"
+  },
+  {
+   "t": 123,
+   "dir": "light→app",
+   "hex": "4C 54 08 00 33 02 00 02 0B 65 30",
+   "crcOk": true,
+   "decoded": "ack brightness=11%"
+  },
+  {
+   "t": 123.25,
+   "dir": "app→light",
+   "hex": "4C 54 09 00 33 57 00 02 01 0B 23 15",
+   "crcOk": true,
+   "decoded": "set brightness=11%"
+  },
+  {
+   "t": 123.55,
+   "dir": "app→light",
+   "hex": "4C 54 09 00 33 57 00 02 01 0A 33 34",
+   "crcOk": true,
+   "decoded": "set brightness=10%"
+  },
+  {
+   "t": 123.6,
+   "dir": "light→app",
+   "hex": "4C 54 08 00 33 02 00 02 0A 75 11",
+   "crcOk": true,
+   "decoded": "ack brightness=10%"
+  },
+  {
+   "t": 124.12,
+   "dir": "app→light",
+   "hex": "4C 54 09 00 33 57 00 02 01 0A 33 34",
+   "crcOk": true,
+   "decoded": "set brightness=10%"
+  },
+  {
+   "t": 126.28,
+   "dir": "light→app",
+   "hex": "4C 54 0E 00 33 03 01 0A 0A 38 48 00 03 14 01 0A 0C",
+   "crcOk": true,
+   "decoded": "status power=on p1=0x0a brightness=10% cct=5600K hue=360° saturation=0% mode=Scene scene=20 (Strobe II) cycle=0.1s"
+  },
+  {
+   "t": 126.28,
+   "dir": "app→light",
+   "hex": "4C 54 0E 00 33 48 01 0A 0A 38 48 00 03 14 01 83 92",
+   "crcOk": true,
+   "decoded": "cmd=0x48"
+  },
+  {
+   "t": 130.35,
+   "dir": "light→app",
+   "hex": "4C 54 0E 00 33 03 01 0A 0A 38 48 00 03 14 01 0A 0C",
+   "crcOk": true,
+   "decoded": "status power=on p1=0x0a brightness=10% cct=5600K hue=360° saturation=0% mode=Scene scene=20 (Strobe II) cycle=0.1s"
+  },
+  {
+   "t": 130.35,
+   "dir": "app→light",
+   "hex": "4C 54 0E 00 33 48 01 0A 0A 38 48 00 03 14 01 83 92",
+   "crcOk": true,
+   "decoded": "cmd=0x48"
+  },
+  {
+   "t": 134.34,
+   "dir": "light→app",
+   "hex": "4C 54 0E 00 33 03 01 0A 0A 38 48 00 03 14 01 0A 0C",
+   "crcOk": true,
+   "decoded": "status power=on p1=0x0a brightness=10% cct=5600K hue=360° saturation=0% mode=Scene scene=20 (Strobe II) cycle=0.1s"
+  },
+  {
+   "t": 134.34,
+   "dir": "app→light",
+   "hex": "4C 54 0E 00 33 48 01 0A 0A 38 48 00 03 14 01 83 92",
+   "crcOk": true,
+   "decoded": "cmd=0x48"
+  },
+  {
+   "t": 138.38,
+   "dir": "light→app",
+   "hex": "4C 54 0E 00 33 03 01 0A 0A 38 48 00 03 14 01 0A 0C",
+   "crcOk": true,
+   "decoded": "status power=on p1=0x0a brightness=10% cct=5600K hue=360° saturation=0% mode=Scene scene=20 (Strobe II) cycle=0.1s"
+  },
+  {
+   "t": 138.38,
+   "dir": "app→light",
+   "hex": "4C 54 0E 00 33 48 01 0A 0A 38 48 00 03 14 01 83 92",
+   "crcOk": true,
+   "decoded": "cmd=0x48"
+  },
+  {
+   "t": 142.39,
+   "dir": "light→app",
+   "hex": "4C 54 0E 00 33 03 01 0A 0A 38 48 00 03 14 01 0A 0C",
+   "crcOk": true,
+   "decoded": "status power=on p1=0x0a brightness=10% cct=5600K hue=360° saturation=0% mode=Scene scene=20 (Strobe II) cycle=0.1s"
+  },
+  {
+   "t": 142.39,
+   "dir": "app→light",
+   "hex": "4C 54 0E 00 33 48 01 0A 0A 38 48 00 03 14 01 83 92",
+   "crcOk": true,
+   "decoded": "cmd=0x48"
+  },
+  {
+   "t": 146.44,
+   "dir": "light→app",
+   "hex": "4C 54 0E 00 33 03 01 0A 0A 38 48 00 03 14 01 0A 0C",
+   "crcOk": true,
+   "decoded": "status power=on p1=0x0a brightness=10% cct=5600K hue=360° saturation=0% mode=Scene scene=20 (Strobe II) cycle=0.1s"
+  },
+  {
+   "t": 146.44,
+   "dir": "app→light",
+   "hex": "4C 54 0E 00 33 48 01 0A 0A 38 48 00 03 14 01 83 92",
+   "crcOk": true,
+   "decoded": "cmd=0x48"
+  },
+  {
+   "t": 148.32,
+   "dir": "app→light",
+   "hex": "4C 54 09 00 33 57 00 04 01 48 E9 12",
+   "crcOk": true,
+   "decoded": "set hue=360°"
+  },
+  {
+   "t": 148.38,
+   "dir": "light→app",
+   "hex": "4C 54 08 00 33 02 00 04 48 B7 31",
+   "crcOk": true,
+   "decoded": "ack hue=360°"
+  },
+  {
+   "t": 148.62,
+   "dir": "app→light",
+   "hex": "4C 54 09 00 33 57 00 04 01 40 68 1A",
+   "crcOk": true,
+   "decoded": "set hue=320°"
+  },
+  {
+   "t": 148.69,
+   "dir": "light→app",
+   "hex": "4C 54 08 00 33 02 00 04 40 36 39",
+   "crcOk": true,
+   "decoded": "ack hue=320°"
+  },
+  {
+   "t": 148.92,
+   "dir": "app→light",
+   "hex": "4C 54 09 00 33 57 00 04 01 3C D7 01",
+   "crcOk": true,
+   "decoded": "set hue=300°"
+  },
+  {
+   "t": 149.01,
+   "dir": "light→app",
+   "hex": "4C 54 08 00 33 02 00 04 3C 89 22",
+   "crcOk": true,
+   "decoded": "ack hue=300°"
+  },
+  {
+   "t": 149.22,
+   "dir": "app→light",
+   "hex": "4C 54 09 00 33 57 00 04 01 38 97 85",
+   "crcOk": true,
+   "decoded": "set hue=280°"
+  },
+  {
+   "t": 149.3,
+   "dir": "light→app",
+   "hex": "4C 54 08 00 33 02 00 04 38 C9 A6",
+   "crcOk": true,
+   "decoded": "ack hue=280°"
+  },
+  {
+   "t": 149.52,
+   "dir": "app→light",
+   "hex": "4C 54 09 00 33 57 00 04 01 37 66 6A",
+   "crcOk": true,
+   "decoded": "set hue=275°"
+  },
+  {
+   "t": 149.61,
+   "dir": "light→app",
+   "hex": "4C 54 08 00 33 02 00 04 37 38 49",
+   "crcOk": true,
+   "decoded": "ack hue=275°"
+  },
+  {
+   "t": 149.82,
+   "dir": "app→light",
+   "hex": "4C 54 09 00 33 57 00 04 01 36 76 4B",
+   "crcOk": true,
+   "decoded": "set hue=270°"
+  },
+  {
+   "t": 149.9,
+   "dir": "light→app",
+   "hex": "4C 54 08 00 33 02 00 04 36 28 68",
+   "crcOk": true,
+   "decoded": "ack hue=270°"
+  },
+  {
+   "t": 150.12,
+   "dir": "app→light",
+   "hex": "4C 54 09 00 33 57 00 04 01 36 76 4B",
+   "crcOk": true,
+   "decoded": "set hue=270°"
+  },
+  {
+   "t": 150.45,
+   "dir": "light→app",
+   "hex": "4C 54 0E 00 33 03 01 0A 0A 38 36 00 03 14 01 D8 22",
+   "crcOk": true,
+   "decoded": "status power=on p1=0x0a brightness=10% cct=5600K hue=270° saturation=0% mode=Scene scene=20 (Strobe II) cycle=0.1s"
+  },
+  {
+   "t": 150.46,
+   "dir": "app→light",
+   "hex": "4C 54 0E 00 33 48 01 0A 0A 38 36 00 03 14 01 51 BC",
+   "crcOk": true,
+   "decoded": "cmd=0x48"
+  },
+  {
+   "t": 154.52,
+   "dir": "light→app",
+   "hex": "4C 54 0E 00 33 03 01 0A 0A 38 36 00 03 14 01 D8 22",
+   "crcOk": true,
+   "decoded": "status power=on p1=0x0a brightness=10% cct=5600K hue=270° saturation=0% mode=Scene scene=20 (Strobe II) cycle=0.1s"
+  },
+  {
+   "t": 154.52,
+   "dir": "app→light",
+   "hex": "4C 54 0E 00 33 48 01 0A 0A 38 36 00 03 14 01 51 BC",
+   "crcOk": true,
+   "decoded": "cmd=0x48"
+  },
+  {
+   "t": 158.51,
+   "dir": "light→app",
+   "hex": "4C 54 0E 00 33 03 01 0A 0A 38 36 00 03 14 01 D8 22",
+   "crcOk": true,
+   "decoded": "status power=on p1=0x0a brightness=10% cct=5600K hue=270° saturation=0% mode=Scene scene=20 (Strobe II) cycle=0.1s"
+  },
+  {
+   "t": 158.51,
+   "dir": "app→light",
+   "hex": "4C 54 0E 00 33 48 01 0A 0A 38 36 00 03 14 01 51 BC",
+   "crcOk": true,
+   "decoded": "cmd=0x48"
+  },
+  {
+   "t": 162.55,
+   "dir": "light→app",
+   "hex": "4C 54 0E 00 33 03 01 0A 0A 38 36 00 03 14 01 D8 22",
+   "crcOk": true,
+   "decoded": "status power=on p1=0x0a brightness=10% cct=5600K hue=270° saturation=0% mode=Scene scene=20 (Strobe II) cycle=0.1s"
+  },
+  {
+   "t": 162.56,
+   "dir": "app→light",
+   "hex": "4C 54 0E 00 33 48 01 0A 0A 38 36 00 03 14 01 51 BC",
+   "crcOk": true,
+   "decoded": "cmd=0x48"
+  },
+  {
+   "t": 163.81,
+   "dir": "app→light",
+   "hex": "4C 54 09 00 33 57 00 05 01 00 17 EE",
+   "crcOk": true,
+   "decoded": "set saturation=0%"
+  },
+  {
+   "t": 163.87,
+   "dir": "light→app",
+   "hex": "4C 54 08 00 33 02 00 05 00 4D CC",
+   "crcOk": true,
+   "decoded": "ack saturation=0%"
+  },
+  {
+   "t": 164.11,
+   "dir": "app→light",
+   "hex": "4C 54 09 00 33 57 00 05 01 0F E6 01",
+   "crcOk": true,
+   "decoded": "set saturation=15%"
+  },
+  {
+   "t": 164.16,
+   "dir": "light→app",
+   "hex": "4C 54 08 00 33 02 00 05 0F BC 23",
+   "crcOk": true,
+   "decoded": "ack saturation=15%"
+  },
+  {
+   "t": 164.41,
+   "dir": "app→light",
+   "hex": "4C 54 09 00 33 57 00 05 01 32 01 FF",
+   "crcOk": true,
+   "decoded": "set saturation=50%"
+  },
+  {
+   "t": 164.47,
+   "dir": "light→app",
+   "hex": "4C 54 08 00 33 02 00 05 32 5B DD",
+   "crcOk": true,
+   "decoded": "ack saturation=50%"
+  },
+  {
+   "t": 164.71,
+   "dir": "app→light",
+   "hex": "4C 54 09 00 33 57 00 05 01 55 1D BE",
+   "crcOk": true,
+   "decoded": "set saturation=85%"
+  },
+  {
+   "t": 164.76,
+   "dir": "light→app",
+   "hex": "4C 54 08 00 33 02 00 05 55 47 9C",
+   "crcOk": true,
+   "decoded": "ack saturation=85%"
+  },
+  {
+   "t": 165.01,
+   "dir": "app→light",
+   "hex": "4C 54 09 00 33 57 00 05 01 64 3B CC",
+   "crcOk": true,
+   "decoded": "set saturation=100%"
+  },
+  {
+   "t": 165.07,
+   "dir": "light→app",
+   "hex": "4C 54 08 00 33 02 00 05 64 61 EE",
+   "crcOk": true,
+   "decoded": "ack saturation=100%"
+  },
+  {
+   "t": 165.07,
+   "dir": "app→light",
+   "hex": "4C 54 09 00 33 57 00 05 01 64 3B CC",
+   "crcOk": true,
+   "decoded": "set saturation=100%"
+  },
+  {
+   "t": 166.57,
+   "dir": "light→app",
+   "hex": "4C 54 0E 00 33 03 01 0A 0A 38 36 64 03 14 01 4B 01",
+   "crcOk": true,
+   "decoded": "status power=on p1=0x0a brightness=10% cct=5600K hue=270° saturation=100% mode=Scene scene=20 (Strobe II) cycle=0.1s"
+  },
+  {
+   "t": 166.57,
+   "dir": "app→light",
+   "hex": "4C 54 0E 00 33 48 01 0A 0A 38 36 64 03 14 01 C2 9F",
+   "crcOk": true,
+   "decoded": "cmd=0x48"
+  },
+  {
+   "t": 170.64,
+   "dir": "light→app",
+   "hex": "4C 54 0E 00 33 03 01 0A 0A 38 36 64 03 14 01 4B 01",
+   "crcOk": true,
+   "decoded": "status power=on p1=0x0a brightness=10% cct=5600K hue=270° saturation=100% mode=Scene scene=20 (Strobe II) cycle=0.1s"
+  },
+  {
+   "t": 170.64,
+   "dir": "app→light",
+   "hex": "4C 54 0E 00 33 48 01 0A 0A 38 36 64 03 14 01 C2 9F",
+   "crcOk": true,
+   "decoded": "cmd=0x48"
+  },
+  {
+   "t": 174.65,
+   "dir": "light→app",
+   "hex": "4C 54 0E 00 33 03 01 0A 0A 38 36 64 03 14 01 4B 01",
+   "crcOk": true,
+   "decoded": "status power=on p1=0x0a brightness=10% cct=5600K hue=270° saturation=100% mode=Scene scene=20 (Strobe II) cycle=0.1s"
+  },
+  {
+   "t": 174.66,
+   "dir": "app→light",
+   "hex": "4C 54 0E 00 33 48 01 0A 0A 38 36 64 03 14 01 C2 9F",
+   "crcOk": true,
+   "decoded": "cmd=0x48"
+  },
+  {
+   "t": 178.67,
+   "dir": "light→app",
+   "hex": "4C 54 0E 00 33 03 01 0A 0A 38 36 64 03 14 01 4B 01",
+   "crcOk": true,
+   "decoded": "status power=on p1=0x0a brightness=10% cct=5600K hue=270° saturation=100% mode=Scene scene=20 (Strobe II) cycle=0.1s"
+  },
+  {
+   "t": 178.7,
+   "dir": "app→light",
+   "hex": "4C 54 0E 00 33 48 01 0A 0A 38 36 64 03 14 01 C2 9F",
+   "crcOk": true,
+   "decoded": "cmd=0x48"
+  },
+  {
+   "t": 181.86,
+   "dir": "app→light",
+   "hex": "4C 54 09 00 33 57 00 05 01 64 3B CC",
+   "crcOk": true,
+   "decoded": "set saturation=100%"
+  },
+  {
+   "t": 182.16,
+   "dir": "app→light",
+   "hex": "4C 54 09 00 33 57 00 05 01 46 3F EC",
+   "crcOk": true,
+   "decoded": "set saturation=70%"
+  },
+  {
+   "t": 182.24,
+   "dir": "light→app",
+   "hex": "4C 54 08 00 33 02 00 05 46 65 CE",
+   "crcOk": true,
+   "decoded": "ack saturation=70%"
+  },
+  {
+   "t": 182.46,
+   "dir": "app→light",
+   "hex": "4C 54 09 00 33 57 00 05 01 34 61 39",
+   "crcOk": true,
+   "decoded": "set saturation=52%"
+  },
+  {
+   "t": 182.5,
+   "dir": "light→app",
+   "hex": "4C 54 08 00 33 02 00 05 34 3B 1B",
+   "crcOk": true,
+   "decoded": "ack saturation=52%"
+  },
+  {
+   "t": 182.71,
+   "dir": "light→app",
+   "hex": "4C 54 0E 00 33 03 01 0A 0A 38 36 34 03 14 01 3E 3A",
+   "crcOk": true,
+   "decoded": "status power=on p1=0x0a brightness=10% cct=5600K hue=270° saturation=52% mode=Scene scene=20 (Strobe II) cycle=0.1s"
+  },
+  {
+   "t": 182.72,
+   "dir": "app→light",
+   "hex": "4C 54 0E 00 33 48 01 0A 0A 38 36 34 03 14 01 B7 A4",
+   "crcOk": true,
+   "decoded": "cmd=0x48"
+  },
+  {
+   "t": 182.76,
+   "dir": "app→light",
+   "hex": "4C 54 09 00 33 57 00 05 01 2F C2 63",
+   "crcOk": true,
+   "decoded": "set saturation=47%"
+  },
+  {
+   "t": 182.85,
+   "dir": "light→app",
+   "hex": "4C 54 08 00 33 02 00 05 2F 98 41",
+   "crcOk": true,
+   "decoded": "ack saturation=47%"
+  },
+  {
+   "t": 183.06,
+   "dir": "app→light",
+   "hex": "4C 54 09 00 33 57 00 05 01 31 31 9C",
+   "crcOk": true,
+   "decoded": "set saturation=49%"
+  },
+  {
+   "t": 183.11,
+   "dir": "light→app",
+   "hex": "4C 54 08 00 33 02 00 05 31 6B BE",
+   "crcOk": true,
+   "decoded": "ack saturation=49%"
+  },
+  {
+   "t": 183.36,
+   "dir": "app→light",
+   "hex": "4C 54 09 00 33 57 00 05 01 32 01 FF",
+   "crcOk": true,
+   "decoded": "set saturation=50%"
+  },
+  {
+   "t": 183.42,
+   "dir": "light→app",
+   "hex": "4C 54 08 00 33 02 00 05 32 5B DD",
+   "crcOk": true,
+   "decoded": "ack saturation=50%"
+  },
+  {
+   "t": 183.51,
+   "dir": "app→light",
+   "hex": "4C 54 09 00 33 57 00 05 01 32 01 FF",
+   "crcOk": true,
+   "decoded": "set saturation=50%"
+  },
+  {
+   "t": 186.73,
+   "dir": "light→app",
+   "hex": "4C 54 0E 00 33 03 01 0A 0A 38 36 32 03 14 01 19 A3",
+   "crcOk": true,
+   "decoded": "status power=on p1=0x0a brightness=10% cct=5600K hue=270° saturation=50% mode=Scene scene=20 (Strobe II) cycle=0.1s"
+  },
+  {
+   "t": 186.73,
+   "dir": "app→light",
+   "hex": "4C 54 0E 00 33 48 01 0A 0A 38 36 32 03 14 01 90 3D",
+   "crcOk": true,
+   "decoded": "cmd=0x48"
+  },
+  {
+   "t": 190.8,
+   "dir": "light→app",
+   "hex": "4C 54 0E 00 33 03 01 0A 0A 38 36 32 03 14 01 19 A3",
+   "crcOk": true,
+   "decoded": "status power=on p1=0x0a brightness=10% cct=5600K hue=270° saturation=50% mode=Scene scene=20 (Strobe II) cycle=0.1s"
+  },
+  {
+   "t": 190.8,
+   "dir": "app→light",
+   "hex": "4C 54 0E 00 33 48 01 0A 0A 38 36 32 03 14 01 90 3D",
+   "crcOk": true,
+   "decoded": "cmd=0x48"
+  },
+  {
+   "t": 194.79,
+   "dir": "light→app",
+   "hex": "4C 54 0E 00 33 03 01 0A 0A 38 36 32 03 14 01 19 A3",
+   "crcOk": true,
+   "decoded": "status power=on p1=0x0a brightness=10% cct=5600K hue=270° saturation=50% mode=Scene scene=20 (Strobe II) cycle=0.1s"
+  },
+  {
+   "t": 194.79,
+   "dir": "app→light",
+   "hex": "4C 54 0E 00 33 48 01 0A 0A 38 36 32 03 14 01 90 3D",
+   "crcOk": true,
+   "decoded": "cmd=0x48"
+  },
+  {
+   "t": 195.33,
+   "dir": "app→light",
+   "hex": "4C 54 09 00 33 57 00 08 01 01 45 9E",
+   "crcOk": true,
+   "decoded": "set cycle=0.1s"
+  },
+  {
+   "t": 195.39,
+   "dir": "light→app",
+   "hex": "4C 54 08 00 33 02 00 08 01 2B B1",
+   "crcOk": true,
+   "decoded": "ack cycle=0.1s"
+  },
+  {
+   "t": 195.63,
+   "dir": "app→light",
+   "hex": "4C 54 09 00 33 57 00 08 01 1D 96 23",
+   "crcOk": true,
+   "decoded": "set cycle=2.9s"
+  },
+  {
+   "t": 195.71,
+   "dir": "light→app",
+   "hex": "4C 54 08 00 33 02 00 08 1D F8 0C",
+   "crcOk": true,
+   "decoded": "ack cycle=2.9s"
+  },
+  {
+   "t": 195.93,
+   "dir": "app→light",
+   "hex": "4C 54 09 00 33 57 00 08 01 2D A0 70",
+   "crcOk": true,
+   "decoded": "set cycle=4.5s"
+  },
+  {
+   "t": 196,
+   "dir": "light→app",
+   "hex": "4C 54 08 00 33 02 00 08 2D CE 5F",
+   "crcOk": true,
+   "decoded": "ack cycle=4.5s"
+  },
+  {
+   "t": 196.11,
+   "dir": "app→light",
+   "hex": "4C 54 09 00 33 57 00 08 01 32 43 AE",
+   "crcOk": true,
+   "decoded": "set cycle=5.0s"
+  },
+  {
+   "t": 196.15,
+   "dir": "light→app",
+   "hex": "4C 54 08 00 33 02 00 08 32 2D 81",
+   "crcOk": true,
+   "decoded": "ack cycle=5.0s"
+  },
+  {
+   "t": 198.83,
+   "dir": "light→app",
+   "hex": "4C 54 0E 00 33 03 01 0A 0A 38 36 32 03 14 32 1F 93",
+   "crcOk": true,
+   "decoded": "status power=on p1=0x0a brightness=10% cct=5600K hue=270° saturation=50% mode=Scene scene=20 (Strobe II) cycle=5.0s"
+  },
+  {
+   "t": 198.83,
+   "dir": "app→light",
+   "hex": "4C 54 0E 00 33 48 01 0A 0A 38 36 32 03 14 32 96 0D",
+   "crcOk": true,
+   "decoded": "cmd=0x48"
+  },
+  {
+   "t": 202.88,
+   "dir": "light→app",
+   "hex": "4C 54 0E 00 33 03 01 0A 0A 38 36 32 03 14 32 1F 93",
+   "crcOk": true,
+   "decoded": "status power=on p1=0x0a brightness=10% cct=5600K hue=270° saturation=50% mode=Scene scene=20 (Strobe II) cycle=5.0s"
+  },
+  {
+   "t": 202.88,
+   "dir": "app→light",
+   "hex": "4C 54 0E 00 33 48 01 0A 0A 38 36 32 03 14 32 96 0D",
+   "crcOk": true,
+   "decoded": "cmd=0x48"
+  },
+  {
+   "t": 206.89,
+   "dir": "light→app",
+   "hex": "4C 54 0E 00 33 03 01 0A 0A 38 36 32 03 14 32 1F 93",
+   "crcOk": true,
+   "decoded": "status power=on p1=0x0a brightness=10% cct=5600K hue=270° saturation=50% mode=Scene scene=20 (Strobe II) cycle=5.0s"
+  },
+  {
+   "t": 206.89,
+   "dir": "app→light",
+   "hex": "4C 54 0E 00 33 48 01 0A 0A 38 36 32 03 14 32 96 0D",
+   "crcOk": true,
+   "decoded": "cmd=0x48"
+  },
+  {
+   "t": 210.93,
+   "dir": "light→app",
+   "hex": "4C 54 0E 00 33 03 01 0A 0A 38 36 32 03 14 32 1F 93",
+   "crcOk": true,
+   "decoded": "status power=on p1=0x0a brightness=10% cct=5600K hue=270° saturation=50% mode=Scene scene=20 (Strobe II) cycle=5.0s"
+  },
+  {
+   "t": 210.94,
+   "dir": "app→light",
+   "hex": "4C 54 0E 00 33 48 01 0A 0A 38 36 32 03 14 32 96 0D",
+   "crcOk": true,
+   "decoded": "cmd=0x48"
+  },
+  {
+   "t": 211.84,
+   "dir": "app→light",
+   "hex": "4C 54 09 00 33 57 00 08 01 32 43 AE",
+   "crcOk": true,
+   "decoded": "set cycle=5.0s"
+  },
+  {
+   "t": 212.14,
+   "dir": "app→light",
+   "hex": "4C 54 09 00 33 57 00 08 01 25 21 78",
+   "crcOk": true,
+   "decoded": "set cycle=3.7s"
+  },
+  {
+   "t": 212.22,
+   "dir": "light→app",
+   "hex": "4C 54 08 00 33 02 00 08 25 4F 57",
+   "crcOk": true,
+   "decoded": "ack cycle=3.7s"
+  },
+  {
+   "t": 212.44,
+   "dir": "app→light",
+   "hex": "4C 54 09 00 33 57 00 08 01 1E A6 40",
+   "crcOk": true,
+   "decoded": "set cycle=3.0s"
+  },
+  {
+   "t": 212.48,
+   "dir": "light→app",
+   "hex": "4C 54 08 00 33 02 00 08 1E C8 6F",
+   "crcOk": true,
+   "decoded": "ack cycle=3.0s"
+  },
+  {
+   "t": 212.74,
+   "dir": "app→light",
+   "hex": "4C 54 09 00 33 57 00 08 01 1C 86 02",
+   "crcOk": true,
+   "decoded": "set cycle=2.8s"
+  },
+  {
+   "t": 212.8,
+   "dir": "light→app",
+   "hex": "4C 54 08 00 33 02 00 08 1C E8 2D",
+   "crcOk": true,
+   "decoded": "ack cycle=2.8s"
+  },
+  {
+   "t": 213.04,
+   "dir": "app→light",
+   "hex": "4C 54 09 00 33 57 00 08 01 1B F6 E5",
+   "crcOk": true,
+   "decoded": "set cycle=2.7s"
+  },
+  {
+   "t": 213.09,
+   "dir": "light→app",
+   "hex": "4C 54 08 00 33 02 00 08 1B 98 CA",
+   "crcOk": true,
+   "decoded": "ack cycle=2.7s"
+  },
+  {
+   "t": 213.34,
+   "dir": "app→light",
+   "hex": "4C 54 09 00 33 57 00 08 01 1A E6 C4",
+   "crcOk": true,
+   "decoded": "set cycle=2.6s"
+  },
+  {
+   "t": 213.4,
+   "dir": "light→app",
+   "hex": "4C 54 08 00 33 02 00 08 1A 88 EB",
+   "crcOk": true,
+   "decoded": "ack cycle=2.6s"
+  },
+  {
+   "t": 213.64,
+   "dir": "app→light",
+   "hex": "4C 54 09 00 33 57 00 08 01 19 D6 A7",
+   "crcOk": true,
+   "decoded": "set cycle=2.5s"
+  },
+  {
+   "t": 213.69,
+   "dir": "light→app",
+   "hex": "4C 54 08 00 33 02 00 08 19 B8 88",
+   "crcOk": true,
+   "decoded": "ack cycle=2.5s"
+  },
+  {
+   "t": 213.88,
+   "dir": "app→light",
+   "hex": "4C 54 09 00 33 57 00 08 01 19 D6 A7",
+   "crcOk": true,
+   "decoded": "set cycle=2.5s"
+  },
+  {
+   "t": 214.95,
+   "dir": "light→app",
+   "hex": "4C 54 0E 00 33 03 01 0A 0A 38 36 32 03 14 19 8A 9A",
+   "crcOk": true,
+   "decoded": "status power=on p1=0x0a brightness=10% cct=5600K hue=270° saturation=50% mode=Scene scene=20 (Strobe II) cycle=2.5s"
+  },
+  {
+   "t": 214.95,
+   "dir": "app→light",
+   "hex": "4C 54 0E 00 33 48 01 0A 0A 38 36 32 03 14 19 03 04",
+   "crcOk": true,
+   "decoded": "cmd=0x48"
+  },
+  {
+   "t": 219.02,
+   "dir": "light→app",
+   "hex": "4C 54 0E 00 33 03 01 0A 0A 38 36 32 03 14 19 8A 9A",
+   "crcOk": true,
+   "decoded": "status power=on p1=0x0a brightness=10% cct=5600K hue=270° saturation=50% mode=Scene scene=20 (Strobe II) cycle=2.5s"
+  },
+  {
+   "t": 219.03,
+   "dir": "app→light",
+   "hex": "4C 54 0E 00 33 48 01 0A 0A 38 36 32 03 14 19 03 04",
+   "crcOk": true,
+   "decoded": "cmd=0x48"
+  },
+  {
+   "t": 223.01,
+   "dir": "light→app",
+   "hex": "4C 54 0E 00 33 03 01 0A 0A 38 36 32 03 14 19 8A 9A",
+   "crcOk": true,
+   "decoded": "status power=on p1=0x0a brightness=10% cct=5600K hue=270° saturation=50% mode=Scene scene=20 (Strobe II) cycle=2.5s"
+  },
+  {
+   "t": 223.01,
+   "dir": "app→light",
+   "hex": "4C 54 0E 00 33 48 01 0A 0A 38 36 32 03 14 19 03 04",
+   "crcOk": true,
+   "decoded": "cmd=0x48"
+  },
+  {
+   "t": 224.71,
+   "dir": "app→light",
+   "hex": "4C 54 09 00 33 57 00 08 01 19 D6 A7",
+   "crcOk": true,
+   "decoded": "set cycle=2.5s"
+  },
+  {
+   "t": 225.01,
+   "dir": "app→light",
+   "hex": "4C 54 09 00 33 57 00 08 01 0F A4 50",
+   "crcOk": true,
+   "decoded": "set cycle=1.5s"
+  },
+  {
+   "t": 225.09,
+   "dir": "light→app",
+   "hex": "4C 54 08 00 33 02 00 08 0F CA 7F",
+   "crcOk": true,
+   "decoded": "ack cycle=1.5s"
+  },
+  {
+   "t": 225.31,
+   "dir": "app→light",
+   "hex": "4C 54 09 00 33 57 00 08 01 09 C4 96",
+   "crcOk": true,
+   "decoded": "set cycle=0.9s"
+  },
+  {
+   "t": 225.4,
+   "dir": "light→app",
+   "hex": "4C 54 08 00 33 02 00 08 09 AA B9",
+   "crcOk": true,
+   "decoded": "ack cycle=0.9s"
+  },
+  {
+   "t": 225.61,
+   "dir": "app→light",
+   "hex": "4C 54 09 00 33 57 00 08 01 05 05 1A",
+   "crcOk": true,
+   "decoded": "set cycle=0.5s"
+  },
+  {
+   "t": 225.69,
+   "dir": "light→app",
+   "hex": "4C 54 08 00 33 02 00 08 05 6B 35",
+   "crcOk": true,
+   "decoded": "ack cycle=0.5s"
+  },
+  {
+   "t": 225.91,
+   "dir": "app→light",
+   "hex": "4C 54 09 00 33 57 00 08 01 03 65 DC",
+   "crcOk": true,
+   "decoded": "set cycle=0.3s"
+  },
+  {
+   "t": 226,
+   "dir": "light→app",
+   "hex": "4C 54 08 00 33 02 00 08 03 0B F3",
+   "crcOk": true,
+   "decoded": "ack cycle=0.3s"
+  },
+  {
+   "t": 226.21,
+   "dir": "app→light",
+   "hex": "4C 54 09 00 33 57 00 08 01 03 65 DC",
+   "crcOk": true,
+   "decoded": "set cycle=0.3s"
+  },
+  {
+   "t": 226.51,
+   "dir": "app→light",
+   "hex": "4C 54 09 00 33 57 00 08 01 03 65 DC",
+   "crcOk": true,
+   "decoded": "set cycle=0.3s"
+  },
+  {
+   "t": 226.81,
+   "dir": "app→light",
+   "hex": "4C 54 09 00 33 57 00 08 01 01 45 9E",
+   "crcOk": true,
+   "decoded": "set cycle=0.1s"
+  },
+  {
+   "t": 226.84,
+   "dir": "light→app",
+   "hex": "4C 54 08 00 33 02 00 08 01 2B B1",
+   "crcOk": true,
+   "decoded": "ack cycle=0.1s"
+  },
+  {
+   "t": 227.05,
+   "dir": "light→app",
+   "hex": "4C 54 0E 00 33 03 01 0A 0A 38 36 32 03 14 01 19 A3",
+   "crcOk": true,
+   "decoded": "status power=on p1=0x0a brightness=10% cct=5600K hue=270° saturation=50% mode=Scene scene=20 (Strobe II) cycle=0.1s"
+  },
+  {
+   "t": 227.05,
+   "dir": "app→light",
+   "hex": "4C 54 0E 00 33 48 01 0A 0A 38 36 32 03 14 01 90 3D",
+   "crcOk": true,
+   "decoded": "cmd=0x48"
+  },
+  {
+   "t": 227.11,
+   "dir": "app→light",
+   "hex": "4C 54 09 00 33 57 00 08 01 01 45 9E",
+   "crcOk": true,
+   "decoded": "set cycle=0.1s"
+  },
+  {
+   "t": 227.14,
+   "dir": "app→light",
+   "hex": "4C 54 09 00 33 57 00 08 01 01 45 9E",
+   "crcOk": true,
+   "decoded": "set cycle=0.1s"
+  },
+  {
+   "t": 231.09,
+   "dir": "light→app",
+   "hex": "4C 54 0E 00 33 03 01 0A 0A 38 36 32 03 14 01 19 A3",
+   "crcOk": true,
+   "decoded": "status power=on p1=0x0a brightness=10% cct=5600K hue=270° saturation=50% mode=Scene scene=20 (Strobe II) cycle=0.1s"
+  },
+  {
+   "t": 231.09,
+   "dir": "app→light",
+   "hex": "4C 54 0E 00 33 48 01 0A 0A 38 36 32 03 14 01 90 3D",
+   "crcOk": true,
+   "decoded": "cmd=0x48"
+  },
+  {
+   "t": 235.11,
+   "dir": "light→app",
+   "hex": "4C 54 0E 00 33 03 01 0A 0A 38 36 32 03 14 01 19 A3",
+   "crcOk": true,
+   "decoded": "status power=on p1=0x0a brightness=10% cct=5600K hue=270° saturation=50% mode=Scene scene=20 (Strobe II) cycle=0.1s"
+  },
+  {
+   "t": 235.11,
+   "dir": "app→light",
+   "hex": "4C 54 0E 00 33 48 01 0A 0A 38 36 32 03 14 01 90 3D",
+   "crcOk": true,
+   "decoded": "cmd=0x48"
+  },
+  {
+   "t": 239.15,
+   "dir": "light→app",
+   "hex": "4C 54 0E 00 33 03 01 0A 0A 38 36 32 03 14 01 19 A3",
+   "crcOk": true,
+   "decoded": "status power=on p1=0x0a brightness=10% cct=5600K hue=270° saturation=50% mode=Scene scene=20 (Strobe II) cycle=0.1s"
+  },
+  {
+   "t": 239.15,
+   "dir": "app→light",
+   "hex": "4C 54 0E 00 33 48 01 0A 0A 38 36 32 03 14 01 90 3D",
+   "crcOk": true,
+   "decoded": "cmd=0x48"
+  },
+  {
+   "t": 243.17,
+   "dir": "light→app",
+   "hex": "4C 54 0E 00 33 03 01 0A 0A 38 36 32 03 14 01 19 A3",
+   "crcOk": true,
+   "decoded": "status power=on p1=0x0a brightness=10% cct=5600K hue=270° saturation=50% mode=Scene scene=20 (Strobe II) cycle=0.1s"
+  },
+  {
+   "t": 243.17,
+   "dir": "app→light",
+   "hex": "4C 54 0E 00 33 48 01 0A 0A 38 36 32 03 14 01 90 3D",
+   "crcOk": true,
+   "decoded": "cmd=0x48"
+  },
+  {
+   "t": 247.21,
+   "dir": "light→app",
+   "hex": "4C 54 0E 00 33 03 01 0A 0A 38 36 32 03 14 01 19 A3",
+   "crcOk": true,
+   "decoded": "status power=on p1=0x0a brightness=10% cct=5600K hue=270° saturation=50% mode=Scene scene=20 (Strobe II) cycle=0.1s"
+  },
+  {
+   "t": 247.21,
+   "dir": "app→light",
+   "hex": "4C 54 0E 00 33 48 01 0A 0A 38 36 32 03 14 01 90 3D",
+   "crcOk": true,
+   "decoded": "cmd=0x48"
+  },
+  {
+   "t": 251.23,
+   "dir": "light→app",
+   "hex": "4C 54 0E 00 33 03 01 0A 0A 38 36 32 03 14 01 19 A3",
+   "crcOk": true,
+   "decoded": "status power=on p1=0x0a brightness=10% cct=5600K hue=270° saturation=50% mode=Scene scene=20 (Strobe II) cycle=0.1s"
+  },
+  {
+   "t": 251.23,
+   "dir": "app→light",
+   "hex": "4C 54 0E 00 33 48 01 0A 0A 38 36 32 03 14 01 90 3D",
+   "crcOk": true,
+   "decoded": "cmd=0x48"
+  },
+  {
+   "t": 255.27,
+   "dir": "light→app",
+   "hex": "4C 54 0E 00 33 03 01 0A 0A 38 36 32 03 14 01 19 A3",
+   "crcOk": true,
+   "decoded": "status power=on p1=0x0a brightness=10% cct=5600K hue=270° saturation=50% mode=Scene scene=20 (Strobe II) cycle=0.1s"
+  },
+  {
+   "t": 255.27,
+   "dir": "app→light",
+   "hex": "4C 54 0E 00 33 48 01 0A 0A 38 36 32 03 14 01 90 3D",
+   "crcOk": true,
+   "decoded": "cmd=0x48"
+  },
+  {
+   "t": 259.29,
+   "dir": "light→app",
+   "hex": "4C 54 0E 00 33 03 01 0A 0A 38 36 32 03 14 01 19 A3",
+   "crcOk": true,
+   "decoded": "status power=on p1=0x0a brightness=10% cct=5600K hue=270° saturation=50% mode=Scene scene=20 (Strobe II) cycle=0.1s"
+  },
+  {
+   "t": 259.29,
+   "dir": "app→light",
+   "hex": "4C 54 0E 00 33 48 01 0A 0A 38 36 32 03 14 01 90 3D",
+   "crcOk": true,
+   "decoded": "cmd=0x48"
+  },
+  {
+   "t": 263.33,
+   "dir": "light→app",
+   "hex": "4C 54 0E 00 33 03 01 0A 0A 38 36 32 03 14 01 19 A3",
+   "crcOk": true,
+   "decoded": "status power=on p1=0x0a brightness=10% cct=5600K hue=270° saturation=50% mode=Scene scene=20 (Strobe II) cycle=0.1s"
+  },
+  {
+   "t": 263.33,
+   "dir": "app→light",
+   "hex": "4C 54 0E 00 33 48 01 0A 0A 38 36 32 03 14 01 90 3D",
+   "crcOk": true,
+   "decoded": "cmd=0x48"
+  },
+  {
+   "t": 267.35,
+   "dir": "light→app",
+   "hex": "4C 54 0E 00 33 03 01 0A 0A 38 36 32 03 14 01 19 A3",
+   "crcOk": true,
+   "decoded": "status power=on p1=0x0a brightness=10% cct=5600K hue=270° saturation=50% mode=Scene scene=20 (Strobe II) cycle=0.1s"
+  },
+  {
+   "t": 267.35,
+   "dir": "app→light",
+   "hex": "4C 54 0E 00 33 48 01 0A 0A 38 36 32 03 14 01 90 3D",
+   "crcOk": true,
+   "decoded": "cmd=0x48"
+  },
+  {
+   "t": 271.39,
+   "dir": "light→app",
+   "hex": "4C 54 0E 00 33 03 01 0A 0A 38 36 32 03 14 01 19 A3",
+   "crcOk": true,
+   "decoded": "status power=on p1=0x0a brightness=10% cct=5600K hue=270° saturation=50% mode=Scene scene=20 (Strobe II) cycle=0.1s"
+  },
+  {
+   "t": 271.39,
+   "dir": "app→light",
+   "hex": "4C 54 0E 00 33 48 01 0A 0A 38 36 32 03 14 01 90 3D",
+   "crcOk": true,
+   "decoded": "cmd=0x48"
+  },
+  {
+   "t": 275.4,
+   "dir": "light→app",
+   "hex": "4C 54 0E 00 33 03 01 0A 0A 38 36 32 03 14 01 19 A3",
+   "crcOk": true,
+   "decoded": "status power=on p1=0x0a brightness=10% cct=5600K hue=270° saturation=50% mode=Scene scene=20 (Strobe II) cycle=0.1s"
+  },
+  {
+   "t": 275.4,
+   "dir": "app→light",
+   "hex": "4C 54 0E 00 33 48 01 0A 0A 38 36 32 03 14 01 90 3D",
+   "crcOk": true,
+   "decoded": "cmd=0x48"
+  },
+  {
+   "t": 276.55,
+   "dir": "app→light",
+   "hex": "4C 54 09 00 33 57 00 06 01 01 5E 9F",
+   "crcOk": true,
+   "decoded": "set mode=CCT"
+  },
+  {
+   "t": 276.61,
+   "dir": "light→app",
+   "hex": "4C 54 08 00 33 02 00 06 01 08 BE",
+   "crcOk": true,
+   "decoded": "ack mode=CCT"
+  },
+  {
+   "t": 279.45,
+   "dir": "light→app",
+   "hex": "4C 54 0E 00 33 03 01 0A 0A 20 09 62 01 14 01 7C 29",
+   "crcOk": true,
+   "decoded": "status power=on p1=0x0a brightness=10% cct=3200K hue=45° saturation=98% mode=CCT scene=20 (Strobe II) cycle=0.1s"
+  },
+  {
+   "t": 279.45,
+   "dir": "app→light",
+   "hex": "4C 54 0E 00 33 48 01 0A 0A 20 09 62 01 14 01 F5 B7",
+   "crcOk": true,
+   "decoded": "cmd=0x48"
+  },
+  {
+   "t": 283.49,
+   "dir": "light→app",
+   "hex": "4C 54 0E 00 33 03 01 0A 0A 20 09 62 01 14 01 7C 29",
+   "crcOk": true,
+   "decoded": "status power=on p1=0x0a brightness=10% cct=3200K hue=45° saturation=98% mode=CCT scene=20 (Strobe II) cycle=0.1s"
+  },
+  {
+   "t": 283.49,
+   "dir": "app→light",
+   "hex": "4C 54 0E 00 33 48 01 0A 0A 20 09 62 01 14 01 F5 B7",
+   "crcOk": true,
+   "decoded": "cmd=0x48"
+  },
+  {
+   "t": 287.51,
+   "dir": "light→app",
+   "hex": "4C 54 0E 00 33 03 01 0A 0A 20 09 62 01 14 01 7C 29",
+   "crcOk": true,
+   "decoded": "status power=on p1=0x0a brightness=10% cct=3200K hue=45° saturation=98% mode=CCT scene=20 (Strobe II) cycle=0.1s"
+  },
+  {
+   "t": 287.51,
+   "dir": "app→light",
+   "hex": "4C 54 0E 00 33 48 01 0A 0A 20 09 62 01 14 01 F5 B7",
+   "crcOk": true,
+   "decoded": "cmd=0x48"
+  },
+  {
+   "t": 291.52,
+   "dir": "light→app",
+   "hex": "4C 54 0E 00 33 03 01 0A 0A 20 09 62 01 14 01 7C 29",
+   "crcOk": true,
+   "decoded": "status power=on p1=0x0a brightness=10% cct=3200K hue=45° saturation=98% mode=CCT scene=20 (Strobe II) cycle=0.1s"
+  },
+  {
+   "t": 291.52,
+   "dir": "app→light",
+   "hex": "4C 54 0E 00 33 48 01 0A 0A 20 09 62 01 14 01 F5 B7",
+   "crcOk": true,
+   "decoded": "cmd=0x48"
+  },
+  {
+   "t": 295.57,
+   "dir": "light→app",
+   "hex": "4C 54 0E 00 33 03 01 0A 0A 20 09 62 01 14 01 7C 29",
+   "crcOk": true,
+   "decoded": "status power=on p1=0x0a brightness=10% cct=3200K hue=45° saturation=98% mode=CCT scene=20 (Strobe II) cycle=0.1s"
+  },
+  {
+   "t": 295.57,
+   "dir": "app→light",
+   "hex": "4C 54 0E 00 33 48 01 0A 0A 20 09 62 01 14 01 F5 B7",
+   "crcOk": true,
+   "decoded": "cmd=0x48"
+  },
+  {
+   "t": 299.58,
+   "dir": "light→app",
+   "hex": "4C 54 0E 00 33 03 01 0A 0A 20 09 62 01 14 01 7C 29",
+   "crcOk": true,
+   "decoded": "status power=on p1=0x0a brightness=10% cct=3200K hue=45° saturation=98% mode=CCT scene=20 (Strobe II) cycle=0.1s"
+  },
+  {
+   "t": 299.58,
+   "dir": "app→light",
+   "hex": "4C 54 0E 00 33 48 01 0A 0A 20 09 62 01 14 01 F5 B7",
+   "crcOk": true,
+   "decoded": "cmd=0x48"
+  },
+  {
+   "t": 303.62,
+   "dir": "light→app",
+   "hex": "4C 54 0E 00 33 03 01 0A 0A 20 09 62 01 14 01 7C 29",
+   "crcOk": true,
+   "decoded": "status power=on p1=0x0a brightness=10% cct=3200K hue=45° saturation=98% mode=CCT scene=20 (Strobe II) cycle=0.1s"
+  },
+  {
+   "t": 303.62,
+   "dir": "app→light",
+   "hex": "4C 54 0E 00 33 48 01 0A 0A 20 09 62 01 14 01 F5 B7",
+   "crcOk": true,
+   "decoded": "cmd=0x48"
+  },
+  {
+   "t": 307.64,
+   "dir": "light→app",
+   "hex": "4C 54 0E 00 33 03 01 0A 0A 20 09 62 01 14 01 7C 29",
+   "crcOk": true,
+   "decoded": "status power=on p1=0x0a brightness=10% cct=3200K hue=45° saturation=98% mode=CCT scene=20 (Strobe II) cycle=0.1s"
+  },
+  {
+   "t": 307.64,
+   "dir": "app→light",
+   "hex": "4C 54 0E 00 33 48 01 0A 0A 20 09 62 01 14 01 F5 B7",
+   "crcOk": true,
+   "decoded": "cmd=0x48"
+  },
+  {
+   "t": 311.68,
+   "dir": "light→app",
+   "hex": "4C 54 0E 00 33 03 01 0A 0A 20 09 62 01 14 01 7C 29",
+   "crcOk": true,
+   "decoded": "status power=on p1=0x0a brightness=10% cct=3200K hue=45° saturation=98% mode=CCT scene=20 (Strobe II) cycle=0.1s"
+  },
+  {
+   "t": 311.68,
+   "dir": "app→light",
+   "hex": "4C 54 0E 00 33 48 01 0A 0A 20 09 62 01 14 01 F5 B7",
+   "crcOk": true,
+   "decoded": "cmd=0x48"
+  }
+ ]
+}

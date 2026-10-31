@@ -2,7 +2,7 @@ import { GVMProtocol as P } from './gvm-protocol.js';
 import { parseHex, toHex, shortUuid, sleep } from './ble.js';
 import { Rig } from './rig.js';
 import { Show, describeState, normState, stateAt } from './show.js';
-import { EFFECTS, GELS, defaults } from './effects.js';
+import { EFFECTS, GELS, BUILTIN, defaults } from './effects.js';
 import { CustomEffects, PREFIX as CUSTOM, stepColor, normStep, cycleSeconds, changedValues, hasRandom, RANGES, TEMPLATES } from './customfx.js';
 import { APP_VERSION, repoUrl, detectEnv, blockReason, bluetoothSteps, explainProblem, LIGHT_STEPS, OS_NAME, BROWSER_NAME } from './setup.js';
 
@@ -1003,7 +1003,7 @@ const fx = { runs: [], selected: null, params: {} };
 // Built-in effects plus the ones built on the Effects tab.
 const customFx = new CustomEffects();
 let customList = customFx.effects();
-const allEffects = () => [...EFFECTS, ...customList];
+const allEffects = () => [...EFFECTS, ...customList, ...BUILTIN];
 const findEffect = (id) => allEffects().find((x) => x.id === id) ?? null;
 
 // Saved settings per effect: the starting values for new runs (each run gets its own copy).
@@ -1038,7 +1038,7 @@ async function toggleEffect(e, { params = null, lights = targets(), fromCue = fa
   if (!fromCue && effectState(e.id, lights) === 'all') { stopEffectOn(lights, { restore: true }); return; }
   // Each light's "before" look: if it was running another effect, the look from before that one.
   const snapshot = new Map(lights.map((l) => [l.id, runOf(l)?.snapshot.get(l.id) ?? stateOf(l)]));
-  stopEffectOn(lights, { restore: false, quietLog: true });
+  stopEffectOn(lights, { restore: false, quietLog: true, keepScene: !!e.builtin });
   for (const l of lights) { l.fadeTok = null; l.look = null; }   // stop fades on these lights only
   if (!fromCue) clearFollow();
   params = { ...(params ?? fx.params[e.id]) };
@@ -1068,7 +1068,8 @@ async function toggleEffect(e, { params = null, lights = targets(), fromCue = fa
       if (rest > 0) await sleep(rest);
     }
   };
-  if (e.perLight) await each(lights, (l) => loop(e.steps(params), [l]));
+  if (e.builtin) await each(lights, (l) => runBuiltin(run, l));
+  else if (e.perLight) await each(lights, (l) => loop(e.steps(params), [l]));
   else await loop(e.steps(params), lights);
 
   if (run.dead) return;
@@ -1089,7 +1090,37 @@ function endRun(run) {
  * Stops whatever effect each of `lights` is running. Other lights in the same run keep going.
  * restore=true returns each light to the look it had before its effect started.
  */
-async function stopEffectOn(lights, { restore = false, quietLog = false } = {}) {
+/**
+ * A built-in effect on one light: switch it to Scene mode with the effect number, then send the settings
+ * (brightness; Strobe II also cycle, hue, saturation) and resend any that change while it runs. The light runs
+ * the effect itself. While the light is off, away or fading, nothing is sent; when it is back, everything is
+ * sent again (the light may have lost the scene).
+ */
+async function runBuiltin(run, l) {
+  const e = run.e, p = run.params;
+  const live = () => !run.dead && run.lights.includes(l) && performance.now() < run.deadline;
+  const send = { level: (v) => P.brightness(v), cct: (v) => P.cct(v), cycle: (v) => P.cycle(v), hue: (v) => P.hue(v), sat: (v) => P.saturation(v) };
+  let sent = null;
+  while (live()) {
+    if (!l.conn.connected || isDarkLight(l) || l.busy) { sent = null; await sleep(200); continue; }
+    if (!sent) {
+      // Already in Scene mode (switching between built-in effects): the official app sends only the number.
+      const frames = l.conn.light.mode === 'scene' ? P.scene(e.scene).slice(1) : P.scene(e.scene);
+      await l.conn.sendFrames(frames, `scene ${e.scene} ${e.name}`, { quiet: false });
+      l.conn.light.mode = 'scene';
+      sent = {};
+    }
+    for (const k of Object.keys(send)) {
+      if (p[k] == null || sent[k] === p[k] || !live()) continue;
+      sent[k] = p[k];
+      await l.conn.sendFrames(send[k](p[k]), `${e.name} ${k} ${p[k]}`, { quiet: true });
+    }
+    if (l === primary()) syncFromLight();
+    await sleep(200);
+  }
+}
+
+async function stopEffectOn(lights, { restore = false, quietLog = false, keepScene = false } = {}) {
   const back = [];
   for (const run of [...fx.runs]) {
     const gone = run.lights.filter((l) => lights.includes(l));
@@ -1098,7 +1129,13 @@ async function stopEffectOn(lights, { restore = false, quietLog = false } = {}) 
     if (!quietLog) {
       rig.logLine(`EFFECT ${run.e.name} stop on ${gone.map((l) => l.label).join(', ')}${restore ? ' (restore previous look)' : ''}${run.lights.length ? `; still running on ${run.lights.map((l) => l.label).join(', ')}` : ''}`);
     }
-    if (restore) for (const l of gone) if (run.snapshot.has(l.id)) back.push([l, run.snapshot.get(l.id)]);
+    if (restore) {
+      for (const l of gone) if (run.snapshot.has(l.id)) back.push([l, run.snapshot.get(l.id)]);
+    } else if (run.e.builtin && !keepScene) {
+      // A built-in effect keeps running on the light until it leaves Scene mode: switch it back to the mode it
+      // had before (the light restores its own color for that mode).
+      for (const l of gone) back.push([l, { mode: run.snapshot.get(l.id)?.mode ?? 'cct' }]);
+    }
     if (!run.lights.length) run.dead = true;
   }
   if (fx.runs.some((r) => r.dead)) fx.runs = fx.runs.filter((r) => !r.dead);
@@ -1243,6 +1280,10 @@ function fillFxSelect() {
     for (const e of customList) og.appendChild(new Option(e.name, e.id));
     sel.appendChild(og);
   }
+  const ob = document.createElement('optgroup');
+  ob.label = 'On the light (built-in)';
+  for (const e of BUILTIN) ob.appendChild(new Option(e.name, e.id));
+  sel.appendChild(ob);
   if (!findEffect(fx.selected)) fx.selected = EFFECTS[0].id;
   sel.value = fx.selected;
 }
@@ -1297,12 +1338,40 @@ function renderCustomChips() {
   }
 }
 
-/** Effect chips in the cue panel's strip (built-in and custom). */
+/** "On the light" menu: start / switch / stop the light's built-in effects on the selected lights. */
+function renderBuiltinRow() {
+  const sel = $('builtinSel');
+  if (!sel.options.length) {
+    sel.add(new Option('Built-in effect…', ''));
+    BUILTIN.forEach((e) => sel.add(new Option(`${e.scene}. ${e.name}`, e.id)));
+    sel.add(new Option('(some selected lights)', '__some'));
+    sel.lastElementChild.disabled = true;
+    sel.add(new Option('■ Stop', '__stop'));
+    sel.addEventListener('change', () => {
+      const v = sel.value;
+      sel.blur();
+      const lights = targets().filter((l) => runOf(l)?.e.builtin);
+      if (v === '__stop') { if (lights.length) stopEffectOn(lights, { restore: true }); }
+      else { const e = findEffect(v); if (e && effectState(e.id) !== 'all') toggleEffect(e); }
+      renderBuiltinRow();
+    });
+  }
+  const t = targets();
+  const ids = [...new Set(t.map((l) => runOf(l)?.e).filter((e) => e?.builtin).map((e) => e.id))];
+  const all = ids.length === 1 && effectState(ids[0], t) === 'all';
+  sel.value = all ? ids[0] : ids.length ? '__some' : '';
+  sel.querySelector('option[value="__stop"]').hidden = !ids.length;
+  sel.classList.toggle('running', all);
+  sel.classList.toggle('partial', !all && ids.length > 0);
+  sel.disabled = !rig.anyConnected;
+}
+
+/** Effect chips in the cue panel's strip (ours and custom; built-in ones are in the Effects column). */
 function fillCueFxStrip(strip, d) {
   strip.innerHTML = '';
   const hint = d.createElement('span'); hint.className = 'hint'; hint.textContent = 'Effects';
   strip.append(hint);
-  for (const e of allEffects()) {
+  for (const e of allEffects().filter((x) => !x.builtin)) {
     const b = d.createElement('button');
     b.className = 'chip';
     b.textContent = e.name;
@@ -1311,6 +1380,21 @@ function fillCueFxStrip(strip, d) {
     b.addEventListener('click', () => { const x = findEffect(e.id); if (x) toggleEffect(x); });
     strip.append(b);
   }
+  // The light's built-in effects, as a menu (the Effects column is hidden while the cue panel is open).
+  const bs = d.createElement('select');
+  bs.className = 'builtin-select cue-builtin';
+  bs.title = 'The light’s own built-in effects (run on the light)';
+  bs.add(new (d.defaultView.Option)('On the light…', ''));
+  for (const e of BUILTIN) bs.add(new (d.defaultView.Option)(`${e.scene}. ${e.name}`, e.id));
+  bs.add(new (d.defaultView.Option)('■ Stop built-in', '__stop'));
+  bs.addEventListener('change', () => {
+    const v = bs.value;
+    bs.value = '';
+    if (v === '__stop') { const ls = targets().filter((l) => runOf(l)?.e.builtin); if (ls.length) stopEffectOn(ls, { restore: true }); return; }
+    const x = findEffect(v);
+    if (x && effectState(x.id) !== 'all') toggleEffect(x);
+  });
+  strip.append(bs);
 }
 
 /** Custom effects changed (Effects tab): refresh every place that lists effects. */
@@ -1339,6 +1423,7 @@ function renderPresets() {
   show.looks.slice(0, LOOK_KEYS.length).forEach((l, i) => looks.appendChild(tile(l, LOOK_KEYS[i], 'look')));
   if (!effects.children.length) EFFECTS.forEach((e, i) => effects.appendChild(tile(e, EFFECT_KEYS[i], 'effect')));
   renderCustomChips();
+  renderBuiltinRow();
   // The board shows the selected light(s): a tile is lit when every selected light has it,
   // half-lit ("partial") when only some do.
   const sel = targets();
@@ -1652,7 +1737,7 @@ function renderCueList() {
     const effSel = d.createElement('select');
     effSel.className = 'cue-fx';
     effSel.add(new (d.defaultView.Option)('No effect', ''));
-    for (const e of allEffects()) effSel.add(new (d.defaultView.Option)(e.custom ? `${e.name} (custom)` : e.name, e.id));
+    for (const e of allEffects()) effSel.add(new (d.defaultView.Option)(e.custom ? `${e.name} (custom)` : e.builtin ? `${e.name} (on the light)` : e.name, e.id));
     for (const ce of cueEffects(c)) if (!findEffect(ce.id)) effSel.add(new (d.defaultView.Option)('(deleted effect)', ce.id));
     const effs = cueEffects(c);
     if (effs.length > 1) {
@@ -1700,6 +1785,8 @@ function updateCueTools() {
   h.rec.disabled = !rig.anyConnected;
   h.upd.disabled = !sel || !rig.anyConnected;
   h.up.disabled = h.down.disabled = h.del.disabled = !sel;
+  const cb = h.strip.querySelector('.cue-builtin');
+  if (cb) cb.disabled = !rig.anyConnected;
   for (const b of h.strip.querySelectorAll('.chip')) {
     b.disabled = !rig.anyConnected;
     const st = effectState(b.dataset.id);
@@ -1854,6 +1941,30 @@ function renderWriteTargets() {
   for (const c of writable) sel.add(new Option(`${rig.lights.length > 1 ? `${primary().label}: ` : ''}${shortUuid(c.uuid)} [${c.props.join(',')}]`, c.id));
   sel.value = writable.some((c) => c.id === prev) ? prev : (conn?.ctrl?.id ?? writable[0]?.id ?? '');
 }
+
+const STATUS_NAMES = ['power', 'p1 ?', 'brightness', 'CCT ×100', 'hue ÷5', 'saturation', 'mode (3 = Scene)', 'scene #', 'cycle ×0.1 s'];
+
+/** Debug tab: every light's latest raw status values, recently changed ones highlighted. */
+function renderStatusWatch() {
+  const box = $('statusWatch');
+  if (!box || $('tab-debug').hidden) return;
+  const ls = rig.lights.filter((l) => l.conn.statusRaw);
+  if (!ls.length) { box.textContent = rig.anyConnected ? 'waiting for the first status…' : '(not connected)'; return; }
+  const hx = (v) => v.toString(16).padStart(2, '0').toUpperCase();
+  const now = Date.now();
+  let html = '<table><tr><th></th>' + ls.map((l) => `<th>${l.label.replace(/[<&]/g, '')}</th>`).join('') + '</tr>';
+  for (let p = 0; p < Math.max(...ls.map((l) => l.conn.statusRaw.length)); p++) {
+    html += `<tr class="${p === 1 ? 'unk' : ''}"><td>p${p} ${STATUS_NAMES[p] ?? '?'}</td>`;
+    for (const l of ls) {
+      const v = l.conn.statusRaw[p], hot = now - (l.conn.statusChangedAt[p] || 0) < 15000;
+      html += `<td class="${hot ? 'hot' : ''}">${v == null ? '—' : `0x${hx(v)} <small>(${v})</small>`}</td>`;
+    }
+    html += '</tr>';
+  }
+  html += '<tr><td>handshake reply</td>' + ls.map((l) => `<td>${l.conn.handshakeReply ? l.conn.handshakeReply.map(hx).join(' ') : '—'}</td>`).join('') + '</tr></table>';
+  box.innerHTML = html;
+}
+setInterval(renderStatusWatch, 1000);
 
 function renderGatt() {
   const conn = primary()?.conn;
@@ -2206,7 +2317,7 @@ function showTab(name) {
   $('tab-effects').hidden = name !== 'effects';
   $('tab-debug').hidden = name !== 'debug';
   prefs.set('tab', name);
-  if (name === 'debug') { renderLog(); renderGatt(); renderWriteTargets(); }
+  if (name === 'debug') { renderLog(); renderGatt(); renderWriteTargets(); renderStatusWatch(); }
   if (name === 'looks') renderLookList();
   if (name === 'effects') renderEffectEditor();
 }
