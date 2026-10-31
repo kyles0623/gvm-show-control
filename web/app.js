@@ -5,6 +5,7 @@ import { Show, describeState, normState, stateAt } from './show.js';
 import { EFFECTS, GELS, BUILTIN, ALIASES, defaults } from './effects.js';
 import { HIGHLIGHTS } from './whatsnew.js';
 import { CustomEffects, PREFIX as CUSTOM, stepColor, normStep, cycleSeconds, changedValues, hasRandom, RANGES, TEMPLATES } from './customfx.js';
+import { buildBackup, parseBackup, summarize, defaultLightMap, applyBackup, backupFileName } from './backup.js';
 import { APP_VERSION, repoUrl, detectEnv, blockReason, bluetoothSteps, explainProblem, LIGHT_STEPS, OS_NAME, BROWSER_NAME } from './setup.js';
 
 const env = detectEnv();
@@ -2022,7 +2023,7 @@ async function updateWakeLock() {
 document.addEventListener('visibilitychange', updateWakeLock);
 
 window.addEventListener('beforeunload', (e) => {
-  if (rig.anyConnected && prefs.get('confirmClose', true)) { e.preventDefault(); e.returnValue = ''; }
+  if (!ui.reloading && rig.anyConnected && prefs.get('confirmClose', true)) { e.preventDefault(); e.returnValue = ''; }
 });
 
 // ---------- debug tab (acts on the primary light) ----------
@@ -2388,7 +2389,92 @@ function initSettings() {
   });
   rig.addEventListener('status', () => { if ($('settingsDlg').open) renderSettingsLights(); });
   rig.addEventListener('lights', () => { if ($('settingsDlg').open) renderSettingsLights(); });
+  initBackup();
   initSetup();
+}
+
+// ---------- backup: export / import ----------
+
+function exportBackup() {
+  const b = buildBackup(localStorage, APP_VERSION);
+  const blob = new Blob([JSON.stringify(b, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = backupFileName();
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+  const n = summarize(b);
+  toast({ level: 'ok', title: 'Backup exported', body: `${a.download}: ${n.looks} looks, ${n.cues} cues, ${n.customEffects} effects, ${n.prefs} settings.` });
+}
+
+async function openImport(file) {
+  let text;
+  try { text = await file.text(); } catch { toast({ level: 'error', title: 'Couldn’t read that file' }); return; }
+  const { backup: b, error } = parseBackup(text);
+  if (error) { toast({ level: 'error', title: 'Can’t import', body: error }); return; }
+  const n = summarize(b);
+  const when = b.exported ? new Date(b.exported).toLocaleString() : 'unknown date';
+  $('importFrom').textContent = `${file.name} · exported ${when}${b.version ? ` from v${b.version}` : ''}`;
+  const parts = $('importParts');
+  parts.innerHTML = '';
+  const row = (id, label, count, on = count > 0) => {
+    const l = document.createElement('label'); l.className = 'switch';
+    l.innerHTML = `<input type="checkbox" data-part="${id}"> <span></span>`;
+    l.querySelector('span').textContent = label;
+    const c = l.querySelector('input'); c.checked = on; c.disabled = !count;
+    parts.appendChild(l);
+  };
+  row('looks', `Looks (${n.looks})`, n.looks);
+  row('cues', `Cues (${n.cues})`, n.cues);
+  row('customEffects', `Effects built on the Effects tab (${n.customEffects})`, n.customEffects);
+  row('prefs', `Effect settings and preferences (${n.prefs})`, n.prefs);
+  row('lightNames', `Light names (${n.lights})`, n.lights && rig.lights.length, false);
+  // Light map: only needed when the backup's lights aren't the ones here.
+  const map = defaultLightMap(b.lights, rig.lights);
+  const box = $('importMap');
+  box.innerHTML = '';
+  for (const bl of b.lights) {
+    const name = document.createElement('span'); name.textContent = bl.label || bl.name || 'Light';
+    const sel = document.createElement('select'); sel.className = 'gel-select'; sel.dataset.from = bl.id;
+    sel.append(new Option('— skip —', ''));
+    for (const l of rig.lights) sel.append(new Option(l.label, l.id));
+    sel.value = map[bl.id];
+    box.append(name, sel);
+  }
+  const sameLights = b.lights.every((bl) => rig.lights.some((l) => l.id === bl.id));
+  $('importMapSec').hidden = !b.lights.length || sameLights;
+  $('importForm').onsubmit = (e) => {
+    e.preventDefault();
+    const chosen = {};
+    for (const c of parts.querySelectorAll('input[data-part]')) chosen[c.dataset.part] = c.checked && !c.disabled;
+    if (!Object.values(chosen).some(Boolean)) { toast({ level: 'warn', title: 'Nothing selected to import' }); return; }
+    const m = {};
+    for (const sel of box.querySelectorAll('select')) m[sel.dataset.from] = sel.value;
+    const mode = $('importForm').querySelector('input[name=importMode]:checked').value;
+    let done;
+    try { done = applyBackup(localStorage, b, { parts: chosen, mode, map: m }); }
+    catch (err) { toast({ level: 'error', title: 'Import failed', body: String(err.message || err) }); return; }
+    prefs.set('imported', { at: Date.now(), done });
+    closeDialog($('importDlg'));
+    ui.reloading = true;
+    rig.disconnectAll?.();
+    location.reload();
+  };
+  openDialog('importDlg');
+}
+
+function initBackup() {
+  $('setExport').addEventListener('click', exportBackup);
+  $('setImport').addEventListener('click', () => { $('importFile').value = ''; $('importFile').click(); });
+  $('importFile').addEventListener('change', () => { const f = $('importFile').files[0]; if (f) openImport(f); });
+  // After the reload: say what came in.
+  const imp = prefs.get('imported', null);
+  if (imp) {
+    try { localStorage.removeItem('gvm.ui.imported'); } catch {}
+    const names = { looks: 'looks', cues: 'cues', customEffects: 'effects', prefs: 'settings', lightNames: 'light names' };
+    const body = Object.entries(imp.done ?? {}).map(([k, v]) => `${v} ${names[k] ?? k}`).join(', ');
+    setTimeout(() => toast({ level: 'ok', title: 'Backup imported', body }), 300);
+  }
 }
 
 function initHelp() {

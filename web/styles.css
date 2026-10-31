@@ -298,6 +298,8 @@ li.ok .chk-body.collapsible { color: var(--muted); }
   background: var(--panel); color: var(--text); border: 1px solid var(--border); border-radius: 16px;
   box-shadow: 0 20px 60px #000a; user-select: text;
 }
+.import-map { display: grid; grid-template-columns: auto 1fr; gap: 6px 12px; align-items: center; font-size: 14px; }
+.import-map select { max-width: 240px; }
 .dlg-sm { width: min(380px, calc(100vw - 32px)); }
 .dlg-sm .field input { max-width: none; }
 .dlg-actions { justify-content: flex-end; gap: 8px; margin-top: 6px; }

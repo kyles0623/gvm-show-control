@@ -344,6 +344,16 @@
     <button id="setResetFx" class="btn">Reset all effect settings</button>
   </section>
   <section>
+    <h3>Backup</h3>
+    <div class="row">
+      <button id="setExport" class="btn">Export backup…</button>
+      <button id="setImport" class="btn">Import backup…</button>
+      <input id="importFile" type="file" accept=".json,application/json" hidden>
+    </div>
+    <p class="hint">Looks, cues, your effects, effect settings and preferences are kept only in this browser. Export them to a
+      file to keep them safe (clearing the browser's site data erases them) or to move the show to another computer.</p>
+  </section>
+  <section>
     <h3>Advanced</h3>
     <label class="switch"><input id="setDebug" type="checkbox"> Show the Debug tab (raw commands and log)</label>
     <button id="setResetAll" class="btn danger">Reset all app settings</button>
@@ -371,6 +381,30 @@
   <section class="news-more">
     <a id="newsMore" target="_blank" rel="noopener">More: every change, version by version (changelog on GitHub) →</a>
   </section>
+</dialog>
+
+<!-- Import a backup -->
+<dialog id="importDlg" class="dlg">
+  <form id="importForm" method="dialog">
+    <div class="dlg-head"><h2>Import backup</h2><button type="button" class="btn sm" data-close>Cancel</button></div>
+    <section>
+      <p id="importFrom" class="hint"></p>
+      <h3>Bring in</h3>
+      <div id="importParts"></div>
+    </section>
+    <section id="importMapSec">
+      <h3>Lights</h3>
+      <p class="hint">Cues keep settings per light. Pick which of your lights takes each light from the backup.</p>
+      <div id="importMap" class="import-map"></div>
+    </section>
+    <section>
+      <h3>How</h3>
+      <label class="switch"><input type="radio" name="importMode" value="merge" checked> Add to what’s here (same item → the backup’s version)</label>
+      <label class="switch"><input type="radio" name="importMode" value="replace"> Replace what’s here</label>
+      <p class="hint">The app reloads after importing; lights reconnect on their own if “Connect automatically” is on.</p>
+      <div class="row dlg-actions"><button type="submit" id="importGo" class="btn primary">Import</button></div>
+    </section>
+  </form>
 </dialog>
 
 <!-- Name a new look -->

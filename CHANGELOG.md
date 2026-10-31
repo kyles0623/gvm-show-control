@@ -9,6 +9,11 @@ the minor version (see [CONTRIBUTING.md](CONTRIBUTING.md#versions-and-the-change
 
 ## [Unreleased]
 
+### Added
+- **Backup export / import** (Settings → Backup): saves looks, cues, Effects-tab effects, effect settings and
+  preferences to a JSON file, and loads them back, in this browser or another one. Import can add to what's
+  there or replace it, and maps the backup's lights onto yours so cues keep their per-light settings.
+
 ## [1.11.0] - 2026-10-31
 
 ### Added
