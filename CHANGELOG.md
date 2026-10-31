@@ -9,7 +9,7 @@ the minor version (see [CONTRIBUTING.md](CONTRIBUTING.md#versions-and-the-change
 
 ## [Unreleased]
 
-## [1.4.0] - 2026-10-30
+## [1.5.0] - 2026-10-30
 
 ### Added
 - **The light's 20 built-in effects** ("On the light" menu in the Effects column and the cue panel): Lightning,
@@ -39,7 +39,8 @@ the minor version (see [CONTRIBUTING.md](CONTRIBUTING.md#versions-and-the-change
 
 ### Fixed
 - Lights that use a protocol address other than 0x30 (e.g. 0x33) are now controlled: the app uses the address each
-  light gives when it connects, as the official app does.
+  light reports (from its handshake reply, or its first status if it doesn't answer the handshake), as the official
+  app does.
 
 ## [1.3.0] - 2026-10-29
 

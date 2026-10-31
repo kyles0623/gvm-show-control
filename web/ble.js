@@ -178,7 +178,12 @@ export class LightConnection extends EventTarget {
       ]);
       this.logLine('CONNECTED');
       await this._enqueue(() => this._discover(server));
-      if (!this.ctrl) { const e = new Error('control characteristic not found'); e.code = 'not-light'; throw e; }
+      if (!this.ctrl) {
+        // Reading the services failed (link dropped, light busy): a connection problem, retry. Only a light whose
+        // services were read and lack the control characteristic is "not a supported light".
+        if (this._discoverError) throw new Error(`reading the light's services failed (${this._discoverError.name}); will retry`);
+        const e = new Error('control characteristic not found'); e.code = 'not-light'; throw e;
+      }
       this._retry = 0;
       this.lastRxAt = Date.now();
       this.confirmed = {};
@@ -277,8 +282,9 @@ export class LightConnection extends EventTarget {
     this.chars = [];
     this.ctrl = null;
     let services = [];
+    this._discoverError = null;
     try { services = await server.getPrimaryServices(); }
-    catch (e) { this.logLine(`No accessible services (${e.name})`); return; }
+    catch (e) { this._discoverError = e; this.logLine(`No accessible services (${e.name}: ${e.message})`); return; }
     for (const svc of services) {
       this.logLine(`SERVICE ${shortUuid(svc.uuid)}`);
       let chars = [];
