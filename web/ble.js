@@ -188,8 +188,8 @@ export class LightConnection extends EventTarget {
       this._setStatus('connected');
       this.handshakeReply = null;
       await this.sendFrames(GVMProtocol.handshake(), 'handshake');
-      // Wait (briefly) for the reply, which gives the light's address, before anything else is sent.
-      for (let i = 0; i < 20 && !this.handshakeReply && this.device?.gatt.connected; i++) await sleep(50);
+      // Wait (briefly) for the reply or a first status, which give the light's address, before anything else.
+      for (let i = 0; i < 20 && !this.handshakeReply && !this.statusRaw && this.device?.gatt.connected; i++) await sleep(50);
     } catch (e) {
       this.logLine(`CONNECT FAILED: ${e.name ?? 'Error'}: ${e.message}`);
       if (device.gatt.connected) device.gatt.disconnect();
@@ -325,11 +325,12 @@ export class LightConnection extends EventTarget {
         raw.forEach((v, p) => { this.confirmed[p] = v; });
         this._watchStatus(raw);
       }
-      if (f.ok && f.bytes[5] === 0x53 && f.bytes[4] !== 0x00) {
-        this.handshakeReply = Array.from(f.bytes.slice(8, -2));
-        // Every light answers the handshake from its own address; the official app then sends all commands
-        // there (0x30 and 0x33 in the two captures). Do the same.
-        if (this.addr !== f.bytes[4]) this.logLine(`address 0x${f.bytes[4].toString(16).toUpperCase()} (from the handshake reply)`);
+      if (f.ok && f.bytes[5] === 0x53 && f.bytes[4] !== 0x00) this.handshakeReply = Array.from(f.bytes.slice(8, -2));
+      // Every frame from the light carries its address (0x30 and 0x33 seen); the official app sends all commands
+      // there. Learn it from whichever frame comes first: the handshake reply, a status or an ack (a light does
+      // not always answer the handshake).
+      if (f.ok && [0x02, 0x03, 0x53].includes(f.bytes[5]) && f.bytes[4] !== 0x00 && this.addr !== f.bytes[4]) {
+        this.logLine(`address 0x${f.bytes[4].toString(16).toUpperCase()} (from the light's ${f.bytes[5] === 0x53 ? 'handshake reply' : f.bytes[5] === 0x03 ? 'status' : 'ack'})`);
         this.addr = f.bytes[4];
       }
       if (f.ok && f.bytes[5] === 0x02 && f.bytes.length >= 9) this._onAck(f.bytes[7], f.bytes[8]);

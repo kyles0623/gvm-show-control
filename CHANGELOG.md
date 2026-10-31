@@ -9,6 +9,8 @@ the minor version (see [CONTRIBUTING.md](CONTRIBUTING.md#versions-and-the-change
 
 ## [Unreleased]
 
+## [1.4.0] - 2026-10-30
+
 ### Added
 - **The light's 20 built-in effects** ("On the light" menu in the Effects column and the cue panel): Lightning,
   Cop Car, Candle, TV, Bad Bulb, Party, Disco, Paparazzi, Explosion, Pulsing, Fire, Fireworks, Welding, CCT Loop,
