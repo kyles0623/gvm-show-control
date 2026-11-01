@@ -56,6 +56,20 @@ export class Show extends EventTarget {
     this.looks = Array.isArray(looks) ? looks : DEFAULT_LOOKS.map((l) => ({ id: l.id, name: l.name, state: normState(l.state) }));
     const cues = read(CUES_KEY, []);
     this.cues = Array.isArray(cues) ? cues : [];
+    if (this._numberCues()) write(CUES_KEY, this.cues);
+  }
+
+  /** Gives every cue a number: older lists get 1, 2, 3…; a cue without one gets one between its neighbors. */
+  _numberCues() {
+    let changed = false;
+    this.cues.forEach((c, i) => {
+      if (Number.isFinite(c.num)) return;
+      const prev = this.cues[i - 1]?.num ?? 0;
+      const next = this.cues.slice(i + 1).find((x) => Number.isFinite(x.num))?.num ?? null;
+      c.num = numBetween(prev, next);
+      changed = true;
+    });
+    return changed;
   }
 
   _changed(what) {
@@ -88,9 +102,11 @@ export class Show extends EventTarget {
   // ---------- cues ----------
   /** Inserts a cue after index `after` (-1 = at start, null = at end). */
   addCue({ lights, effect = null, effects = null, fade = 2, follow = null, name }, after = null) {
-    const cue = { id: uid(), name: name || '', fade, follow, effect, lights };
+    const cue = { id: uid(), name: name || '', fade, follow, effect, lights, notes: '' };
     if (effects?.length) cue.effects = effects;
     const at = after == null ? this.cues.length : after + 1;
+    // Point cues: recorded after cue 2 with a cue 3 already there, it becomes 2.5.
+    cue.num = numBetween(this.cues[at - 1]?.num ?? 0, this.cues[at]?.num ?? null);
     this.cues.splice(at, 0, cue);
     this._changed('cues');
     return cue;
@@ -102,9 +118,41 @@ export class Show extends EventTarget {
     this._changed('cues');
   }
   removeCue(id) { this.cues = this.cues.filter((c) => c.id !== id); this._changed('cues'); }
-  moveCue(id, delta) { move(this.cues, id, delta); this._changed('cues'); }
+  /** Moves a cue up/down; the two cues swap numbers so the list stays in number order. */
+  moveCue(id, delta) {
+    const i = this.cueIndex(id), j = i + delta;
+    if (i < 0 || j < 0 || j >= this.cues.length) return;
+    [this.cues[i].num, this.cues[j].num] = [this.cues[j].num, this.cues[i].num];
+    move(this.cues, id, delta);
+    this._changed('cues');
+  }
+  /** Renumbers a cue; the list is kept sorted by number. Returns false if the number is taken or invalid. */
+  setCueNum(id, num) {
+    const c = this.cues.find((x) => x.id === id);
+    num = Math.round(+num * 1000) / 1000;
+    if (!c || !Number.isFinite(num) || num <= 0 || this.cues.some((x) => x !== c && x.num === num)) return false;
+    c.num = num;
+    this.cues.sort((a, b) => a.num - b.num);
+    this._changed('cues');
+    return true;
+  }
+  /** Renumbers the whole list 1, 2, 3… in its current order. */
+  renumberCues() { this.cues.forEach((c, i) => { c.num = i + 1; }); this._changed('cues'); }
   cueIndex(id) { return this.cues.findIndex((c) => c.id === id); }
 }
+
+/** The roundest number strictly between a and b (b null = after a): 1→2, 2|3→2.5, 2.5|3→2.6, … */
+export function numBetween(a, b) {
+  if (b == null) return Math.floor(a) + 1;
+  for (const d of [1, 0.5, 0.1, 0.01, 0.001]) {
+    const x = Math.round((Math.floor(a / d + 1e-9) + 1) * d * 1000) / 1000;
+    if (x > a && x < b) return x;
+  }
+  return Math.round(((a + b) / 2) * 1e6) / 1e6;
+}
+
+/** Cue number for display: 1, 2.5, 2.25 */
+export const fmtNum = (n) => (Number.isFinite(n) ? String(+n.toFixed(3)) : '?');
 
 function move(arr, id, delta) {
   const i = arr.findIndex((x) => x.id === id);

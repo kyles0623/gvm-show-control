@@ -51,6 +51,13 @@ export function withAddress(bytes, addr) {
   return frame(body);
 }
 
+/** A set frame (0x57) with its value byte replaced (CRC recomputed). */
+export function withValue(bytes, value) {
+  const body = Array.from(bytes.slice(3, -2));
+  body[6] = value;
+  return frame(body);
+}
+
 /** Builds a full frame from the bytes after the length byte (excluding CRC). */
 export function frame(body) {
   const head = [0x4c, 0x54, body.length + 2, ...body];

@@ -9,15 +9,15 @@ export const FORMAT = 1;
 const APP = 'gvm-show-control';
 
 // localStorage keys in each part of the backup.
-const K = { looks: 'gvm.looks', cues: 'gvm.cues', customfx: 'gvm.customfx', lights: 'gvm.lights' };
+const K = { looks: 'gvm.looks', cues: 'gvm.cues', customfx: 'gvm.customfx', lights: 'gvm.lights', groups: 'gvm.groups' };
 const PREF = 'gvm.ui.';
 // Preferences that belong to this browser, not to the show.
-const LOCAL_PREFS = new Set(['setupDone', 'lastVersion', 'lightName', 'tab', 'cuePanel']);
+const LOCAL_PREFS = new Set(['setupDone', 'lastVersion', 'lightName', 'tab', 'cuePanel', 'imported', 'openedShow']);
 
 const parse = (s) => { try { return s == null ? null : JSON.parse(s); } catch { return null; } };
 
 /** Reads the backup out of a Storage (localStorage). */
-export function buildBackup(storage, version) {
+export function buildBackup(storage, version, showName = null) {
   const prefs = {};
   for (let i = 0; i < storage.length; i++) {
     const k = storage.key(i);
@@ -29,9 +29,10 @@ export function buildBackup(storage, version) {
   }
   const arr = (k) => { const v = parse(storage.getItem(k)); return Array.isArray(v) ? v : null; };
   return {
-    app: APP, format: FORMAT, version, exported: new Date().toISOString(),
+    app: APP, format: FORMAT, version, exported: new Date().toISOString(), show: showName,
     looks: arr(K.looks), cues: arr(K.cues), customEffects: arr(K.customfx),
     lights: (arr(K.lights) ?? []).map(({ id, label, name }) => ({ id, label, name })),
+    groups: arr(K.groups) ?? [],
     prefs,
   };
 }
@@ -43,14 +44,14 @@ export function parseBackup(text) {
   if (!(b.format <= FORMAT)) return { error: `This backup is from a newer version of the app (${b.version ?? '?'}). Update the app first.` };
   for (const k of ['looks', 'cues', 'customEffects']) if (b[k] != null && !Array.isArray(b[k])) return { error: `The backup's ${k} are damaged.` };
   if (b.prefs != null && typeof b.prefs !== 'object') return { error: 'The backup’s settings are damaged.' };
-  return { backup: { ...b, lights: Array.isArray(b.lights) ? b.lights : [], prefs: b.prefs ?? {} } };
+  return { backup: { ...b, lights: Array.isArray(b.lights) ? b.lights : [], groups: Array.isArray(b.groups) ? b.groups : [], prefs: b.prefs ?? {} } };
 }
 
 /** What a backup holds, for the import dialog. */
 export function summarize(b) {
   return {
     looks: b.looks?.length ?? 0, cues: b.cues?.length ?? 0, customEffects: b.customEffects?.length ?? 0,
-    prefs: Object.keys(b.prefs).length, lights: b.lights.length,
+    prefs: Object.keys(b.prefs).length, lights: b.lights.length, groups: b.groups.length,
   };
 }
 
@@ -109,6 +110,11 @@ export function applyBackup(storage, b, { parts, mode = 'replace', map = {} }) {
   if (parts.looks && b.looks) done.looks = list(K.looks, b.looks);
   if (parts.customEffects && b.customEffects) done.customEffects = list(K.customfx, b.customEffects);
   if (parts.cues && b.cues) done.cues = list(K.cues, b.cues.map((c) => remapCue(c, map)));
+  if (parts.groups && b.groups.length) {
+    const to = (id) => (id in map ? map[id] : id);
+    const gs = b.groups.map((g) => ({ ...g, lightIds: [...new Set((g.lightIds ?? []).map(to).filter(Boolean))] })).filter((g) => g.lightIds.length);
+    done.groups = list(K.groups, gs);
+  }
   if (parts.prefs) {
     if (mode === 'replace') {
       const drop = [];

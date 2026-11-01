@@ -5,6 +5,7 @@
 import { LightConnection, chooseDevice } from './ble.js';
 
 const KEY = 'gvm.lights';
+const GROUPS_KEY = 'gvm.groups';
 const LOG_CAP = 500;
 
 const store = {
@@ -27,6 +28,9 @@ export class Rig extends EventTarget {
     this.log = [];
     this.full = [];
     this._load();
+    // Named groups of lights: {id, name, lightIds}
+    const g = store.get(GROUPS_KEY, []);
+    this.groups = Array.isArray(g) ? g.filter((x) => x && Array.isArray(x.lightIds)) : [];
   }
 
   // ---------- log ----------
@@ -96,6 +100,40 @@ export class Rig extends EventTarget {
   /** The light whose state the sliders show: first selected connected light. */
   primary() { return this.targets()[0] ?? this.connected[0] ?? this.lights[0] ?? null; }
 
+  /** Selects exactly these lights (all of them = no selection). */
+  selectIds(ids, { add = false } = {}) {
+    const s = new Set(add ? (this.selection ?? this.lights.map((l) => l.id)) : []);
+    for (const id of ids) if (this.get(id)) s.add(id);
+    this.selection = !s.size || s.size === this.lights.length ? null : s;
+    this.dispatchEvent(new Event('lights'));
+  }
+
+  // ---------- groups ----------
+  _saveGroups() { store.set(GROUPS_KEY, this.groups); this.dispatchEvent(new Event('lights')); }
+  group(id) { return this.groups.find((g) => g.id === id); }
+  /** A group's lights that are still paired. */
+  groupLights(g) { return g.lightIds.map((id) => this.get(id)).filter(Boolean); }
+  /** True when the selection is exactly this group's (paired) lights. */
+  isGroupSelected(g) {
+    const ids = this.groupLights(g).map((l) => l.id);
+    const sel = this.selection ?? new Set(this.lights.map((l) => l.id));
+    return ids.length > 0 && ids.length === sel.size && ids.every((id) => sel.has(id));
+  }
+  addGroup(name, lightIds) {
+    const g = { id: Math.random().toString(36).slice(2, 10), name: name.trim() || `Group ${this.groups.length + 1}`, lightIds: [...lightIds] };
+    this.groups.push(g);
+    this._saveGroups();
+    return g;
+  }
+  updateGroup(id, { name, lightIds } = {}) {
+    const g = this.group(id);
+    if (!g) return;
+    if (name != null && name.trim()) g.name = name.trim();
+    if (lightIds) g.lightIds = [...lightIds];
+    this._saveGroups();
+  }
+  removeGroup(id) { this.groups = this.groups.filter((g) => g.id !== id); this._saveGroups(); }
+
   select(id, { add = false } = {}) {
     if (id == null) this.selection = null;
     else if (add) {
@@ -123,6 +161,8 @@ export class Rig extends EventTarget {
     try { await l.conn.device?.forget?.(); } catch {}
     this.lights = this.lights.filter((x) => x !== l);
     if (this.selection) { this.selection.delete(id); if (!this.selection.size) this.selection = null; }
+    for (const g of this.groups) g.lightIds = g.lightIds.filter((x) => x !== id);
+    store.set(GROUPS_KEY, this.groups);
     this._save();
     this.logLine(`Forgot ${l.label}`);
     this.dispatchEvent(new Event('lights'));

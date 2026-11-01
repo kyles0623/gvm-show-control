@@ -1,16 +1,18 @@
 import { GVMProtocol as P } from './gvm-protocol.js';
 import { parseHex, toHex, shortUuid, sleep } from './ble.js';
 import { Rig } from './rig.js';
-import { Show, describeState, normState, stateAt } from './show.js';
+import { Show, describeState, normState, stateAt, fmtNum } from './show.js';
 import { EFFECTS, GELS, BUILTIN, ALIASES, defaults } from './effects.js';
 import { HIGHLIGHTS } from './whatsnew.js';
 import { CustomEffects, PREFIX as CUSTOM, stepColor, normStep, cycleSeconds, changedValues, hasRandom, RANGES, TEMPLATES } from './customfx.js';
+import { Shows } from './shows.js';
 import { buildBackup, parseBackup, summarize, defaultLightMap, applyBackup, backupFileName } from './backup.js';
 import { APP_VERSION, repoUrl, detectEnv, blockReason, bluetoothSteps, explainProblem, LIGHT_STEPS, OS_NAME, BROWSER_NAME } from './setup.js';
 
 const env = detectEnv();
 const rig = new Rig();
 const show = new Show();
+const shows = new Shows();
 
 const $ = (id) => document.getElementById(id);
 const THROTTLE_MS = 150;   // live slider send interval (official app: ~300 ms while dragging)
@@ -186,7 +188,7 @@ function renderChips() {
   const multi = rig.lights.length > 1;
   // Build the chips only when the set of lights changes; otherwise update them in place, so a
   // double-click (rename) isn't broken by the re-render that the first click's selection causes.
-  const ids = multi ? ['all', ...rig.lights.map((l) => l.id), 'add'].join('|') : 'add';
+  const ids = multi ? ['all', ...rig.lights.map((l) => l.id), ...rig.groups.map((g) => g.id + ':' + g.name), 'add'].join('|') : 'add';
   if (bar.dataset.ids !== ids) {
     bar.dataset.ids = ids;
     bar.innerHTML = '';
@@ -210,11 +212,30 @@ function renderChips() {
       bar.appendChild(b);
     }
     bar.appendChild(addLightChip(true));
+    // Groups: one chip each, then "+ Group" and "Copy to…".
+    for (const g of rig.groups) {
+      const b = document.createElement('button');
+      b.className = 'lchip gchip';
+      b.dataset.group = g.id;
+      b.textContent = g.name;
+      b.addEventListener('click', (e) => rig.selectIds(rig.group(g.id)?.lightIds ?? [], { add: e.shiftKey || e.metaKey || e.ctrlKey }));
+      b.addEventListener('dblclick', (e) => { e.preventDefault(); openGroupDialog(g.id); });
+      bar.appendChild(b);
+    }
   }
   updateAddChip();
+  $('copyBtn').hidden = !multi;
+  $('copyBtn').disabled = rig.connected.length < 2;
+  if ($('settingsDlg').open) renderSettingsGroups();
   if (!multi) return;
   bar.firstChild.classList.toggle('sel', !rig.selection);
-  for (const b of [...bar.children].slice(1)) {
+  for (const b of bar.querySelectorAll('.gchip')) {
+    const g = rig.group(b.dataset.group);
+    if (!g) continue;
+    b.classList.toggle('sel', !!rig.selection && rig.isGroupSelected(g));
+    b.title = `${g.name}: ${rig.groupLights(g).map((l) => l.label).join(', ') || 'no lights'}\nClick: control this group · Shift/⌘-click: add it · Double-click: edit`;
+  }
+  for (const b of bar.querySelectorAll('.lchip[data-id]')) {
     const l = rig.get(b.dataset.id);
     if (!l) continue;
     b.classList.toggle('sel', !!rig.selection && rig.isSelected(l.id));
@@ -223,6 +244,110 @@ function renderChips() {
     b.children[1].style.background = l.conn.connected ? stateColor({ ...stateOf(l), power: l.conn.light.power }) : '#222';
     b.children[2].textContent = l.label;
   }
+}
+
+// ----- light groups -----
+
+/** Group editor: name + which lights. id null = new group from the current selection. */
+function openGroupDialog(id) {
+  const g = id ? rig.group(id) : null;
+  $('groupDlgTitle').textContent = g ? 'Edit group' : 'New group';
+  $('groupName').value = g ? g.name : `Group ${rig.groups.length + 1}`;
+  const members = new Set(g ? g.lightIds : rig.selection ? [...rig.selection] : rig.lights.map((l) => l.id));
+  const box = $('groupLights');
+  box.innerHTML = '';
+  for (const l of rig.lights) {
+    const lab = document.createElement('label'); lab.className = 'switch';
+    const c = document.createElement('input'); c.type = 'checkbox'; c.value = l.id; c.checked = members.has(l.id);
+    lab.append(c, ' ', l.label);
+    box.appendChild(lab);
+  }
+  $('groupDelete').hidden = !g;
+  $('groupDelete').onclick = () => { closeDialog($('groupDlg')); rig.removeGroup(g.id); toast({ level: 'ok', title: `Deleted group “${g.name}”` }); };
+  $('groupForm').onsubmit = (e) => {
+    e.preventDefault();
+    const ids = [...box.querySelectorAll('input:checked')].map((c) => c.value);
+    if (!ids.length) { toast({ level: 'warn', title: 'Pick at least one light' }); return; }
+    const name = $('groupName').value.trim();
+    closeDialog($('groupDlg'));
+    if (g) rig.updateGroup(g.id, { name, lightIds: ids });
+    else { const ng = rig.addGroup(name, ids); rig.selectIds(ng.lightIds); toast({ level: 'ok', title: `Group “${ng.name}” saved`, body: 'Click its chip to control those lights. Double-click to edit.' }); }
+  };
+  openDialog('groupDlg');
+  $('groupName').focus(); $('groupName').select();
+}
+
+/** Settings → Groups: one row per group (click to edit). */
+function renderSettingsGroups() {
+  const box = $('setGroups');
+  box.innerHTML = '';
+  if (!rig.groups.length) { const p = document.createElement('p'); p.className = 'hint'; p.textContent = rig.lights.length > 1 ? 'No groups yet. A group is a named set of lights with its own chip at the top.' : 'Pair a second light to make groups.'; box.appendChild(p); }
+  for (const g of rig.groups) {
+    const b = document.createElement('button'); b.className = 'btn sm';
+    b.textContent = `${g.name} (${rig.groupLights(g).map((l) => l.label).join(', ') || 'no lights'})`;
+    b.title = 'Edit or delete this group';
+    b.addEventListener('click', () => openGroupDialog(g.id));
+    box.appendChild(b);
+  }
+  $('setAddGroup').disabled = rig.lights.length < 2;
+}
+
+// ----- copy one light's look to others -----
+
+/** Small pop-up menu under `anchor`: items [{label, fn, disabled, sep}]. */
+function openMenu(anchor, items) {
+  closeMenu();
+  const m = document.createElement('div');
+  m.id = 'popMenu'; m.className = 'pop-menu'; m.setAttribute('role', 'menu');
+  for (const it of items) {
+    if (it.head) { const h = document.createElement('div'); h.className = 'pop-head'; h.textContent = it.head; m.appendChild(h); continue; }
+    const b = document.createElement('button');
+    b.className = 'pop-item'; b.textContent = it.label; b.disabled = !!it.disabled; b.setAttribute('role', 'menuitem');
+    b.addEventListener('click', () => { closeMenu(); it.fn(); });
+    m.appendChild(b);
+  }
+  document.body.appendChild(m);
+  const r = anchor.getBoundingClientRect();
+  m.style.left = `${clamp(r.left, 8, innerWidth - m.offsetWidth - 8)}px`;
+  m.style.top = `${r.bottom + 6}px`;
+  const outside = (ev) => { if (!m.contains(ev.target) && ev.target !== anchor) closeMenu(); };
+  const esc = (ev) => { if (ev.key === 'Escape') { ev.preventDefault(); ev.stopImmediatePropagation(); closeMenu(); } };
+  document.addEventListener('pointerdown', outside, true);
+  window.addEventListener('keydown', esc, true);
+  m._cleanup = () => { document.removeEventListener('pointerdown', outside, true); window.removeEventListener('keydown', esc, true); };
+}
+function closeMenu() { const m = $('popMenu'); if (m) { m._cleanup?.(); m.remove(); } }
+
+function openCopyMenu(anchor) {
+  if ($('popMenu')) { closeMenu(); return; }
+  const src = primary();
+  if (!src?.conn.connected) return;
+  const others = rig.connected.filter((l) => l !== src);
+  const items = [{ head: `Copy ${src.label} (${describeState({ ...stateOf(src), power: src.conn.light.power })}) to` }];
+  for (const l of others) items.push({ label: l.label, fn: () => copyLightTo(src, [l]) });
+  for (const g of rig.groups) {
+    const ls = rig.groupLights(g).filter((l) => l !== src && l.conn.connected);
+    if (ls.length) items.push({ label: `Group: ${g.name}`, fn: () => copyLightTo(src, ls) });
+  }
+  if (others.length > 1) items.push({ label: 'All other lights', fn: () => copyLightTo(src, others) });
+  openMenu(anchor, items);
+}
+
+/** Gives `lights` the source light's color, brightness and power (fades with the Fade time). */
+async function copyLightTo(src, lights, { fadeMs = ui.fadeMs } = {}) {
+  const st = stateOf(src);
+  const on = src.conn.light.power !== false;
+  releaseFromEffect(lights);
+  clearFollow();
+  clearGel(lights);
+  for (const l of lights) { l.look = src.look ?? null; if (src.gel) { l.gel = src.gel; l.preGel = src.preGel; } }
+  renderPresets(); renderGel();
+  rig.logLine(`COPY ${src.label} → ${lights.map((l) => l.label).join(', ')}`);
+  if (on) await each(lights.filter((l) => l.conn.light.power === false), (l) => l.conn.sendFrames(P.power(true), 'copy: power on'));
+  await crossfade(lights.map((l) => ({ light: l, to: st })), fadeMs, { label: `COPY ${src.label}` });
+  if (!on) await each(lights, (l) => l.conn.sendFrames(P.power(false), 'copy: power off'));
+  syncFromLight();
+  toast({ level: 'ok', title: `Copied ${src.label}`, body: `→ ${lights.map((l) => l.label).join(', ')}` });
 }
 
 /** "+ Add light" at the end of the chips: opens the Bluetooth chooser to pair one more light. */
@@ -558,8 +683,8 @@ async function runPreShowCheck() {
     const ids = [...new Set([...Object.keys(cu.lights), ...cueEffects(cu).flatMap((e) => e.lightIds ?? [])])];
     const gone = ids.filter((id) => !rig.get(id));
     const off = ids.filter((id) => rig.get(id) && !rig.get(id).conn.connected).map((id) => rig.get(id).label);
-    if (gone.length) { row('warn', `Cue ${i + 1}`, `uses ${gone.length} light(s) that are no longer paired: they'll be skipped`); warn++; }
-    if (off.length) { row('warn', `Cue ${i + 1}`, `uses ${off.join(', ')} (not connected)`); warn++; }
+    if (gone.length) { row('warn', `Cue ${fmtNum(cu.num)}`, `uses ${gone.length} light(s) that are no longer paired: they'll be skipped`); warn++; }
+    if (off.length) { row('warn', `Cue ${fmtNum(cu.num)}`, `uses ${off.join(', ')} (not connected)`); warn++; }
   });
   $('checkSummary').textContent = bad ? `${bad} problem${bad > 1 ? 's' : ''} found` : warn ? `Ready, with ${warn} warning${warn > 1 ? 's' : ''}` : `All ${rig.lights.length} light${rig.lights.length > 1 ? 's' : ''} ready`;
   $('checkSummary').className = 'check-summary ' + (bad ? 'check-bad' : warn ? 'check-warn' : 'check-ok');
@@ -1586,7 +1711,8 @@ async function goCue(i, { fade } = {}) {
   for (const l of rig.lights) l.look = null;
   clearGel(rig.lights);
   renderPresets();
-  rig.logLine(`GO cue ${i + 1}${c.name ? ` · ${c.name}` : ''}`);
+  const q = fmtNum(c.num);
+  rig.logLine(`GO cue ${q}${c.name ? ` · ${c.name}` : ''}`);
   if (c.follow != null && c.follow !== '') scheduleFollow(i, +c.follow);
   renderCueBar();
   renderCueList();
@@ -1594,21 +1720,21 @@ async function goCue(i, { fade } = {}) {
   const fadeMs = Math.max(0, (fade ?? c.fade ?? 0) * 1000);
   const entries = Object.entries(c.lights).map(([id, st]) => [rig.get(id), st]).filter(([l]) => l?.conn.connected);
   const missing = Object.keys(c.lights).filter((id) => !rig.get(id)?.conn.connected);
-  if (missing.length) rig.logLine(`cue ${i + 1}: ${missing.length} light(s) not connected, skipped`);
+  if (missing.length) rig.logLine(`cue ${q}: ${missing.length} light(s) not connected, skipped`);
 
   await each(entries.filter(([l, st]) => st.power !== false && isDarkLight(l)), async ([l]) => {
     l.blackoutPre = null;
     if (fadeMs > 0) await l.conn.sendFrames(P.brightness(0), 'cue prep', { quiet: true });
-    await l.conn.sendFrames(P.power(true), `cue ${i + 1} power on`);
+    await l.conn.sendFrames(P.power(true), `cue ${q} power on`);
     if (fadeMs > 0) l.conn.light.brightness = 0;
   });
   const jobs = entries.filter(([l, st]) => !(st.power === false && isDarkLight(l)))
     .map(([l, st]) => ({ light: l, to: st.power === false ? { bri: 0 } : st }));
-  const ok = await crossfade(jobs, fadeMs, { label: `CUE ${i + 1}` });
+  const ok = await crossfade(jobs, fadeMs, { label: `CUE ${q}` });
   if (!ok || token !== cue.token) return;
   await each(entries.filter(([l, st]) => st.power === false && !isDarkLight(l)), ([l, st]) => {
     l.blackoutPre = st.bri || null;
-    return l.conn.sendFrames(P.power(false), `cue ${i + 1} power off`);
+    return l.conn.sendFrames(P.power(false), `cue ${q} power off`);
   });
   for (const ce of cueEffects(c)) {
     const e = findEffect(ce.id);
@@ -1623,13 +1749,16 @@ function goNext() {
 }
 function goBack() { if (cue.index > 0) goCue(cue.index - 1); }
 
-const cueTitle = (i) => (i >= 0 && show.cues[i] ? `${i + 1}${show.cues[i].name ? ` · ${show.cues[i].name}` : ''}` : '—');
+const cueTitle = (i) => (i >= 0 && show.cues[i] ? `${fmtNum(show.cues[i].num)}${show.cues[i].name ? ` · ${show.cues[i].name}` : ''}` : '—');
+const cueNote = (i) => (i >= 0 && show.cues[i]?.notes?.trim()) || '';
 
 function renderCueBar() {
   const n = show.cues.length;
   const atEnd = cue.index >= n - 1;
   $('cueNow').textContent = n ? (cue.index >= 0 ? cueTitle(cue.index) : 'Ready — press GO for cue 1') : 'No cues yet';
   $('cueNext').textContent = n ? (cue.index + 1 < n ? cueTitle(cue.index + 1) : 'End of list') : 'Record cues on the Cues tab';
+  // Notes: the next cue's (its standby / GO point) is the one the operator needs.
+  for (const [el, txt] of [[$('cueNowNote'), cueNote(cue.index)], [$('cueNextNote'), cueNote(cue.index + 1)]]) { el.textContent = txt; el.hidden = !txt; el.title = txt; }
   $('cueGo').disabled = !n || !rig.anyConnected || (atEnd && cue.index >= 0);
   $('cueBack').disabled = cue.index <= 0 || !rig.anyConnected;
   updateCueProgress();
@@ -1684,17 +1813,19 @@ function buildCueEditor(root, d, { popped = false } = {}) {
 
   const tools = mk('div', 'row cue-tools');
   const btn = (txt, cls, tip, fn) => { const b = mk('button', 'btn sm ' + cls, txt); b.title = tip; b.addEventListener('click', fn); tools.append(b); return b; };
-  const rec = btn('● Record', 'primary', 'Save every connected light’s current look as a new cue after the selected one', recordCue);
+  const rec = btn('● Record', 'primary', 'Save every connected light’s current look as a new cue after the selected one (between 2 and 3 it becomes 2.5)', recordCue);
   const upd = btn('Update', '', 'Replace the selected cue with the lights’ current looks', updateSelectedCue);
   const up = btn('↑', '', 'Move the selected cue up', () => cue.selected && show.moveCue(cue.selected, -1));
   const down = btn('↓', '', 'Move the selected cue down', () => cue.selected && show.moveCue(cue.selected, 1));
   const del = btn('Delete', 'danger', 'Delete the selected cue', () => {});
   confirmButton(del, 'Sure?', deleteSelectedCue);
-  const top = btn('Top', '', 'Next GO runs cue 1', () => { clearFollow(); cue.index = -1; renderCueBar(); renderCueList(); });
+  const renum = btn('Renumber', '', 'Number the cues 1, 2, 3… in list order', () => {});
+  confirmButton(renum, 'Renumber all?', () => { show.renumberCues(); renderCueBar(); });
+  const top = btn('Top', '', 'Next GO runs the first cue', () => { clearFollow(); cue.index = -1; renderCueBar(); renderCueList(); });
 
   const strip = mk('div', 'cue-fx-strip');
   fillCueFxStrip(strip, d);
-  const hint = mk('p', 'hint cue-hint', 'Set the lights (sliders, looks, an effect), then Record. A cue saves every connected light, a fade, an optional effect with a run time, and optionally when to go to the next cue on its own.');
+  const hint = mk('p', 'hint cue-hint', 'Set the lights (sliders, looks, an effect), then Record. A cue saves every connected light, a fade, an optional effect with a run time, and optionally when to go to the next cue on its own. Select a cue and Record to add one after it (2.5 between 2 and 3); type in a cue’s number box to renumber it.');
   const list = mk('div', 'cue-list' + (popped ? ' wide' : ''));
   root.append(head, tools, strip, hint, list);
   return { d, root, list, rec, upd, up, down, del, top, strip, popped };
@@ -1742,16 +1873,16 @@ function recordCue() {
   const effs = runningEffectsForCue();
   const c = show.addCue({ lights: snapshotRig(), effect: effs.length === 1 ? effs[0] : null, effects: effs.length > 1 ? effs : null, fade: 2 }, after);
   cue.selected = c.id;
-  rig.logLine(`RECORD cue ${show.cueIndex(c.id) + 1}`);
+  rig.logLine(`RECORD cue ${fmtNum(c.num)}`);
   renderCueList();
-  toast({ level: 'ok', title: `Recorded cue ${show.cueIndex(c.id) + 1}`, body: `${Object.keys(c.lights).length} light(s)${effs.length ? ` + ${cueEffectsLabel(effs)}` : ''}` });
+  toast({ level: 'ok', title: `Recorded cue ${fmtNum(c.num)}`, body: `${Object.keys(c.lights).length} light(s)${effs.length ? ` + ${cueEffectsLabel(effs)}` : ''}` });
 }
 
 function updateSelectedCue() {
   const c = show.cues.find((x) => x.id === cue.selected);
   if (!c || !rig.anyConnected) return;
   show.updateCue(c.id, { lights: { ...c.lights, ...snapshotRig() } });
-  toast({ level: 'ok', title: `Updated cue ${show.cueIndex(c.id) + 1}`, body: 'Saved the current look of the connected lights.' });
+  toast({ level: 'ok', title: `Updated cue ${fmtNum(c.num)}`, body: 'Saved the current look of the connected lights.' });
 }
 
 function deleteSelectedCue() {
@@ -1786,6 +1917,8 @@ function numInput(d, value, { min = 0, max = 600, step = 0.1, placeholder = '' }
   return i;
 }
 
+let liveCueId = null;   // the live cue while its number is being edited (the list may re-sort)
+
 function renderCueList() {
   const h = cueHost();
   if (!h) return;
@@ -1806,9 +1939,17 @@ function renderCueList() {
     row.dataset.id = c.id;
     row.addEventListener('mousedown', () => { if (cue.selected !== c.id) { cue.selected = c.id; markSelected(); } });
 
-    const num = d.createElement('span'); num.className = 'cue-num'; num.textContent = i + 1;
+    const num = d.createElement('input');
+    num.type = 'text'; num.inputMode = 'decimal'; num.className = 'cue-num'; num.value = fmtNum(c.num);
+    num.title = 'Cue number. Type e.g. 2.5 to move it between 2 and 3.'; num.dataset.focus = `${c.id}:num`;
+    num.addEventListener('change', () => {
+      if (!show.setCueNum(c.id, num.value)) { toast({ level: 'warn', title: `Can’t use ${num.value || 'that'} as a cue number`, body: 'Use a positive number that no other cue has.' }); num.value = fmtNum(c.num); return; }
+      cue.index = cue.index >= 0 ? show.cues.findIndex((x) => x.id === liveCueId) : -1;
+      renderCueList(); renderCueBar();
+    });
+    num.addEventListener('focus', () => { liveCueId = show.cues[cue.index]?.id ?? null; });
     const name = d.createElement('input');
-    name.type = 'text'; name.value = c.name; name.placeholder = `Cue ${i + 1}`; name.className = 'cue-name';
+    name.type = 'text'; name.value = c.name; name.placeholder = `Cue ${fmtNum(c.num)}`; name.className = 'cue-name';
     name.dataset.focus = `${c.id}:name`;
     name.addEventListener('change', () => { show.updateCue(c.id, { name: name.value.trim() }); renderCueBar(); });
     const fade = numInput(d, c.fade, { min: 0, max: 60, step: 0.5 }, (v) => show.updateCue(c.id, { fade: v ?? 0 }));
@@ -1853,7 +1994,12 @@ function renderCueList() {
     line1.append(num, name, lightsSummary(d, c.lights), go);
     const line2 = d.createElement('div'); line2.className = 'cue-line2';
     line2.append(cell('Fade s', fade), cell('Next cue in s', follow), cell('Effect', effSel, 'grow'), cell('Run s', dur));
-    row.append(line1, line2);
+    const notes = d.createElement('input');
+    notes.type = 'text'; notes.className = 'cue-notes'; notes.value = c.notes ?? ''; notes.maxLength = 200;
+    notes.placeholder = 'Notes: e.g. GO on “goodnight” (shown big when this cue is next)';
+    notes.dataset.focus = `${c.id}:notes`;
+    notes.addEventListener('change', () => { show.updateCue(c.id, { notes: notes.value.trim() }); renderCueBar(); });
+    row.append(line1, line2, notes);
     list.appendChild(row);
   });
   if (keep) list.querySelector(`[data-focus="${keep}"]`)?.focus();
@@ -2312,6 +2458,7 @@ function setDim(on) {
 
 /** Settings → Lights: one row per light (name, status, reconnect, forget). */
 function renderSettingsLights() {
+  renderSettingsGroups();
   const box = $('setLights');
   box.innerHTML = '';
   if (!rig.lights.length) {
@@ -2364,6 +2511,8 @@ function initSettings() {
   for (const b of document.querySelectorAll('[data-close]')) b.addEventListener('click', () => closeDialog(b.closest('dialog')));
 
   $('setAddLight').addEventListener('click', () => rig.pair());
+  $('setAddGroup').addEventListener('click', () => openGroupDialog(null));
+  $('copyBtn').addEventListener('click', () => openCopyMenu($('copyBtn')));
   $('setAuto').addEventListener('change', () => prefs.set('autoConnect', $('setAuto').checked));
   $('wakeChk').checked = prefs.get('wake', true);
   $('wakeChk').addEventListener('change', () => { prefs.set('wake', $('wakeChk').checked); updateWakeLock(); });
@@ -2393,10 +2542,91 @@ function initSettings() {
   initSetup();
 }
 
+// ---------- grand master ----------
+
+/** Scales every light's brightness (in the Bluetooth layer, so looks, cues and effects keep their levels). */
+function setMaster(pct, { save = true } = {}) {
+  pct = clamp(Math.round(pct), 0, 100);
+  ui.master = pct;
+  $('master').value = pct;
+  $('masterVal').textContent = pct;
+  $('master').closest('.master-card').classList.toggle('trim', pct < 100);
+  // While dragging, send at most every 80 ms per light (always ending on the latest value).
+  if (!ui.masterTimer) {
+    const wait = Math.max(0, (ui.masterSentAt ?? 0) + 80 - performance.now());
+    ui.masterTimer = setTimeout(() => {
+      ui.masterTimer = null; ui.masterSentAt = performance.now();
+      for (const l of rig.lights) l.conn.setMaster(ui.master / 100);
+    }, wait);
+  }
+  if (save) prefs.set('master', pct);
+}
+
+function initMaster() {
+  const pct = prefs.get('master', 100);
+  for (const l of rig.lights) l.conn.master = pct / 100;
+  setMaster(pct, { save: false });
+  $('master').addEventListener('input', () => setMaster(+$('master').value));
+  $('master').addEventListener('change', () => { setMaster(+$('master').value); rig.logLine(`GRAND MASTER ${ui.master}%`); });
+  $('master').addEventListener('dblclick', () => setMaster(100));
+  // Lights paired later start at the same master.
+  rig.addEventListener('lights', () => { for (const l of rig.lights) if (l.conn.master !== ui.master / 100) l.conn.master = ui.master / 100; });
+}
+
+// ---------- shows (productions) ----------
+
+function renderShows() {
+  $('showName').textContent = shows.current.name;
+  const list = $('showsList');
+  list.innerHTML = '';
+  for (const x of shows.list) {
+    const open = x.id === shows.current.id;
+    const n = shows.counts(x.id);
+    const row = document.createElement('div'); row.className = 'show-row' + (open ? ' open' : '');
+    const name = document.createElement('input'); name.type = 'text'; name.value = x.name; name.maxLength = 40;
+    name.addEventListener('change', () => { shows.rename(x.id, name.value); renderShows(); });
+    const info = document.createElement('span'); info.className = 'hint';
+    info.textContent = `${n.looks ?? 'default'} looks · ${n.cues} cues · ${n.effects} effects`;
+    const b = (txt, title, fn, cls = '') => { const e = document.createElement('button'); e.className = 'btn sm ' + cls; e.textContent = txt; e.title = title; e.addEventListener('click', fn); return e; };
+    const openBtn = b(open ? 'Open now' : 'Open', 'Switch to this show (reloads the app)', () => openShow(x.id));
+    openBtn.disabled = open;
+    const dup = b('Duplicate', 'Make a copy of this show', () => { shows.create(`${x.name} copy`, { from: x.id }); renderShows(); });
+    const del = b('Delete', open ? 'Open another show first' : 'Delete this show', () => {}, 'danger');
+    del.disabled = open;
+    if (!open) confirmButton(del, 'Sure?', () => { shows.remove(x.id); renderShows(); toast({ level: 'ok', title: `Deleted show “${x.name}”` }); });
+    row.append(name, info, openBtn, dup, del);
+    list.appendChild(row);
+  }
+}
+
+function openShow(id) {
+  const name = shows.list.find((x) => x.id === id)?.name;
+  if (!shows.open(id)) return;
+  prefs.set('openedShow', name);
+  ui.reloading = true;
+  rig.disconnectAll();
+  location.reload();
+}
+
+function initShows() {
+  renderShows();
+  $('showsBtn').addEventListener('click', () => { renderShows(); openDialog('showsDlg'); });
+  $('showNew').addEventListener('click', () => {
+    const id = shows.create(`Show ${shows.list.length + 1}`);
+    renderShows();
+    $('showsList').querySelector(`.show-row:nth-child(${shows.list.findIndex((x) => x.id === id) + 1}) input`)?.select();
+  });
+  const opened = prefs.get('openedShow', null);
+  if (opened) {
+    try { localStorage.removeItem('gvm.ui.openedShow'); } catch {}
+    setTimeout(() => toast({ level: 'ok', title: `Opened “${opened}”` }), 300);
+  }
+}
+
 // ---------- backup: export / import ----------
 
 function exportBackup() {
-  const b = buildBackup(localStorage, APP_VERSION);
+  const b = buildBackup(localStorage, APP_VERSION, shows.current.name);
   const blob = new Blob([JSON.stringify(b, null, 2)], { type: 'application/json' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
@@ -2414,7 +2644,7 @@ async function openImport(file) {
   if (error) { toast({ level: 'error', title: 'Can’t import', body: error }); return; }
   const n = summarize(b);
   const when = b.exported ? new Date(b.exported).toLocaleString() : 'unknown date';
-  $('importFrom').textContent = `${file.name} · exported ${when}${b.version ? ` from v${b.version}` : ''}`;
+  $('importFrom').textContent = `${file.name}${b.show ? ` (show “${b.show}”)` : ''} · exported ${when}${b.version ? ` from v${b.version}` : ''} · goes into the open show “${shows.current.name}”`;
   const parts = $('importParts');
   parts.innerHTML = '';
   const row = (id, label, count, on = count > 0) => {
@@ -2428,6 +2658,7 @@ async function openImport(file) {
   row('cues', `Cues (${n.cues})`, n.cues);
   row('customEffects', `Effects built on the Effects tab (${n.customEffects})`, n.customEffects);
   row('prefs', `Effect settings and preferences (${n.prefs})`, n.prefs);
+  row('groups', `Light groups (${n.groups})`, n.groups && rig.lights.length);
   row('lightNames', `Light names (${n.lights})`, n.lights && rig.lights.length, false);
   // Light map: only needed when the backup's lights aren't the ones here.
   const map = defaultLightMap(b.lights, rig.lights);
@@ -2471,7 +2702,7 @@ function initBackup() {
   const imp = prefs.get('imported', null);
   if (imp) {
     try { localStorage.removeItem('gvm.ui.imported'); } catch {}
-    const names = { looks: 'looks', cues: 'cues', customEffects: 'effects', prefs: 'settings', lightNames: 'light names' };
+    const names = { looks: 'looks', cues: 'cues', customEffects: 'effects', prefs: 'settings', lightNames: 'light names', groups: 'groups' };
     const body = Object.entries(imp.done ?? {}).map(([k, v]) => `${v} ${names[k] ?? k}`).join(', ');
     setTimeout(() => toast({ level: 'ok', title: 'Backup imported', body }), 300);
   }
@@ -2611,6 +2842,8 @@ function init() {
   initSettings();
   initHelp();
   initProblems();
+  initMaster();
+  initShows();
   setDim(prefs.get('dim', false));
   showTab(prefs.get('tab', 'show'));
   setMode('cct');

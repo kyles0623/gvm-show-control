@@ -1,6 +1,6 @@
 // Connection layer: pairing, remembered device, auto-reconnect, GATT discovery,
 // serialized writes, notification decoding, status echo, session log.
-import { GVMProtocol, decode, stateFromFrame, paramUpdate, withAddress, CONTROL_CHAR, LIGHT_ADDR } from './gvm-protocol.js';
+import { GVMProtocol, decode, stateFromFrame, paramUpdate, withAddress, withValue, CONTROL_CHAR, LIGHT_ADDR } from './gvm-protocol.js';
 
 export const SERVICE = '00010203-0405-0607-0809-0a0b0c0d1910';
 export const OPTIONAL_SERVICES = ['0000180a-0000-1000-8000-00805f9b34fb', SERVICE];
@@ -122,6 +122,8 @@ export class LightConnection extends EventTarget {
     this.statusChangedAt = [];   // per param: when it last changed (ms), for the Debug tab's watch table
     this.handshakeReply = null;  // data bytes of the light's handshake reply (e.g. 02 20 38)
     this.addr = LIGHT_ADDR;      // the light's protocol address, from its handshake reply (0x30, 0x33, … seen)
+    this.master = 1;             // grand master 0..1: every brightness sent is scaled by it
+    this.levelBri = null;        // brightness the app asked for, before the grand master (what the UI shows)
     this.echoStatus = true;
     this.quietStatus = true;
     this.log = [];
@@ -348,6 +350,7 @@ export class LightConnection extends EventTarget {
       if (!(f.isStatus && this.quietStatus)) this.logLine(`RX ${toHex(f.bytes)}  → ${f.text}`);
       if (!f.ok) continue;
       const update = stateFromFrame(f.bytes);
+      if (update && 'brightness' in update) update.brightness = this._levelFromLight(update.brightness);
       if (update && Object.keys(update).length) {
         if (f.isStatus) this.lastStatusAt = Date.now();
         Object.assign(this.light, update);
@@ -384,7 +387,7 @@ export class LightConnection extends EventTarget {
   /** The light's state with everything the app last sent applied (may include commands that never arrived). */
   get wanted() {
     const o = { ...this.light };
-    for (const [p, v] of Object.entries(this.sent)) Object.assign(o, paramUpdate(+p, v));
+    for (const [p, v] of Object.entries(this.sent)) Object.assign(o, paramUpdate(+p, +p === 2 ? this.levelBri ?? v : v));
     return o;
   }
 
@@ -460,6 +463,27 @@ export class LightConnection extends EventTarget {
     return p;
   }
 
+  // ---------- grand master ----------
+
+  _scaleBri(v) { return Math.max(0, Math.min(100, Math.round(v * this.master))); }
+
+  /** The light reported `raw` brightness: the app's level when it matches what was sent, else worked back. */
+  _levelFromLight(raw) {
+    if (this.levelBri != null && this._scaleBri(this.levelBri) === raw) return this.levelBri;
+    this.levelBri = this.master > 0 ? Math.min(100, Math.round(raw / this.master)) : raw;
+    return this.levelBri;
+  }
+
+  /** Sets the grand master (0..1) and resends the brightness so the light follows. */
+  async setMaster(m, { quiet = true } = {}) {
+    const prev = this.master;
+    this.master = Math.max(0, Math.min(1, m));
+    if (this.master === prev || !this.connected) return;
+    const level = this.levelBri ?? this.light.brightness;
+    if (level == null) return;
+    await this.sendFrames(GVMProtocol.brightness(level), `master ${Math.round(this.master * 100)}%`, { quiet });
+  }
+
   get connected() { return this.status === 'connected' && !!this.device?.gatt.connected; }
 
   /** Sends GVMProtocol frames to the control characteristic, in order (writes are spaced by the queue). */
@@ -481,6 +505,12 @@ export class LightConnection extends EventTarget {
     if (!wwr && !info.props.includes('write')) { this.logLine(`TX blocked [${label}]: not writable`); return false; }
     // Set commands go to this light's address (encoders build them for the default 0x30).
     if (info === this.ctrl && bytes[5] === 0x57 && bytes[4] !== this.addr) bytes = withAddress(bytes, this.addr);
+    // Grand master: brightness goes out scaled; the app keeps the unscaled level (resends are already scaled).
+    if (info === this.ctrl && bytes[5] === 0x57 && bytes[7] === 0x02 && !resend) {
+      this.levelBri = bytes[9];
+      const out = this._scaleBri(bytes[9]);
+      if (out !== bytes[9]) bytes = withValue(bytes, out);
+    }
     return this._enqueue(async () => {
       try {
         // Minimum spacing between any two writes (the official app never sent faster than this).

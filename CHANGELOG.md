@@ -9,6 +9,22 @@ the minor version (see [CONTRIBUTING.md](CONTRIBUTING.md#versions-and-the-change
 
 ## [Unreleased]
 
+### Added
+- **Light groups**: name a set of lights (Settings → Lights → Groups, or double-click a group chip to edit). Each
+  group gets a chip at the top; click it to control those lights, Shift-click to add them to the selection. Groups are
+  in backups (mapped onto your lights on import).
+- **Copy to…** (Light reports card, with 2+ lights): gives other lights, a group, or all of them the selected light's
+  color, brightness and power, using the Fade time.
+- **Grand master** fader (Show tab, under Blackout): scales every light's brightness, including effects and cues,
+  while looks, cues and the sliders keep their own levels. Double-click for 100%. Remembered between sessions.
+- **Cue numbers and point cues**: cues have numbers; Record after a cue inserts one between (2.5 between 2 and 3),
+  typing a number moves a cue, **Renumber** sets 1, 2, 3… Existing cue lists are numbered 1, 2, 3… on first load.
+- **Cue notes**: a notes line per cue (e.g. "GO on 'goodnight'"), shown under Current and Next in the cue bar.
+- **Shows**: **My show ▾** (top right) keeps several shows, each with its own looks, cues and Effects-tab effects.
+  New, duplicate, rename, delete; opening one reloads the app. Lights, groups, effect settings and preferences are shared.
+
+## [1.14.0] - 2026-11-01
+
 ### Changed
 - Cue list: the **Auto-GO s** box is now **Next cue in s** (blank shows "GO": wait for the GO button), with a clearer
   tooltip; the countdown reads "next cue in 3.0 s".

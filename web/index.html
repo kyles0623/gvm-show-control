@@ -31,6 +31,7 @@
     <button id="debugTabBtn" class="tab" data-tab="debug" role="tab" hidden>Debug</button>
   </nav>
   <div class="bar-right">
+    <button id="showsBtn" class="btn show-name" title="Shows: switch, add or copy a show (looks, cues and effects)"><span id="showName">My show</span> ▾</button>
     <button id="checkBtn" class="btn" title="Pre-show check: is every light connected and answering?">Check</button>
     <button id="lockBtn" class="btn toggle" title="L">Lock</button>
     <button id="dimBtn" class="btn toggle" title="Dims this screen, not the light">Dim UI</button>
@@ -46,6 +47,7 @@
     <div class="cue-slot">
       <div class="label">Current cue</div>
       <div id="cueNow" class="cue-title">No cues yet</div>
+      <div id="cueNowNote" class="cue-note" hidden></div>
     </div>
     <div class="cue-slot cue-mid">
       <div class="cue-progress"><span id="cueProg"></span></div>
@@ -54,6 +56,7 @@
     <div class="cue-slot">
       <div class="label">Next</div>
       <div id="cueNext" class="cue-title dim">Open ☰ Cue list to record</div>
+      <div id="cueNextNote" class="cue-note" hidden></div>
     </div>
     <button id="cueGo" class="go" title="Run the next cue (Space)" disabled>GO <span class="key">Space</span></button>
   </section>
@@ -71,6 +74,14 @@
     </button>
 
     <div id="lightBlackouts" class="lbo-row" role="group" aria-label="Blackout one light" hidden></div>
+
+    <div class="group master-card">
+      <div class="row-between">
+        <div class="label" title="Scales the brightness of every light; looks, cues and effects keep their own levels">Grand master</div>
+        <div class="big-value"><span id="masterVal">100</span><small>%</small></div>
+      </div>
+      <input id="master" class="range bri" type="range" min="0" max="100" step="1" value="100" aria-label="Grand master">
+    </div>
 
     <div class="group">
       <div id="fadeCtl">
@@ -96,7 +107,8 @@
     <div class="group status-card">
       <div id="preview" class="preview" title="Approximate on-screen preview of the requested color"></div>
       <div class="status-text">
-        <div class="label">Light reports</div>
+        <div class="row-between"><div class="label">Light reports</div>
+          <button id="copyBtn" class="btn sm" hidden title="Copy this light’s color and brightness to other lights">Copy to…</button></div>
         <div id="readout" class="readout">—</div>
         <div id="readoutAge" class="hint"></div>
       </div>
@@ -329,6 +341,9 @@
     <div class="row">
       <button id="setAddLight" class="btn">Add another light</button>
     </div>
+    <div class="label">Groups</div>
+    <div id="setGroups" class="set-groups"></div>
+    <div class="row"><button id="setAddGroup" class="btn">+ New group</button></div>
     <label class="switch"><input id="setAuto" type="checkbox"> Connect automatically when the app opens</label>
     <p class="hint">With more than one light, chips appear at the top: tap a light to control only it, Shift-click to pick several.
       Double-click a chip to rename that light. The big Blackout covers every light; the buttons under it black out one light each. <kbd>Tab</kbd> cycles All → each light.</p>
@@ -380,6 +395,36 @@
   </section>
   <section class="news-more">
     <a id="newsMore" target="_blank" rel="noopener">More: every change, version by version (changelog on GitHub) →</a>
+  </section>
+</dialog>
+
+<!-- Light group -->
+<dialog id="groupDlg" class="dlg dlg-sm">
+  <form id="groupForm" method="dialog">
+    <div class="dlg-head"><h2 id="groupDlgTitle">New group</h2></div>
+    <section>
+      <label class="field">Name<input id="groupName" type="text" maxlength="24" autocomplete="off" required></label>
+      <div class="label">Lights</div>
+      <div id="groupLights"></div>
+      <div class="row dlg-actions">
+        <button type="button" id="groupDelete" class="btn danger" hidden>Delete group</button>
+        <span class="grow"></span>
+        <button type="button" class="btn" data-close>Cancel</button>
+        <button type="submit" class="btn primary">Save</button>
+      </div>
+    </section>
+  </form>
+</dialog>
+
+<!-- Shows -->
+<dialog id="showsDlg" class="dlg">
+  <div class="dlg-head"><h2>Shows</h2><button class="btn sm" data-close>Close</button></div>
+  <section>
+    <div id="showsList" class="shows-list"></div>
+    <div class="row"><button id="showNew" class="btn">+ New show</button></div>
+    <p class="hint">Each show has its own looks, cues and effects (Effects tab). Lights, groups, effect settings and
+      preferences are shared. Opening another show reloads the app; lights reconnect on their own if “Connect
+      automatically” is on. Export a backup (Settings) to keep a show safe or move it to another computer.</p>
   </section>
 </dialog>
 
