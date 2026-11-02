@@ -316,7 +316,13 @@ li.ok .chk-body.collapsible { color: var(--muted); }
 @media (max-width: 520px) { .light-card { grid-template-columns: 1fr; } }
 .speed-now { font-weight: 600; min-height: 1.4em; }
 .speed-pick { gap: 6px; flex-wrap: wrap; }
-.tile.na { opacity: .35; }
+.tile.na { opacity: .45; cursor: help; position: relative; }
+.tile.na .sw { filter: grayscale(1); }
+.tile .sub.na-why { color: var(--muted); font-style: italic; white-space: normal; font-size: 10px; line-height: 1.2; }
+.tile.na:hover { opacity: .8; }
+#tileTip { position: fixed; z-index: 70; max-width: 260px; font: 12px/1.4 -apple-system, BlinkMacSystemFont, sans-serif;
+  color: var(--text); background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px;
+  box-shadow: 0 8px 24px #000a; pointer-events: none; }
 .board-list { display: flex; flex-direction: column; gap: 4px; max-height: 240px; overflow-y: auto; }
 .board-row { display: grid; grid-template-columns: 22px 18px minmax(0, 1fr) 28px auto auto; gap: 8px; align-items: center; padding: 3px 4px; border-radius: 6px; }
 .board-row.off { opacity: .45; }

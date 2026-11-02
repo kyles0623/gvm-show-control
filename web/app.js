@@ -1326,7 +1326,7 @@ async function toggleEffect(e, { params = null, lights = targets(), fromCue = fa
     rig.logLine(`EFFECT ${e.name}: too fast for ${cant.map((l) => l.label).join(', ')}, skipped`);
     lights = lights.filter((l) => canRun(l, e));
     if (!lights.length) {
-      if (!fromCue) toast({ level: 'warn', title: `${e.name} isn’t available on ${[...new Set(cant.map((l) => l.conn.driver.brand))].join(', ')}`, body: 'It needs faster changes than this light can show.' });
+      if (!fromCue) toast({ level: 'warn', title: `${e.name} isn’t available on ${[...new Set(cant.map((l) => l.conn.driver.brand))].join(', ')}`, body: `${e.name} needs faster flashes than this light can show: it fades into each change. Lights with the effect built in, like GVM, still run it.` });
       return;
     }
   }
@@ -1751,21 +1751,30 @@ function renderPresets() {
     const item0 = findEffect(b.dataset.id);
     const na = sel.length > 0 && !sel.some((l) => canRun(l, item0));
     b.classList.toggle('na', na);
-    b.title = na ? `${item0.name}: not available on ${[...new Set(sel.map((l) => l.conn.driver.brand))].join(', ')} (needs faster changes than the light can show)` : item0.desc;
+    // Disabled buttons don't show tooltips, so these stay clickable (aria-disabled): hover shows why, a tap says why.
+    const brands = [...new Set(sel.map((l) => l.conn.driver.brand))].join(', ');
+    b.setAttribute('aria-disabled', na ? 'true' : 'false');
+    b.title = na ? '' : item0.desc;
+    if (na) b.dataset.tip = `Not available on ${brands}: ${item0.name} needs faster flashes than this light can show (it fades into each change). Lights with the effect built in, like GVM, still run it.`;
+    else delete b.dataset.tip;
     b.classList.toggle('running', st === 'all');
     b.classList.toggle('partial', st === 'some');
     const nm = b.querySelector('.nm');
     const item = findEffect(b.dataset.id);
     nm.innerHTML = '';
     nm.append(item.name);
-    if (st !== 'none') {
+    if (na) {
+      const s = document.createElement('span'); s.className = 'sub na-why';
+      s.textContent = 'too fast';
+      nm.append(s);
+    } else if (st !== 'none') {
       const s = document.createElement('span'); s.className = 'sub';
       s.textContent = st === 'all' ? 'running · tap to stop' : `on ${sel.filter((l) => runOf(l)?.e.id === item.id).map((l) => l.label).join(', ')} · tap for all`;
       nm.append(s);
     }
   }
   const on = rig.anyConnected;
-  for (const b of document.querySelectorAll('#tab-show .tile')) b.disabled = !on || b.classList.contains('na');
+  for (const b of document.querySelectorAll('#tab-show .tile')) b.disabled = !on;
   $('saveLookBtn').disabled = !on;
   $('updateLookBtn').disabled = !on || !show.looks.length;
   if (ui.lookPick && $('updateLookBtn').disabled) setLookPick(false);
@@ -2695,6 +2704,23 @@ function renderSupportedLights() {
     }
   }
 }
+
+// ----- why a tile is unavailable: a tooltip that shows at once (outside the scrolling tile grid, so it isn't clipped) -----
+
+function showTileTip(b) {
+  if (!b.dataset.tip) return;
+  let t = $('tileTip');
+  if (!t) { t = document.createElement('div'); t.id = 'tileTip'; t.setAttribute('role', 'tooltip'); document.body.appendChild(t); }
+  t.textContent = b.dataset.tip;
+  t.hidden = false;
+  const r = b.getBoundingClientRect();
+  const top = r.top - t.offsetHeight - 6 > 4 ? r.top - t.offsetHeight - 6 : r.bottom + 6;
+  t.style.top = `${top}px`;
+  t.style.left = `${clamp(r.left + r.width / 2 - t.offsetWidth / 2, 8, innerWidth - t.offsetWidth - 8)}px`;
+}
+function hideTileTip() { const t = $('tileTip'); if (t) t.hidden = true; }
+for (const ev of ['mouseover', 'focusin']) document.addEventListener(ev, (e) => { const b = e.target.closest?.('.tile.na'); if (b) showTileTip(b); });
+for (const ev of ['mouseout', 'focusout']) document.addEventListener(ev, (e) => { if (e.target.closest?.('.tile.na')) hideTileTip(); });
 
 // ----- speed test: how fast a light without built-in effects can flash cleanly -----
 
