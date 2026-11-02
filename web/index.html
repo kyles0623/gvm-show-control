@@ -183,6 +183,11 @@
       </div>
       <div id="lookPickHint" class="hint look-pick-hint" hidden>Tap the look to replace (or press its number) · Esc to cancel</div>
       <div id="looks" class="tiles"></div>
+      <div class="preset-bar">
+        <span class="label" title="A preset gives each light, by its name (MAIN, LEFT, BAR…), its own color, brightness and effect">Presets <span class="hint">· Shift+1–9</span></span>
+        <div id="presetChips" class="preset-chips"></div>
+        <button id="savePresetBtn" class="btn sm" title="Save every connected light’s current look, by light name, as a preset">+ Save preset</button>
+      </div>
     </div>
   </section>
 
@@ -223,6 +228,16 @@
     <p class="hint">The first nine are on the Show tab (keys 1–9). Looks fade in using the Fade time. Cues are recorded from
       <b>☰ Cue list</b> on the Show tab.</p>
     <div id="lookList" class="look-list"></div>
+  </section>
+  <section class="group looks-lib presets-lib">
+    <div class="row-between">
+      <div class="label">Presets</div>
+      <div class="row" style="margin:0"><button id="presetSave" class="btn sm">+ Save current</button></div>
+    </div>
+    <p class="hint">A preset sets each light by its <b>name</b> (rename lights by double-clicking their chip): every light
+      called BAR gets the BAR entry, and lights not in the preset stay as they are. So a preset works with whichever
+      lights have those names, even after re-pairing or on another computer. The first nine are on the Show tab (Shift+1–9).</p>
+    <div id="presetList" class="look-list"></div>
   </section>
 </main>
 
@@ -423,6 +438,22 @@
       another light? <a class="lnk-idea" target="_blank" rel="noopener">Suggest it</a> or send a
       <a class="lnk-light" target="_blank" rel="noopener">light report</a>.</p>
   </section>
+</dialog>
+
+<!-- Name a new preset -->
+<dialog id="presetNameDlg" class="dlg dlg-sm">
+  <form id="presetNameForm" method="dialog">
+    <div class="dlg-head"><h2>Save preset</h2></div>
+    <section>
+      <label class="field">Name<input id="presetNameInput" type="text" maxlength="40" autocomplete="off" required placeholder="e.g. BAR-FOCUSED"></label>
+      <p class="hint">Saves each connected light under its name:</p>
+      <ul id="presetNameLights" class="preset-summary"></ul>
+      <div class="row dlg-actions">
+        <button type="button" class="btn" data-close>Cancel</button>
+        <button type="submit" class="btn primary">Save</button>
+      </div>
+    </section>
+  </form>
 </dialog>
 
 <!-- Mesh light setup -->

@@ -8,6 +8,8 @@ import { APP_CAPS } from './drivers.js';
 
 const LOOKS_KEY = 'gvm.looks';
 const CUES_KEY = 'gvm.cues';
+const PRESETS_KEY = 'gvm.presets';
+const KEYS = { looks: LOOKS_KEY, cues: CUES_KEY, presets: PRESETS_KEY };
 
 const read = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch { return d; } };
 const write = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} };
@@ -60,7 +62,27 @@ export class Show extends EventTarget {
     const cues = read(CUES_KEY, []);
     this.cues = Array.isArray(cues) ? cues : [];
     if (this._numberCues()) write(CUES_KEY, this.cues);
+    const presets = read(PRESETS_KEY, []);
+    this.presets = Array.isArray(presets) ? presets : [];
   }
+
+  // ---------- presets: a look per light, matched by the light's name (MAIN, LEFT, BAR, …) ----------
+  //   preset = { id, name, lights: [{ name, state: {power, mode, cct, hue, sat, bri}, effect: null | {id, params} }] }
+  addPreset(name, lights) {
+    const p = { id: uid(), name: (name || `Preset ${this.presets.length + 1}`).trim(), lights };
+    this.presets.push(p);
+    this._changed('presets');
+    return p;
+  }
+  updatePreset(id, patch) {
+    const p = this.presets.find((x) => x.id === id);
+    if (!p) return;
+    if (patch.name != null) p.name = patch.name.trim() || p.name;
+    if (patch.lights) p.lights = patch.lights;
+    this._changed('presets');
+  }
+  removePreset(id) { this.presets = this.presets.filter((p) => p.id !== id); this._changed('presets'); }
+  movePreset(id, delta) { move(this.presets, id, delta); this._changed('presets'); }
 
   /** Gives every cue a number: older lists get 1, 2, 3…; a cue without one gets one between its neighbors. */
   _numberCues() {
@@ -76,7 +98,7 @@ export class Show extends EventTarget {
   }
 
   _changed(what) {
-    write(what === 'looks' ? LOOKS_KEY : CUES_KEY, what === 'looks' ? this.looks : this.cues);
+    write(KEYS[what], this[what]);
     this.dispatchEvent(new CustomEvent('change', { detail: { what } }));
   }
 

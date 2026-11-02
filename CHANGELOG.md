@@ -9,6 +9,16 @@ the minor version (see [CONTRIBUTING.md](CONTRIBUTING.md#versions-and-the-change
 
 ## [Unreleased]
 
+## [1.21.0] - 2026-11-02
+
+### Added
+- **Presets** (Shift+1–9): a look, and optionally an effect, for each light by its **name** (MAIN, LEFT, BAR…), for
+  whole-rig looks like BAR-FOCUSED or PARTY. **+ Save preset** (under the looks on the Show tab, or the Looks tab)
+  saves every connected light under its name; applying a preset sets every light with a matching name (Fade time),
+  starts the saved effects (lights with the same effect run in sync) and leaves other lights alone. Because entries
+  match by name, presets keep working after re-pairing or on another computer. Edit on the Looks tab: rename, apply,
+  update from the lights, remove or add a light, reorder, delete. Presets belong to the open show and are in backups.
+
 ### Changed
 - amaran lights: built-in effects that need faster changes than the light can show are greyed out for it (Lightning,
   Cop Car, Candle, Bad Bulb, Paparazzi, Fire, Welding, Ambulance, Fire Engine, Strobe, Strobe II). The Ace 25c glides

@@ -1228,7 +1228,7 @@ async function applyLook(look, { fadeMs = ui.fadeMs } = {}) {
   if (!lights.length) return;
   releaseFromEffect(lights);
   clearFollow();
-  for (const l of lights) l.look = look.id;
+  for (const l of lights) { l.look = look.id; l.preset = null; }
   clearGel(lights);
   renderPresets();
   rig.logLine(`LOOK ${look.name}${fadeMs ? ` (fade ${fadeMs / 1000}s)` : ''}${rig.lights.length > 1 ? ` → ${lights.map((l) => l.label).join(', ')}` : ''}`);
@@ -1335,7 +1335,7 @@ async function toggleEffect(e, { params = null, lights = targets(), fromCue = fa
   // Each light's "before" look: if it was running another effect, the look from before that one.
   const snapshot = new Map(lights.map((l) => [l.id, runOf(l)?.snapshot.get(l.id) ?? stateOf(l)]));
   stopEffectOn(lights, { restore: false, quietLog: true, keepScene: !!e.builtin });
-  for (const l of lights) { l.fadeTok = null; l.look = null; l.gel = null; l.preGel = null; }   // stop fades on these lights only
+  for (const l of lights) { l.fadeTok = null; l.look = null; l.gel = null; l.preGel = null; l.preset = null; }   // stop fades on these lights only
   if (!fromCue) clearFollow();
   params = { ...(params ?? fx.params[e.id]) };
   const run = { e, params, lights: [...lights], snapshot, deadline: params.duration > 0 ? performance.now() + params.duration * 1000 : Infinity, dead: false };
@@ -1467,8 +1467,8 @@ function renderFxParamsSoon() { clearTimeout(fxParamsTimer); fxParamsTimer = set
 function takeover() { releaseFromEffect(targets()); clearFollow(); clearLookMark(targets()); clearGel(targets()); }
 
 function clearLookMark(lights) {
-  if (!lights.some((l) => l.look)) return;
-  for (const l of lights) l.look = null;
+  if (!lights.some((l) => l.look || l.preset)) return;
+  for (const l of lights) { l.look = null; l.preset = null; }
   renderPresets();
 }
 
@@ -1736,6 +1736,7 @@ function renderPresets() {
     tiles.forEach((e, i) => effects.appendChild(tile(e, EFFECT_KEYS[i], 'effect')));
   }
   renderCustomChips();
+  renderPresetChips();
   renderGel();
   // The board shows the selected light(s): a tile is lit when every selected light has it,
   // half-lit ("partial") when only some do.
@@ -1831,7 +1832,7 @@ async function goCue(i, { fade } = {}) {
   const token = ++cue.token;
   cue.index = i;
   cue.selected = c.id;
-  for (const l of rig.lights) l.look = null;
+  for (const l of rig.lights) { l.look = null; l.preset = null; }
   clearGel(rig.lights);
   renderPresets();
   const q = fmtNum(c.num);
@@ -2183,10 +2184,174 @@ function initCues() {
   cuePanel.hosts.panel = buildCueEditor($('cuePanel'), document);
   show.addEventListener('change', (e) => {
     if (e.detail.what === 'cues') { renderCueList(); renderCueBar(); }
-    else { renderPresets(); renderLookList(); }
+    else { renderPresets(); renderLookList(); renderPresetList(); }
   });
   setCuePanel(prefs.get('cuePanel', false));
   renderCueBar();
+}
+
+// ---------- presets: a look (and effect) per light, by light name ----------
+
+const nameKey = (s) => String(s ?? '').trim().toLowerCase();
+const lightsNamed = (name) => rig.lights.filter((l) => nameKey(l.label) === nameKey(name));
+
+/** What a light is doing now, as a preset entry. */
+function presetEntry(l) {
+  const run = runOf(l);
+  return {
+    name: l.label,
+    // Running an effect: the look under it (what the light returns to), plus the effect.
+    state: { ...(run?.snapshot.get(l.id) ?? stateOf(l)), power: l.conn.light.power !== false },
+    effect: run ? { id: run.e.id, params: { ...run.params } } : null,
+  };
+}
+
+const presetColor = (en) => (en.state.power === false ? '#111' : stateColor(en.state, { full: true }));
+
+/** Applies a preset: each entry goes to every connected light with that name; others are left alone. */
+async function applyPreset(p, { fadeMs = ui.fadeMs } = {}) {
+  const pairs = p.lights.flatMap((en) => lightsNamed(en.name).filter((l) => l.conn.connected).map((l) => [l, en]));
+  const missing = p.lights.filter((en) => !lightsNamed(en.name).some((l) => l.conn.connected)).map((en) => en.name);
+  if (!pairs.length) { toast({ level: 'warn', title: `“${p.name}”: no matching lights`, body: `It sets ${p.lights.map((en) => en.name).join(', ')}. Rename your lights to match (double-click a light chip).` }); return; }
+  const lights = pairs.map(([l]) => l);
+  releaseFromEffect(lights);
+  clearFollow();
+  clearGel(lights);
+  for (const l of lights) { l.look = null; l.preset = p.id; }
+  renderPresets();
+  rig.logLine(`PRESET ${p.name}${fadeMs ? ` (fade ${fadeMs / 1000}s)` : ''}: ${pairs.map(([l, en]) => `${l.label} → ${en.effect ? fxName(en.effect.id) : describeState(en.state)}`).join(' · ')}${missing.length ? ` · not connected: ${missing.join(', ')}` : ''}`);
+  if (missing.length) toast({ level: 'info', title: `“${p.name}”: ${missing.join(', ')} not connected`, body: 'The other lights were set.' });
+  // Lights the preset turns on: power on first (from dark, so a fade rises from zero).
+  await each(pairs.filter(([l, en]) => en.state.power !== false && isDarkLight(l)), async ([l]) => {
+    l.blackoutPre = null;
+    if (fadeMs > 0) await l.conn.sendFrames(E(l).brightness(0), 'preset prep', { quiet: true });
+    await l.conn.sendFrames(E(l).power(true), `preset ${p.name}: power on`);
+    if (fadeMs > 0) l.conn.light.brightness = 0;
+  });
+  const jobs = pairs.filter(([l, en]) => !(en.state.power === false && isDarkLight(l)))
+    .map(([l, en]) => ({ light: l, to: en.state.power === false ? { bri: 0 } : en.state }));
+  const ok = await crossfade(jobs, fadeMs, { label: `PRESET ${p.name}` });
+  if (!ok) return;
+  await each(pairs.filter(([l, en]) => en.state.power === false && !isDarkLight(l)), ([l, en]) => {
+    l.blackoutPre = en.state.bri || null;
+    return l.conn.sendFrames(E(l).power(false), `preset ${p.name}: power off`);
+  });
+  // Effects: lights with the same effect and settings run it together (in sync).
+  const groups = new Map();
+  for (const [l, en] of pairs) {
+    if (!en.effect || en.state.power === false || l.preset !== p.id) continue;
+    const k = en.effect.id + JSON.stringify(en.effect.params ?? {});
+    if (!groups.has(k)) groups.set(k, { en, ls: [] });
+    groups.get(k).ls.push(l);
+  }
+  for (const { en, ls } of groups.values()) {
+    const e = findEffect(en.effect.id);
+    if (!e) { rig.logLine(`preset ${p.name}: effect ${en.effect.id} no longer exists`); continue; }
+    toggleEffect(e, { params: { ...defaults(e), ...en.effect.params }, lights: ls, fromCue: true });
+    for (const l of ls) l.preset = p.id;      // starting the effect cleared the mark
+  }
+  renderPresets();
+}
+
+function savePresetDialog() {
+  const lights = rig.connected;
+  if (!lights.length) return;
+  const entries = lights.map(presetEntry);
+  $('presetNameInput').value = `Preset ${show.presets.length + 1}`;
+  const ul = $('presetNameLights');
+  ul.innerHTML = '';
+  for (const en of entries) {
+    const li = document.createElement('li');
+    li.textContent = `${en.name}: ${en.state.power === false ? 'off' : describeState(en.state)}${en.effect ? ` + ${fxName(en.effect.id)}` : ''}`;
+    ul.appendChild(li);
+  }
+  $('presetNameForm').onsubmit = (e) => {
+    e.preventDefault();
+    const name = $('presetNameInput').value.trim();
+    if (!name) return;
+    closeDialog($('presetNameDlg'));
+    const p = show.addPreset(name, entries);
+    for (const l of lights) l.preset = p.id;
+    renderPresets();
+    toast({ level: 'ok', title: `Saved preset “${p.name}”`, body: `${entries.length} light(s) by name. Edit it on the Looks tab.` });
+  };
+  openDialog('presetNameDlg');
+  $('presetNameInput').focus(); $('presetNameInput').select();
+}
+
+/** Show tab: one chip per preset (first nine get Shift+1–9). */
+function renderPresetChips() {
+  const box = $('presetChips');
+  if (!box) return;
+  box.innerHTML = '';
+  if (!show.presets.length) { const h = document.createElement('span'); h.className = 'hint'; h.textContent = 'Name your lights, set them, then save a preset.'; box.appendChild(h); }
+  show.presets.forEach((p, i) => {
+    const b = document.createElement('button');
+    b.className = 'preset-chip';
+    const matched = p.lights.flatMap((en) => lightsNamed(en.name));
+    b.classList.toggle('active', matched.length > 0 && matched.every((l) => l.preset === p.id));
+    const dots = document.createElement('span'); dots.className = 'preset-dots';
+    for (const en of p.lights.slice(0, 6)) { const d = document.createElement('span'); d.style.background = presetColor(en); dots.appendChild(d); }
+    const nm = document.createElement('span'); nm.textContent = p.name;
+    b.append(dots, nm);
+    if (i < 9) { const k = document.createElement('span'); k.className = 'pk'; k.textContent = `⇧${i + 1}`; b.appendChild(k); }
+    b.title = p.lights.map((en) => `${en.name}: ${en.state.power === false ? 'off' : describeState(en.state)}${en.effect ? ` + ${fxName(en.effect.id)}` : ''}${lightsNamed(en.name).length ? '' : ' (no light with this name)'}`).join('\n');
+    b.disabled = !rig.anyConnected;
+    b.addEventListener('click', () => applyPreset(p));
+    box.appendChild(b);
+  });
+  $('savePresetBtn').disabled = !rig.anyConnected;
+}
+
+/** Looks tab: the preset library (rename, apply, update, remove a light, add a light, reorder, delete). */
+function renderPresetList() {
+  const list = $('presetList');
+  if (!list) return;
+  list.innerHTML = '';
+  if (!show.presets.length) { const p = document.createElement('p'); p.className = 'hint'; p.textContent = 'No presets yet. Name your lights (e.g. MAIN, LEFT, BAR), set each one, then + Save current.'; list.appendChild(p); }
+  const mk = (txt, title, fn, dis = false, cls = '') => { const b = document.createElement('button'); b.className = 'btn sm ' + cls; b.textContent = txt; b.title = title; b.disabled = dis; b.addEventListener('click', fn); return b; };
+  show.presets.forEach((p, i) => {
+    const row = document.createElement('div'); row.className = 'preset-row';
+    const head = document.createElement('div'); head.className = 'head';
+    const key = document.createElement('span'); key.className = 'look-key'; key.textContent = i < 9 ? `⇧${i + 1}` : '';
+    const name = document.createElement('input'); name.type = 'text'; name.value = p.name; name.className = 'cue-name'; name.maxLength = 40;
+    name.addEventListener('change', () => show.updatePreset(p.id, { name: name.value }));
+    const del = mk('Delete', 'Delete this preset', () => {}, false, 'danger');
+    confirmButton(del, 'Sure?', () => show.removePreset(p.id));
+    head.append(key, name,
+      mk('Apply', 'Set the lights now (Fade time)', () => applyPreset(p), !rig.anyConnected),
+      mk('Update', 'Replace every entry with what its light is doing now (lights not connected keep their entry)', () => {
+        const upd = p.lights.map((en) => { const l = lightsNamed(en.name).find((x) => x.conn.connected); return l ? { ...presetEntry(l), name: en.name } : en; });
+        show.updatePreset(p.id, { lights: upd });
+        toast({ level: 'ok', title: `Updated “${p.name}”` });
+      }, !rig.anyConnected),
+      mk('↑', 'Move up', () => show.movePreset(p.id, -1), i === 0),
+      mk('↓', 'Move down', () => show.movePreset(p.id, 1), i === show.presets.length - 1),
+      del);
+    const ents = document.createElement('div'); ents.className = 'preset-entries';
+    p.lights.forEach((en, j) => {
+      const c = document.createElement('span'); c.className = 'preset-entry';
+      const sw = document.createElement('span'); sw.className = 'lsw'; sw.style.background = presetColor(en);
+      const t = document.createElement('span');
+      t.textContent = `${en.name}: ${en.state.power === false ? 'off' : describeState(en.state)}${en.effect ? ` + ${fxName(en.effect.id)}` : ''}`;
+      if (!lightsNamed(en.name).length) { t.classList.add('missing'); t.title = 'No light with this name right now'; }
+      const x = mk('×', `Remove ${en.name} from this preset`, () => show.updatePreset(p.id, { lights: p.lights.filter((_, k) => k !== j) }));
+      c.append(sw, t, x);
+      ents.appendChild(c);
+    });
+    // Add a light that isn't in the preset yet (its current look).
+    const absent = rig.connected.filter((l) => !p.lights.some((en) => nameKey(en.name) === nameKey(l.label)));
+    if (absent.length) {
+      const sel = document.createElement('select'); sel.className = 'gel-select';
+      sel.add(new Option('+ Add light…', ''));
+      for (const l of absent) sel.add(new Option(l.label, l.id));
+      sel.addEventListener('change', () => { const l = rig.get(sel.value); if (l) show.updatePreset(p.id, { lights: [...p.lights, presetEntry(l)] }); });
+      ents.appendChild(sel);
+    }
+    row.append(head, ents);
+    list.appendChild(row);
+  });
+  $('presetSave').disabled = !rig.anyConnected;
 }
 
 // ----- Looks tab: looks library -----
@@ -2224,6 +2389,9 @@ function renderLookList() {
 function initLookLibrary() {
   $('lookSave').addEventListener('click', saveCurrentLook);
   $('saveLookBtn').addEventListener('click', saveCurrentLook);
+  $('savePresetBtn').addEventListener('click', savePresetDialog);
+  $('presetSave').addEventListener('click', savePresetDialog);
+  renderPresetList();
   $('updateLookBtn').addEventListener('click', () => setLookPick(!ui.lookPick));
   confirmButton($('lookReset'), 'Click again to restore defaults', () => { show.resetLooks(); toast({ level: 'ok', title: 'Default looks restored' }); });
   renderLookList();
@@ -2267,6 +2435,7 @@ function onKeyDown(e) {
   if (k === 'l') { e.preventDefault(); setLocked(!ui.locked); return; }
   if (k === 'c') { e.preventDefault(); if (isPopped()) cuePanel.win.focus(); else { if ($('tab-show').hidden) showTab('show'); setCuePanel(!cuePanel.open); } return; }
   if ($('tab-show').hidden || ui.locked) return;
+  if (e.shiftKey && /^Digit[1-9]$/.test(e.code)) { const p = show.presets[+e.code.slice(5) - 1]; if (p) { e.preventDefault(); applyPreset(p); } return; }
   if (LOOK_KEYS.includes(k)) { const look = boardLooks()[LOOK_KEYS.indexOf(k)]; if (look) { e.preventDefault(); if (ui.lookPick) updateLookFromLight(look); else applyLook(look); } }
   else if (EFFECT_KEYS.includes(k)) { e.preventDefault(); const e2 = boardTiles()[EFFECT_KEYS.indexOf(k)]; if (e2) toggleEffect(e2); }
   else if ((k === 'arrowup' || k === 'arrowdown') && !t.matches?.('input[type=range]')) {
@@ -2971,6 +3140,7 @@ async function openImport(file) {
   };
   row('looks', `Looks (${n.looks})`, n.looks);
   row('cues', `Cues (${n.cues})`, n.cues);
+  row('presets', `Presets (${n.presets})`, n.presets);
   row('customEffects', `Effects built on the Effects tab (${n.customEffects})`, n.customEffects);
   row('prefs', `Effect settings and preferences (${n.prefs})`, n.prefs);
   row('board', 'Show-tab layout (which effects and looks, in what order)', n.board);
@@ -3019,7 +3189,7 @@ function initBackup() {
   const imp = prefs.get('imported', null);
   if (imp) {
     try { localStorage.removeItem('gvm.ui.imported'); } catch {}
-    const names = { looks: 'looks', cues: 'cues', customEffects: 'effects', prefs: 'settings', lightNames: 'light names', groups: 'groups', board: 'board layout', mesh: 'mesh lights' };
+    const names = { looks: 'looks', cues: 'cues', customEffects: 'effects', prefs: 'settings', lightNames: 'light names', groups: 'groups', board: 'board layout', mesh: 'mesh lights', presets: 'presets' };
     const body = Object.entries(imp.done ?? {}).map(([k, v]) => `${v} ${names[k] ?? k}`).join(', ');
     setTimeout(() => toast({ level: 'ok', title: 'Backup imported', body }), 300);
   }
@@ -3058,7 +3228,8 @@ function init() {
   }
 
   rig.addEventListener('status', renderConn);
-  rig.addEventListener('lights', () => { renderConn(); syncFromLight(); renderPresets(); renderFxParams(); renderCueList(); });
+  rig.addEventListener('lights', () => { renderConn(); syncFromLight(); renderPresets(); renderFxParams(); renderCueList(); renderPresetList(); });
+  rig.addEventListener('status', () => { if (!$('tab-looks').hidden) renderPresetList(); });
   rig.addEventListener('light', syncFromLight);
   rig.addEventListener('gatt', () => { renderGatt(); renderWriteTargets(); });
   rig.addEventListener('log', () => { if (!$('tab-debug').hidden) renderLog(); });

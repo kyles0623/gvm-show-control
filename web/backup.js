@@ -9,7 +9,7 @@ export const FORMAT = 1;
 const APP = 'gvm-show-control';
 
 // localStorage keys in each part of the backup.
-const K = { looks: 'gvm.looks', cues: 'gvm.cues', customfx: 'gvm.customfx', lights: 'gvm.lights', groups: 'gvm.groups', board: 'gvm.board', mesh: 'gvm.mesh' };
+const K = { looks: 'gvm.looks', cues: 'gvm.cues', customfx: 'gvm.customfx', lights: 'gvm.lights', groups: 'gvm.groups', board: 'gvm.board', mesh: 'gvm.mesh', presets: 'gvm.presets' };
 const PREF = 'gvm.ui.';
 // Preferences that belong to this browser, not to the show.
 const LOCAL_PREFS = new Set(['setupDone', 'lastVersion', 'lightName', 'tab', 'cuePanel', 'imported', 'openedShow']);
@@ -30,7 +30,7 @@ export function buildBackup(storage, version, showName = null) {
   const arr = (k) => { const v = parse(storage.getItem(k)); return Array.isArray(v) ? v : null; };
   return {
     app: APP, format: FORMAT, version, exported: new Date().toISOString(), show: showName,
-    looks: arr(K.looks), cues: arr(K.cues), customEffects: arr(K.customfx),
+    looks: arr(K.looks), cues: arr(K.cues), customEffects: arr(K.customfx), presets: arr(K.presets),
     lights: (arr(K.lights) ?? []).map(({ id, label, name }) => ({ id, label, name })),
     groups: arr(K.groups) ?? [],
     board: parse(storage.getItem(K.board)),
@@ -52,7 +52,7 @@ export function parseBackup(text) {
 /** What a backup holds, for the import dialog. */
 export function summarize(b) {
   return {
-    looks: b.looks?.length ?? 0, cues: b.cues?.length ?? 0, customEffects: b.customEffects?.length ?? 0,
+    looks: b.looks?.length ?? 0, cues: b.cues?.length ?? 0, customEffects: b.customEffects?.length ?? 0, presets: b.presets?.length ?? 0,
     prefs: Object.keys(b.prefs).length, lights: b.lights.length, groups: b.groups.length, board: b.board && typeof b.board === 'object' ? 1 : 0,
     mesh: b.mesh?.netKey ? Object.keys(b.mesh.nodes ?? {}).length : 0,
   };
@@ -111,6 +111,7 @@ export function applyBackup(storage, b, { parts, mode = 'replace', map = {} }) {
     return items.length;
   };
   if (parts.looks && b.looks) done.looks = list(K.looks, b.looks);
+  if (parts.presets && Array.isArray(b.presets)) done.presets = list(K.presets, b.presets);   // by light name: no remapping
   if (parts.customEffects && b.customEffects) done.customEffects = list(K.customfx, b.customEffects);
   if (parts.cues && b.cues) done.cues = list(K.cues, b.cues.map((c) => remapCue(c, map)));
   if (parts.mesh && b.mesh?.netKey) {

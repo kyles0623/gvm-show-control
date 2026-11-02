@@ -5,7 +5,7 @@
 
 const INDEX = 'gvm.shows';
 const DATA = 'gvm.showdata.';
-export const SHOW_KEYS = { looks: 'gvm.looks', cues: 'gvm.cues', customfx: 'gvm.customfx', board: 'gvm.board' };
+export const SHOW_KEYS = { looks: 'gvm.looks', cues: 'gvm.cues', customfx: 'gvm.customfx', board: 'gvm.board', presets: 'gvm.presets' };
 
 const parse = (s) => { try { return s == null ? null : JSON.parse(s); } catch { return null; } };
 const uid = () => Math.random().toString(36).slice(2, 10);
