@@ -319,7 +319,8 @@
       <li id="chkLight"><div class="chk-head"><span class="mark">3</span><b>Get the light ready</b></div><ul class="steps chk-body"></ul></li>
       <li id="chkPair"><div class="chk-head"><span class="mark">4</span><b>Pair</b></div>
         <div class="chk-body">
-          <p>Press the button, then choose <b>BT_LED</b> in the list your browser shows.</p>
+          <p>Press the button, then choose your light in the list your browser shows: <b>BT_LED</b> for GVM.
+            <a href="#" class="open-lights">Which lights work?</a></p>
           <button id="setupPairBtn" class="btn primary big">Find my light</button>
           <div id="setupMsg" class="setup-msg"></div>
         </div>
@@ -340,6 +341,7 @@
     <div id="setLights" class="light-list"></div>
     <div class="row">
       <button id="setAddLight" class="btn">Add another light</button>
+      <button type="button" class="btn open-lights">Supported lights</button>
     </div>
     <div class="label">Groups</div>
     <div id="setGroups" class="set-groups"></div>
@@ -395,6 +397,17 @@
   </section>
   <section class="news-more">
     <a id="newsMore" target="_blank" rel="noopener">More: every change, version by version (changelog on GitHub) →</a>
+  </section>
+</dialog>
+
+<!-- Supported lights -->
+<dialog id="lightsDlg" class="dlg">
+  <div class="dlg-head"><h2>Supported lights</h2><button class="btn sm" data-close>Close</button></div>
+  <section>
+    <div id="lightsList" class="lights-list"></div>
+    <p class="hint">Product photos are shown from each maker’s website (they need an internet connection). Have
+      another light? <a class="lnk-idea" target="_blank" rel="noopener">Suggest it</a> or send a
+      <a class="lnk-light" target="_blank" rel="noopener">light report</a>.</p>
   </section>
 </dialog>
 
@@ -541,6 +554,7 @@
 <dialog id="helpDlg" class="dlg">
   <div class="dlg-head"><h2>Help</h2><button class="btn sm" data-close>Close</button></div>
   <section>
+    <p><a href="#" class="open-lights">Supported lights (brands, models, photos) →</a></p>
     <h3>Quick start</h3>
     <ol class="steps">
       <li>Turn the light on and set it to <b>App mode</b>: press the small <b>mode button</b> on the light (it cycles through the modes) until the display shows <b>APP</b>. Close the GVM phone app.</li>

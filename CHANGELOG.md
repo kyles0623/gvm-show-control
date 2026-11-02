@@ -9,6 +9,13 @@ the minor version (see [CONTRIBUTING.md](CONTRIBUTING.md#versions-and-the-change
 
 ## [Unreleased]
 
+## [1.16.0] - 2026-11-02
+
+### Added
+- **Supported lights** (Settings → Lights, Help, and the setup screen): each supported brand and model with a product
+  photo from the maker's site, whether it's verified on hardware, what works, how it shows in the device list and
+  what to do before pairing. Also in the README.
+
 ## [1.15.0] - 2026-11-02
 
 ### Added

@@ -301,6 +301,19 @@ li.ok .chk-body.collapsible { color: var(--muted); }
 .import-map { display: grid; grid-template-columns: auto 1fr; gap: 6px 12px; align-items: center; font-size: 14px; }
 .import-map select { max-width: 240px; }
 .gchip { border-style: dashed; }
+.lights-list { display: flex; flex-direction: column; gap: 12px; margin-bottom: 10px; }
+.light-card { display: grid; grid-template-columns: 128px minmax(0, 1fr); gap: 14px; align-items: start;
+  border: 1px solid var(--border); border-radius: 12px; padding: 12px; background: var(--panel-2); }
+.light-card .ph { width: 128px; height: 128px; border-radius: 8px; background: #fff; object-fit: contain; display: grid; place-items: center;
+  color: #555; font-size: 12px; text-align: center; overflow: hidden; }
+.light-card h4 { margin: 0 0 2px; font-size: 16px; }
+.light-card dl { margin: 6px 0 0; display: grid; grid-template-columns: auto 1fr; gap: 3px 10px; font-size: 13px; }
+.light-card dt { color: var(--muted); }
+.light-card dd { margin: 0; }
+.badge { display: inline-block; font-size: 11px; font-weight: 700; padding: 2px 7px; border-radius: 999px; margin-left: 6px; vertical-align: 2px; }
+.badge.verified { background: #173d22; color: #9be7ad; }
+.badge.untested, .badge.reported { background: #43320f; color: #ffd27a; }
+@media (max-width: 520px) { .light-card { grid-template-columns: 1fr; } }
 .board-list { display: flex; flex-direction: column; gap: 4px; max-height: 240px; overflow-y: auto; }
 .board-row { display: grid; grid-template-columns: 22px 18px minmax(0, 1fr) 28px auto auto; gap: 8px; align-items: center; padding: 3px 4px; border-radius: 6px; }
 .board-row.off { opacity: .45; }

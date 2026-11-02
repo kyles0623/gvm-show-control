@@ -16,6 +16,15 @@ export const DRIVERS = {
     brand: 'GVM',
     models: '800-RGB and other lights that show up as BT_LED',
     status: 'verified',
+    // Shown in Supported lights (images load from the maker's site; credit and link below each).
+    products: [{
+      model: 'GVM 800D-RGB (800D-II)',
+      url: 'https://shop.gvmled.com/products/gvm-800d-rgb-led-studio-video-light',
+      image: 'https://shop.gvmled.com/cdn/shop/products/gvm-800d-40w-powerful-bi-color-and-rgb-video-panel-light-kit-908428.jpg?v=1773209171&width=600',
+      listName: 'BT_LED',
+      works: 'On/off, brightness, white 3200–5600 K, color, the light’s 20 built-in effects',
+      setup: 'Set the light to App mode (small mode button until the display shows APP). Close the GVM phone app.',
+    }],
     caps: {
       cct: [3200, 5600], cctStep: 100,   // K
       hsi: true, hueStep: 5,             // hue sent in 5° steps
@@ -35,6 +44,14 @@ export const DRIVERS = {
     brand: 'amaran',
     models: 'Ace 25c (Bluetooth Mesh lights set up by this app)',
     status: 'untested',
+    products: [{
+      model: 'amaran Ace 25c',
+      url: 'https://amarancreators.com/pages/amaran-ace-25c',
+      image: 'https://cdn.sanity.io/images/7n7ckclh/production/73e66b2ec6ee19e1e477e431463f657d1e9a2442-960x960.png?w=600',
+      listName: 'no name (Chrome may show “Unknown or Unsupported Device”)',
+      works: 'On/off, brightness, white 2300–10,000 K, color; the 20 effects simulated by the app',
+      setup: 'Close the amaran app. The first time, the app asks to set the light up in its own network (undo: hold Press to Reset in the light’s Bluetooth menu).',
+    }],
     // Ace 25c: 2300-10,000 K and full color (amarancreators.com product page). Commands carry kelvin/10 and hue in 1°.
     caps: { cct: [2300, 10000], cctStep: 100, hsi: true, hueStep: 1, scenes: false, gm: false, oneConnection: false },
     filters: [{ services: [MESH_UUIDS.PROV_SERVICE] }, { services: [MESH_UUIDS.PROXY_SERVICE] }, { namePrefix: 'amaran' }],

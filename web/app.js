@@ -1,4 +1,4 @@
-import { unionCaps, snap } from './drivers.js';
+import { unionCaps, snap, DRIVERS } from './drivers.js';
 import { simulatedSteps } from './simfx.js';
 import { parseHex, toHex, shortUuid, sleep } from './ble.js';
 import { Rig } from './rig.js';
@@ -2639,6 +2639,49 @@ function initSettings() {
   initBackup();
   initSetup();
 }
+
+// ---------- supported lights ----------
+
+const STATUS_LABEL = { verified: 'Verified', reported: 'Reported working', untested: 'Untested' };
+const STATUS_TIP = { verified: 'Checked on real hardware', reported: 'A user reports it works', untested: 'Not yet checked on a real light: some controls may not work' };
+
+function renderSupportedLights() {
+  const box = $('lightsList');
+  box.innerHTML = '';
+  for (const d of Object.values(DRIVERS)) {
+    for (const p of d.products ?? []) {
+      const card = document.createElement('div'); card.className = 'light-card';
+      const img = document.createElement('img');
+      img.className = 'ph'; img.alt = `${p.model} (photo from ${new URL(p.url).hostname})`; img.loading = 'lazy';
+      img.referrerPolicy = 'no-referrer'; img.src = p.image;
+      img.addEventListener('error', () => { const f = document.createElement('div'); f.className = 'ph'; f.textContent = 'Photo unavailable offline'; img.replaceWith(f); });
+      const body = document.createElement('div');
+      const h = document.createElement('h4'); h.textContent = p.model;
+      const b = document.createElement('span'); b.className = `badge ${d.status}`; b.textContent = STATUS_LABEL[d.status] ?? d.status; b.title = STATUS_TIP[d.status] ?? '';
+      h.appendChild(b);
+      const dl = document.createElement('dl');
+      for (const [k, v] of [['Works', p.works], ['In the device list', p.listName], ['Before pairing', p.setup]]) {
+        const dt = document.createElement('dt'); dt.textContent = k; const dd = document.createElement('dd'); dd.textContent = v; dl.append(dt, dd);
+      }
+      const a = document.createElement('a'); a.href = p.url; a.target = '_blank'; a.rel = 'noopener'; a.textContent = `Product page (${new URL(p.url).hostname}) →`;
+      const pa = document.createElement('p'); pa.className = 'hint'; pa.appendChild(a);
+      body.append(h, dl, pa);
+      card.append(img, body);
+      box.appendChild(card);
+    }
+  }
+}
+
+function openSupportedLights() {
+  renderSupportedLights();
+  openDialog('lightsDlg');
+}
+document.addEventListener('click', (e) => {
+  const t = e.target.closest?.('.open-lights');
+  if (!t) return;
+  e.preventDefault();
+  openSupportedLights();
+});
 
 // ---------- mesh lights: asked before the app joins one to its own network ----------
 
