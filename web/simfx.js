@@ -24,6 +24,14 @@ function* flash(state, onMs, offMs) {
   yield { state: dark(state), wait: ms(offMs) };
 }
 
+/**
+ * Changes color while dark, then shows it. Some lights (the amaran Ace 25c) glide from one color to the next by
+ * themselves, so red → blue straight away shows pink and purple in between; switching while dark hides that.
+ */
+function* switchTo(state, darkMs = 120) {
+  yield { state: dark(state), wait: ms(darkMs) };
+}
+
 /** A decay from `state` to dark over `ms` in steps. */
 function* decay(state, total, steps = 6) {
   for (let k = steps; k >= 0; k--) yield { state: { ...state, bri: Math.round((state.bri * k) / steps) }, wait: ms(total / (steps + 1)) };
@@ -32,8 +40,8 @@ function* decay(state, total, steps = 6) {
 export const SIMULATED = {
   // 1 Lightning: dark, then 1-3 quick cold flashes
   1: function* (p) { for (;;) { yield { state: dark(white(p, 6500)), wait: ms(rnd(800, 4000)) }; for (let i = rint(1, 3); i > 0; i--) yield* flash(white(p, 6500, rnd(0.6, 1)), rnd(100, 160), rnd(100, 250)); } },
-  // 2 Cop Car: red twice, blue twice
-  2: function* (p) { for (;;) { for (const hue of [0, 240]) for (let i = 0; i < 2; i++) yield* flash(color(p, hue), 120, 100); } },
+  // 2 Cop Car: red twice, blue twice (color changes while dark, each flash long enough to settle)
+  2: function* (p) { for (;;) { for (const hue of [0, 240]) { yield* switchTo(color(p, hue)); for (let i = 0; i < 2; i++) yield* flash(color(p, hue), 250, 150); } } },
   // 3 Candle: warm, gentle random flicker
   3: function* (p) { for (;;) yield { state: white(p, 2700, rnd(0.6, 1)), wait: ms(rnd(100, 250)) }; },
   // 4 TV: cool, shifting colors and levels
@@ -41,9 +49,9 @@ export const SIMULATED = {
   // 5 Bad Bulb: on, with random drop-outs
   5: function* (p) { for (;;) { yield { state: white(p), wait: ms(rnd(300, 2500)) }; for (let i = rint(1, 4); i > 0; i--) yield* flash(white(p, undefined, rnd(0, 0.3)), rnd(100, 200), rnd(100, 200)); } },
   // 6 Party: a new saturated color every cycle
-  6: function* (p) { let h = rnd(0, 360); for (;;) { h += rnd(60, 180); yield { state: color(p, h), wait: ms(cyc(p)) }; } },
-  // 7 Disco: random colors, flashing on and off
-  7: function* (p) { for (;;) yield* flash(color(p, rnd(0, 360)), cyc(p) / 2, cyc(p) / 2); },
+  6: function* (p) { let h = rnd(0, 360); for (;;) { h += rnd(60, 180); yield* switchTo(color(p, h), 100); yield { state: color(p, h), wait: ms(cyc(p)) }; } },
+  // 7 Disco: random colors, flashing on and off (the next color is set while dark)
+  7: function* (p) { for (;;) { const c = color(p, rnd(0, 360)); yield* switchTo(c, cyc(p) / 2); yield { state: c, wait: ms(cyc(p) / 2) }; } },
   // 8 Paparazzi: dark with random camera flashes
   8: function* (p) { for (;;) { yield { state: dark(white(p, 5600)), wait: ms(rnd(100, 900)) }; yield { state: white(p, 5600), wait: MIN_MS }; } },
   // 9 Explosion: a flash that burns down through orange, then a pause
@@ -52,8 +60,8 @@ export const SIMULATED = {
   10: function* (p) { for (let t = 0; ; t += 0.08) yield { state: white(p, undefined, 0.5 - 0.5 * Math.cos(2 * Math.PI * t)), wait: 160 }; },
   // 11 Fire: orange-red, fast random flicker
   11: function* (p) { for (;;) yield { state: color(p, rnd(12, 32), 100, rnd(0.5, 1)), wait: ms(rnd(100, 200)) }; },
-  // 12 Fireworks: a colored burst that fades, then a gap
-  12: function* (p) { for (;;) { yield* decay(color(p, rnd(0, 360)), rnd(900, 1600), 5); yield { state: dark(white(p)), wait: ms(rnd(300, 1500)) }; } },
+  // 12 Fireworks: a colored burst that fades, then a gap (next color set while dark)
+  12: function* (p) { for (;;) { const c = color(p, rnd(0, 360)); yield* switchTo(c, rnd(300, 1500)); yield* decay(c, rnd(900, 1600), 5); } },
   // 13 Welding: erratic blue-white sparks
   13: function* (p) { for (;;) yield* flash(color(p, 205, 25, rnd(0.6, 1)), rnd(100, 160), rnd(100, 400)); },
   // 14 CCT Loop: warm to cool and back (cycle = time per step)
@@ -61,9 +69,9 @@ export const SIMULATED = {
   // 15 Hue Loop: around the color wheel (cycle = time per 30°)
   15: function* (p) { for (let h = 0; ; h += 10) yield { state: color(p, h), wait: ms(cyc(p) / 3) }; },
   // 16 Ambulance: red / white
-  16: function* (p) { for (;;) { yield { state: color(p, 0), wait: 250 }; yield { state: white(p, 6500), wait: 250 }; } },
+  16: function* (p) { for (;;) { for (const c of [color(p, 0), white(p, 6500)]) { yield* switchTo(c); yield { state: c, wait: 300 }; } } },
   // 17 Fire Engine: red / orange
-  17: function* (p) { for (;;) { yield { state: color(p, 0), wait: 250 }; yield { state: color(p, 30), wait: 250 }; } },
+  17: function* (p) { for (;;) { for (const c of [color(p, 0), color(p, 30)]) { yield* switchTo(c); yield { state: c, wait: 300 }; } } },
   // 18 SOS: ... --- ... in Morse
   18: function* (p) {
     const dot = 200, on = white(p, 5600);

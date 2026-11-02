@@ -9,7 +9,7 @@ the minor version (see [CONTRIBUTING.md](CONTRIBUTING.md#versions-and-the-change
 
 ## [Unreleased]
 
-## [1.16.0] - 2026-11-02
+## [1.17.0] - 2026-11-02
 
 ### Added
 - **Supported lights** (Settings → Lights, Help, and the setup screen): each supported brand and model with a product
