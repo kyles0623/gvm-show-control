@@ -459,15 +459,37 @@
 </dialog>
 
 <!-- Mesh light setup -->
+<dialog id="untestedDlg" class="dlg dlg-sm">
+  <form id="untestedForm" method="dialog">
+    <div class="dlg-head"><h2>Untested light: <span id="untestedBrand">this brand</span></h2></div>
+    <section>
+      <p>Support for <span class="untestedBrand">this brand</span> is built from public documentation
+        (<span id="untestedSource">its source</span>). Nobody has tried it on a real light yet.</p>
+      <ul class="hint">
+        <li>The light may not respond, or some controls may not work.</li>
+        <li>The app only sends commands from that documentation. It never updates the light's firmware.</li>
+        <li>Most of these lights don't answer, so the app shows what it sent, not what the light did.</li>
+        <li>Lights from this brand show a <b>β</b> on their button.</li>
+      </ul>
+      <p class="hint">Tried it? <a id="untestedReport" href="#" target="_blank" rel="noopener">Report the result</a>
+        (Settings → Lights has the same link). That's how a light becomes "verified".</p>
+      <div class="row dlg-actions">
+        <button type="button" class="btn" data-close>Cancel</button>
+        <button type="submit" class="btn primary">Try it</button>
+      </div>
+    </section>
+  </form>
+</dialog>
+
 <dialog id="meshSetupDlg" class="dlg dlg-sm">
   <form id="meshSetupForm" method="dialog">
     <div class="dlg-head"><h2>Set up this light?</h2></div>
     <section>
-      <p><b id="meshSetupName">This light</b> is a Bluetooth Mesh light (amaran) that isn't set up yet. The app can add it
+      <p><b id="meshSetupName">This light</b> is a Bluetooth Mesh light (<span class="meshBrand">amaran</span>) that isn't set up yet. The app can add it
         to its own mesh network, kept in this browser, so the app can control it.</p>
       <ul class="hint">
-        <li>While it's in this app's network, the amaran app can't control it.</li>
-        <li>To undo: on the light, open the Bluetooth menu and hold <b>Press to Reset</b>.</li>
+        <li>While it's in this app's network, the <span class="meshBrand">amaran</span> app can't control it.</li>
+        <li>To undo: <span id="meshSetupReset">on the light, open the Bluetooth menu and hold “Press to Reset”</span>.</li>
         <li>Support for this light is <b>untested</b>: some controls may not work yet.</li>
         <li>Export a backup afterwards (Settings → Backup): the network keys are in it.</li>
       </ul>

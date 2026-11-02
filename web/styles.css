@@ -688,3 +688,8 @@ body.popout { overflow: hidden; height: 100vh; }
 .effects-card #effects .tile .nm { white-space: nowrap; line-height: 1.15; font-size: 12px; letter-spacing: -0.01em; }
 .effects-card #effects .tile .nm .sub { white-space: nowrap; }
 .effects-card.no-scenes #effects { display: none; }
+
+/* Untested drivers: a β after the light's name (drivers.js status 'untested'). */
+.lchip[data-untested] .lchip-name::after { content: 'β'; margin-left: 4px; font-size: .8em; opacity: .7; }
+.light-row .light-extra { grid-column: 2 / -1; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: -2px; }
+.light-model { width: auto; flex: 0 1 340px; min-width: 0; font: inherit; font-size: 13px; padding: 4px 6px; border-radius: 8px; border: 1px solid var(--border); background: var(--panel); color: var(--text); }

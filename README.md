@@ -73,7 +73,25 @@ drivers are marked.
 | | Light | Status | Works | In the device list |
 |---|---|---|---|---|
 | <img src="https://shop.gvmled.com/cdn/shop/products/gvm-800d-40w-powerful-bi-color-and-rgb-video-panel-light-kit-908428.jpg?v=1773209171&width=600" alt="GVM 800D-RGB" width="120"> | [GVM 800D-RGB (800D-II)](https://shop.gvmled.com/products/gvm-800d-rgb-led-studio-video-light) | ✅ Verified on hardware | On/off, brightness, white 3200–5600 K, color, the light's 20 built-in effects | `BT_LED` |
-| <img src="https://cdn.sanity.io/images/7n7ckclh/production/73e66b2ec6ee19e1e477e431463f657d1e9a2442-960x960.png?w=600" alt="amaran Ace 25c" width="120"> | [amaran Ace 25c](https://amarancreators.com/pages/amaran-ace-25c) | ⚠️ Untested | On/off, brightness, white 2300–10,000 K, color; 9 slower effects simulated by the app (TV, Party, Disco, Explosion, Pulsing, Fireworks, CCT Loop, Hue Loop, SOS). Fast ones (Strobe, Cop Car, …) aren't offered: the light glides into each change | no name (may show as "Unknown or Unsupported Device") |
+| <img src="https://cdn.sanity.io/images/7n7ckclh/production/73e66b2ec6ee19e1e477e431463f657d1e9a2442-960x960.png?w=600" alt="amaran Ace 25c" width="120"> | [amaran Ace 25c](https://amarancreators.com/pages/amaran-ace-25c) | 🟡 Reported working (shared mesh connection not yet confirmed) | On/off, brightness, white 2300–10,000 K, color; 9 slower effects simulated by the app (TV, Party, Disco, Explosion, Pulsing, Fireworks, CCT Loop, Hue Loop, SOS). Fast ones (Strobe, Cop Car, …) aren't offered: the light glides into each change | no name (may show as "Unknown or Unsupported Device") |
+
+### Untested (β)
+
+Built from public documentation and open-source projects; **nobody has tried these on a real light yet**. The app
+marks them with **β**, asks once before adding the first one, and has a **Report result** link (Settings → Lights)
+that opens a pre-filled issue. Most of them send no replies, so the app shows what it sent.
+
+| Brand | Models | Works | Source |
+|---|---|---|---|
+| Neewer | RGB660 PRO, RGB176 A1, RGB1, RGB168, TL60 RGB, GR18C, GL1C, RGB62, CB100C, CB60B, CB120B, TL40, and other lights using the older protocol (pick the model in Settings → Lights) | On/off, brightness, white, color on RGB models | [NeewerLite](https://github.com/keefo/NeewerLite) (MIT) |
+| Godox | 184 Bluetooth Mesh models (SL, ML, LA, UL, LC, P…; pick the model) — shares the one mesh connection with amaran lights | Brightness (off = 0 %), white over the model's range, color on RGB models | [ha-godox-mesh](https://github.com/binary-person/ha-godox-mesh) (MIT) |
+| RGB strips | ELK-BLEDOM and LEDBLE controllers | On/off, brightness, color; white approximate | facts from public notes |
+| Govee | Older Bluetooth bulbs/strips (H6001, H6127) | On/off, brightness, color; white approximate | facts from public notes |
+| Nanlite | NANLINK Bluetooth lights (PavoTube II C…) | Brightness (off = 0 %), white 2700–7500 K, color; slow link | [vmedea's notes](https://gist.github.com/vmedea/434694c11092261fcac401b7a4b9a741) (CC-BY-4.0) |
+| Yongnuo | YN-360 | Off, brightness, white 3200–5500 K, color | [lantern](https://github.com/kenkeiter/lantern) (MIT) |
+
+Not supported: Neewer lights that need the light's hardware address (SL90, HS60C, HS60C Pro, BH20C, BH-30S RGB),
+Wi-Fi-only lights. See the [lights roadmap](docs/LIGHTS-ROADMAP.md).
 
 Product photos are linked from each maker's website. In the app: Settings → Lights → **Supported lights**, or Help.
 

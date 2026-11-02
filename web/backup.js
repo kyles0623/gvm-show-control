@@ -31,7 +31,7 @@ export function buildBackup(storage, version, showName = null) {
   return {
     app: APP, format: FORMAT, version, exported: new Date().toISOString(), show: showName,
     looks: arr(K.looks), cues: arr(K.cues), customEffects: arr(K.customfx), presets: arr(K.presets),
-    lights: (arr(K.lights) ?? []).map(({ id, label, name }) => ({ id, label, name })),
+    lights: (arr(K.lights) ?? []).map(({ id, label, name, driver, model }) => ({ id, label, name, ...(driver ? { driver } : {}), ...(model ? { model } : {}) })),
     groups: arr(K.groups) ?? [],
     board: parse(storage.getItem(K.board)),
     mesh: parse(storage.getItem(K.mesh)),          // mesh network keys (amaran lights set up by this app)
@@ -150,7 +150,7 @@ export function applyBackup(storage, b, { parts, mode = 'replace', map = {} }) {
       let n = 0;
       for (const bl of b.lights) {
         const l = cur.find((x) => x.id === map[bl.id]);
-        if (l && bl.label) { l.label = bl.label; n++; }
+        if (l && bl.label) { l.label = bl.label; if (bl.model && l.driver === bl.driver) l.model = bl.model; n++; }
       }
       storage.setItem(K.lights, JSON.stringify(cur));
       done.lightNames = n;

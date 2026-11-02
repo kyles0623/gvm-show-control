@@ -48,13 +48,13 @@ const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
 const each = (arr, fn) => Promise.all(arr.map(fn));
 /** A light's command encoder and capabilities (its driver, drivers.js). */
 const E = (l) => l.conn.driver.enc;
-const capsOf = (l) => l.conn.driver.caps;
+const capsOf = (l) => l.conn.caps ?? l.conn.driver.caps;   // narrowed by the light's model (drivers.js capsFor)
 /** Caps for controls that act on several lights: the paired lights' widest range. */
 /** Fastest step for simulated effects on this light: the speed-test result for its kind of light, else its driver's default. */
 const minStepOf = (l) => prefs.get(`minStep.${l.conn.driver.id}`, capsOf(l).minStepMs ?? 100);
 /** Can light l show built-in effect e? Its own, or a simulation that isn't too fast for it. */
 const canRun = (l, e) => !e.builtin || capsOf(l).scenes || (NEEDS_MS[e.scene] ?? 500) >= minStepOf(l);
-const uiCaps = () => unionCaps([...new Set(rig.lights.map((l) => l.conn.driver))]);
+const uiCaps = () => unionCaps(rig.lights.map(capsOf));
 
 // ---------- light helpers ----------
 
@@ -224,6 +224,7 @@ function renderChips() {
       const b = document.createElement('button');
       b.className = 'lchip';
       b.dataset.id = l.id;
+      if (l.conn.driver.status === 'untested') b.dataset.untested = '';   // β mark (styles.css)
       const dot = document.createElement('span');
       const sw = document.createElement('span'); sw.className = 'lsw';
       const name = document.createElement('span'); name.className = 'lchip-name';
@@ -267,7 +268,7 @@ function renderChips() {
     const l = rig.get(b.dataset.id);
     if (!l) continue;
     b.classList.toggle('sel', !!rig.selection && rig.isSelected(l.id));
-    b.title = `${l.label}: ${STATUS_TEXT[l.conn.status]}${l.conn.connected ? ` · ${describeState({ ...stateOf(l), power: l.conn.light.power })}` : ''}\nClick: control only this light · Shift/⌘-click: add or remove · Double-click: rename`;
+    b.title = `${l.label}${l.conn.driver.status === 'untested' ? ` (β: ${l.conn.driver.brand} support is untested)` : ''}: ${STATUS_TEXT[l.conn.status]}${l.conn.connected ? ` · ${describeState({ ...stateOf(l), power: l.conn.light.power })}` : ''}\nClick: control only this light · Shift/⌘-click: add or remove · Double-click: rename`;
     b.children[0].className = 'dot ' + l.conn.status;
     b.children[1].style.background = l.conn.connected ? stateColor({ ...stateOf(l), power: l.conn.light.power }) : '#222';
     b.children[2].textContent = l.label;
@@ -728,6 +729,17 @@ async function runPreShowCheck() {
     const c = l.conn;
     if (!c.connected) { row('bad', l.label, STATUS_TEXT[c.status].toLowerCase().replace('…', '')); bad++; continue; }
     const age = (Date.now() - (c.lastRxAt || 0)) / 1000;
+    if (c.noAnswers) {
+      // Lights that send no replies (untested plain-Bluetooth lights): only the connection can be checked.
+      if (!isDarkLight(l) && !runOf(l) && !l.busy) {
+        const cur = c.wanted.brightness ?? 50;
+        await c.sendFrames(c.driver.enc.brightness(cur > 25 ? 10 : Math.min(100, cur + 40)), 'check: flash', { quiet: true });
+        await sleep(350);
+        await c.sendFrames(c.driver.enc.brightness(cur), 'check: back', { quiet: true });
+      }
+      row('warn', l.label, 'connected; this light sends no answers, so look: did it dip?'); warn++;
+      continue;
+    }
     if (isDarkLight(l) || runOf(l) || l.busy) {
       const why = isDarkLight(l) ? 'off (not flashed)' : runOf(l) ? `running ${runOf(l).e.name} (not flashed)` : 'fading (not flashed)';
       if (age < 7 && !c.noReply) row('ok', l.label, `${why}, answered ${age < 1 ? 'just now' : `${Math.round(age)} s ago`}`);
@@ -2813,12 +2825,24 @@ function renderSettingsLights() {
     const st = document.createElement('span'); st.className = 'hint';
     st.textContent = `${d.brand}${d.status === 'verified' ? '' : ` (${d.status})`} · ${STATUS_TEXT[l.conn.status]}`;
     st.title = `${d.brand}: ${d.models}. ${d.status === 'verified' ? 'Checked on real hardware.' : 'Not yet checked on real hardware: some controls may not work.'}`;
+    let model = null;
+    if (d.variants) {
+      // Lights that differ by model: the user says which one this is (it sets the white range and color).
+      model = document.createElement('select'); model.className = 'light-model';
+      model.setAttribute('aria-label', `${d.brand} model`);
+      for (const [id, v] of Object.entries(d.variants)) { const o = document.createElement('option'); o.value = id; o.textContent = v.label; model.appendChild(o); }
+      model.value = l.model ?? '';
+      model.addEventListener('change', () => rig.setModel(l.id, model.value));
+    }
     const rc = document.createElement('button'); rc.className = 'btn sm'; rc.textContent = 'Reconnect';
     rc.disabled = !env.supported || l.conn.connected;
     rc.addEventListener('click', () => rig.reconnect(l));
     const fg = document.createElement('button'); fg.className = 'btn sm danger'; fg.textContent = 'Forget';
     confirmButton(fg, 'Click again', () => forgetLight(l));
+    let rep = null;
+    if (d.status === 'untested') { rep = document.createElement('a'); rep.className = 'hint'; rep.href = reportUrl(d, l); rep.target = '_blank'; rep.rel = 'noopener'; rep.textContent = 'Report result'; rep.title = 'Tell us whether this light works (opens a pre-filled GitHub issue)'; }
     row.append(dot, name, st, rc, fg);
+    if (model || rep) { const ex = document.createElement('div'); ex.className = 'light-extra'; if (model) ex.append(model); if (rep) ex.append(rep); row.append(ex); }
     box.appendChild(row);
   }
   $('setAddLight').textContent = rig.lights.length ? 'Add another light' : 'Pair a light';
@@ -2887,6 +2911,12 @@ function initSettings() {
 // ---------- supported lights ----------
 
 const STATUS_LABEL = { verified: 'Verified', reported: 'Reported working', untested: 'Untested' };
+
+/** A pre-filled GitHub issue for reporting how an untested light behaved. */
+function reportUrl(d, l = null) {
+  const body = `**Brand:** ${d.brand}\n**Model:** ${l ? (d.variants?.[l.model]?.label ?? l.name) : ''}\n**Name in the Bluetooth list:** ${l?.name ?? ''}\n**App version:** ${APP_VERSION}\n\n**Result:** works / partly / doesn't work\n\n- [ ] Connects\n- [ ] On / off\n- [ ] Brightness\n- [ ] White\n- [ ] Color\n\n**What happened:**\n\n(Optional: paste the Debug tab log lines for this light. They show the bytes the app sent.)`;
+  return `https://github.com/kyles0623/gvm-show-control/issues/new?title=${encodeURIComponent(`Light report: ${d.brand}${l ? ` ${d.variants?.[l.model]?.label ?? ''}` : ''}`)}&labels=light-report&body=${encodeURIComponent(body)}`;
+}
 const STATUS_TIP = { verified: 'Checked on real hardware', reported: 'A user reports it works', untested: 'Not yet checked on a real light: some controls may not work' };
 
 function renderSupportedLights() {
@@ -2895,20 +2925,28 @@ function renderSupportedLights() {
   for (const d of Object.values(DRIVERS)) {
     for (const p of d.products ?? []) {
       const card = document.createElement('div'); card.className = 'light-card';
-      const img = document.createElement('img');
-      img.className = 'ph'; img.alt = `${p.model} (photo from ${new URL(p.url).hostname})`; img.loading = 'lazy';
-      img.referrerPolicy = 'no-referrer'; img.src = p.image;
-      img.addEventListener('error', () => { const f = document.createElement('div'); f.className = 'ph'; f.textContent = 'Photo unavailable offline'; img.replaceWith(f); });
+      let img;
+      if (p.image) {
+        img = document.createElement('img');
+        img.className = 'ph'; img.alt = `${p.model} (photo from ${new URL(p.url).hostname})`; img.loading = 'lazy';
+        img.referrerPolicy = 'no-referrer'; img.src = p.image;
+        img.addEventListener('error', () => { const f = document.createElement('div'); f.className = 'ph'; f.textContent = 'Photo unavailable offline'; img.replaceWith(f); });
+      } else { img = document.createElement('div'); img.className = 'ph'; img.textContent = d.brand; }
       const body = document.createElement('div');
       const h = document.createElement('h4'); h.textContent = p.model;
       const b = document.createElement('span'); b.className = `badge ${d.status}`; b.textContent = STATUS_LABEL[d.status] ?? d.status; b.title = STATUS_TIP[d.status] ?? '';
       h.appendChild(b);
       const dl = document.createElement('dl');
-      for (const [k, v] of [['Works', p.works], ['In the device list', p.listName], ['Before pairing', p.setup]]) {
+      for (const [k, v] of [['Works', p.works], ['In the device list', p.listName], ['Before pairing', p.setup], ...(d.source ? [['Built from', d.source]] : [])]) {
         const dt = document.createElement('dt'); dt.textContent = k; const dd = document.createElement('dd'); dd.textContent = v; dl.append(dt, dd);
       }
-      const a = document.createElement('a'); a.href = p.url; a.target = '_blank'; a.rel = 'noopener'; a.textContent = `Product page (${new URL(p.url).hostname}) →`;
-      const pa = document.createElement('p'); pa.className = 'hint'; pa.appendChild(a);
+      const pa = document.createElement('p'); pa.className = 'hint';
+      if (p.url) { const a = document.createElement('a'); a.href = p.url; a.target = '_blank'; a.rel = 'noopener'; a.textContent = `${d.status === 'untested' && !p.image ? 'Source' : 'Product page'} (${new URL(p.url).hostname}) →`; pa.appendChild(a); }
+      if (d.status === 'untested') {
+        const r = document.createElement('a'); r.href = reportUrl(d); r.target = '_blank'; r.rel = 'noopener'; r.textContent = 'Tried it? Report the result →';
+        if (p.url) pa.append(' · ');
+        pa.appendChild(r);
+      }
       body.append(h, dl, pa);
       card.append(img, body);
       box.appendChild(card);
@@ -2986,11 +3024,28 @@ document.addEventListener('click', (e) => {
 
 rig.onSetupNeeded = (conn) => new Promise((resolve) => {
   $('meshSetupName').textContent = conn.device?.name || 'This light';
+  for (const e of document.querySelectorAll('.meshBrand')) e.textContent = conn.driver?.brand ?? 'amaran';
+  $('meshSetupReset').textContent = conn.driver?.resetHint ?? 'On the light, open the Bluetooth menu and hold “Press to Reset”';
   const f = $('meshSetupForm');
   const done = (ok) => { f.onsubmit = null; $('meshSetupDlg').onclose = null; closeDialog($('meshSetupDlg')); resolve(ok); };
   f.onsubmit = (e) => { e.preventDefault(); done(true); };
   $('meshSetupDlg').onclose = () => resolve(false);
   openDialog('meshSetupDlg');
+});
+
+// ---------- untested lights: said once per brand, before the first one is added ----------
+
+rig.onUntested = (d) => new Promise((resolve) => {
+  if (prefs.get(`untestedOk.${d.id}`, false)) { resolve(true); return; }
+  $('untestedBrand').textContent = d.brand;
+  for (const e of document.querySelectorAll('.untestedBrand')) e.textContent = d.brand;
+  $('untestedSource').textContent = d.source ?? 'public documentation';
+  $('untestedReport').href = reportUrl(d);
+  const f = $('untestedForm');
+  const done = (ok) => { f.onsubmit = null; $('untestedDlg').onclose = null; closeDialog($('untestedDlg')); if (ok) prefs.set(`untestedOk.${d.id}`, true); resolve(ok); };
+  f.onsubmit = (e) => { e.preventDefault(); done(true); };
+  $('untestedDlg').onclose = () => resolve(false);
+  openDialog('untestedDlg');
 });
 
 // ---------- grand master ----------

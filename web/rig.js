@@ -3,7 +3,7 @@
 // driven in parallel. Events re-dispatched with detail.light = the light object:
 //   'status' | 'light' | 'gatt' | 'problem' (detail also has code/error), plus 'lights' and 'log'.
 import { chooseDevice } from './ble.js';
-import { driverOf, detectDriver, chooserOptions, DEFAULT_DRIVER } from './drivers.js';
+import { driverOf, detectDriver, chooserOptions, DEFAULT_DRIVER, capsFor, modelInfo } from './drivers.js';
 
 const KEY = 'gvm.lights';
 const GROUPS_KEY = 'gvm.groups';
@@ -63,7 +63,7 @@ export class Rig extends EventTarget {
   }
 
   _save() {
-    store.set(KEY, this.lights.map(({ id, label, name, driver }) => ({ id, label, name, driver })));
+    store.set(KEY, this.lights.map(({ id, label, name, driver, model }) => ({ id, label, name, driver, ...(model ? { model } : {}) })));
     // Keep the legacy key pointing at the first light (older code paths and tests read it).
     try {
       if (this.lights[0]) { localStorage.setItem('gvm.deviceId', this.lights[0].id); localStorage.setItem('gvm.deviceName', this.lights[0].name); }
@@ -71,19 +71,51 @@ export class Rig extends EventTarget {
     } catch {}
   }
 
-  _add({ id, name, label, driver = DEFAULT_DRIVER }) {
+  _add({ id, name, label, driver = DEFAULT_DRIVER, model = null }) {
     const d = driverOf(driver);
-    const conn = d.create({ id, name: label || name, logger: (m) => this.logLine(m) });
+    if (d.variants && !d.variants[model]) model = d.guessModel?.(name ?? '') ?? null;
+    const light = { id, name: name || 'BT_LED', label: label || name || 'BT_LED', driver: d.id, model, conn: null };
+    this._connect(light);
+    this.lights.push(light);
+    return light;
+  }
+
+  /** Makes the light's connection object (again, after a model change). */
+  _connect(light) {
+    const d = driverOf(light.driver);
+    const conn = d.create({ id: light.id, name: light.label, model: light.model, logger: (m) => this.logLine(m) });
     conn.driver = d;                 // what the app uses to encode commands (conn.driver.enc) and gate controls (caps)
+    conn.model = light.model;
+    conn.modelInfo = modelInfo(d, light.model);
+    conn.caps = capsFor(d, light.model);
     conn.confirmSetup = (c) => this.onSetupNeeded?.(c) ?? false;   // mesh lights: asked before joining one to the app's network
-    const light = { id, name: name || 'BT_LED', label: label || name || 'BT_LED', driver: d.id, conn };
     for (const type of ['status', 'light', 'gatt', 'problem']) {
       conn.addEventListener(type, (ev) => {
+        if (light.conn !== conn) return;
         this.dispatchEvent(new CustomEvent(type, { detail: { ...(ev.detail ?? {}), light } }));
       });
     }
-    this.lights.push(light);
-    return light;
+    light.conn = conn;
+    return conn;
+  }
+
+  /** Changes a light's model (Settings → Lights): new caps, and a fresh connection if it was connected. */
+  async setModel(id, model) {
+    const l = this.get(id);
+    if (!l || l.model === model) return;
+    const old = l.conn, device = old.device, was = old.connected || old.status === 'connecting' || old.status === 'reconnecting';
+    l.model = model;
+    if (driverOf(l.driver).mesh) {
+      // Mesh lights keep their connection (it's shared): only the caps change.
+      old.model = model; old.modelInfo = modelInfo(driverOf(l.driver), model); old.caps = capsFor(driverOf(l.driver), model);
+    } else {
+      old.disconnect();
+      this._connect(l);
+      if (was && device) l.conn.connect(device);
+    }
+    this.logLine(`${l.label}: model set to ${model}`);
+    this._save();
+    this.dispatchEvent(new Event('lights'));
   }
 
   _uniqueLabel(base) {
@@ -186,6 +218,7 @@ export class Rig extends EventTarget {
     const isNew = !light;
     if (!light) {
       const d = await detectDriver(device, (m) => this.logLine(m));
+      if (d.status === 'untested' && !(await this.onUntested?.(d, device) ?? true)) { try { device.gatt?.disconnect(); } catch {} return null; }
       const nm = device.name ?? (d.id === 'gvm' ? 'BT_LED' : d.brand);
       light = this._add({ id: device.id, name: nm, label: this._uniqueLabel(nm), driver: d.id });
       this._save();
@@ -193,7 +226,7 @@ export class Rig extends EventTarget {
     }
     await light.conn.connect(device);
     // A new mesh light that wasn't set up (cancelled or failed): don't keep it in the list.
-    if (isNew && light.driver === 'amaran' && light.conn.status !== 'connected' && !light.conn.node) { await this.forget(light.id); return null; }
+    if (isNew && driverOf(light.driver).mesh && light.conn.status !== 'connected' && !light.conn.node) { await this.forget(light.id); return null; }
     if (light.conn.status === 'disconnected' && light.conn.statusDetail === 'not a supported light') {
       await this.forget(light.id);   // explorer pick that isn't a light: don't keep it
     }

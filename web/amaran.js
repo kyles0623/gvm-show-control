@@ -3,6 +3,8 @@
 // Bluetooth connection (MeshHub): the light it's made to relays every message to the others. Each light keeps the
 // LightConnection interface (ble.js), so the rest of the app is unchanged.
 //
+// Godox mesh lights (godox.js) join the same network and share the same hub; only their commands differ.
+//
 // Status: UNTESTED on hardware. Mesh formats are from the Bluetooth Mesh Profile spec (mesh.js, tested against the
 // spec's sample data); the light commands are from wesbos/amaran-BLE-control (telink.js). Each step logs what it
 // sends and receives so it can be checked on the real light. Nothing is written to firmware-update characteristics.
@@ -330,7 +332,7 @@ export class AmaranConnection extends EventTarget {
       const proxy = await server.getPrimaryService(MESH_UUIDS.PROXY_SERVICE).catch(() => null);
       try { device.gatt.disconnect(); } catch {}
       const e = proxy
-        ? Object.assign(new Error('this light is in another app’s mesh network (amaran app?). Hold “Press to Reset” in the light’s Bluetooth menu, then pair it again'), { code: 'mesh-foreign' })
+        ? Object.assign(new Error(`this light is in another app’s mesh network (${this.driver?.brand ?? 'amaran'} app?). ${this.driver?.resetHint ?? 'Hold “Press to Reset” in the light’s Bluetooth menu'}, then pair it again`), { code: 'mesh-foreign' })
         : Object.assign(new Error('no Bluetooth Mesh service'), { code: 'not-light' });
       throw e;
     }

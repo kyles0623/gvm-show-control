@@ -194,8 +194,25 @@ only through `l.conn.driver.enc` and `l.conn.sendFrames`, and each light snaps v
 Looks, cues and effects store values in the widest range of all drivers (`APP_CAPS`). Controls follow the selected
 light's caps (CCT range, Color button); built-in effect tiles show only if some paired light has scenes.
 Saved lights carry their driver id (`gvm` for lights saved before drivers existed). `status` per driver:
-`verified` (checked on real hardware), `reported`, `untested`. Drivers: `gvm` (verified), `amaran` (untested).
+`verified` (checked on real hardware), `reported`, `untested`. Drivers: `gvm` (verified), `amaran` (reported), and
+untested `neewer`, `godox`, `rgbstrip`, `govee`, `nanlite`, `yongnuo`.
+Drivers whose lights differ by model have `variants` (id → label, caps, protocol family) and `guessModel(name)`; each
+saved light stores `model`, and its connection gets `caps = capsFor(driver, model)` (the app's `capsOf(l)`). Settings →
+Lights shows a model picker for these; changing it makes a new connection (mesh lights keep theirs).
 A chosen device without a known name is identified by the services it offers (`detectDriver`, read-only).
+
+### Untested drivers (`lightproto.js`, `gatt-light.js`, `godox.js`)
+`lightproto.js` holds pure encoders: whole state `{on, mode, kelvin, hue, sat, bri}` → frames, each layout with its
+source (tested against the sources' examples in `tests/drivers.test.mjs`). `GattLightConnection` (`gatt-light.js`)
+drives plain-GATT lights: finds the service and write characteristic, sends the latest wanted state (calls during a
+send coalesce), skips a frame identical to the last one with the same `key`, splits frames into 20-byte writes
+where needed (Nanlite), sends keep-alives (Govee), logs every frame in hex, reconnects with back-off. No raw writes.
+These lights mostly don't answer: `noAnswers` makes the pre-show check flash the light and ask the user to look.
+`GodoxConnection` (`godox.js`) extends `AmaranConnection`: same network, provisioning, configuration and hub; the
+access messages are Godox vendor frames (opcode F0 11 02) and the status request is `FD 01 … A0`. Off is 0 %.
+Detection: Govee shares GVM's service UUID and the ELK/LEDBLE services are generic, so those go by name only; Godox
+(`GD_LED`) and amaran share the mesh services and are told apart by name (amaran lights advertise none).
+First time a brand of untested light is added, the app says so (`rig.onUntested`, once per brand); chips show β.
 
 ### amaran (`amaran.js`, `mesh.js`, `telink.js`)
 **One connection for all amaran lights (mesh hub).** `MeshHub` connects to one light's Mesh Proxy service and every

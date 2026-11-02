@@ -20,10 +20,21 @@ the minor version (see [CONTRIBUTING.md](CONTRIBUTING.md#versions-and-the-change
 - **Guide: set up a small theatre lighting system** (https://kyles0623.github.io/gvm-show-control/guide/): where to
   place 3–6 lights around a small stage, with stage-plot diagrams, then how to name and group them in the app and build
   looks, presets and a cue list. Linked from Help.
+- **Lighting a small theatre for under $1,000** (https://kyles0623.github.io/gvm-show-control/guide/under-1000/): a
+  shopping list for a five-light rig (3× GVM 800D-RGB, 2× amaran Ace 25c, stands, sandbags, chargers, cords, tape) with
+  links, where each light goes, power and battery notes, and smaller and bigger budgets.
 - **Lights roadmap** (docs/LIGHTS-ROADMAP.md): the plan for adding Neewer, Godox, generic RGB strips, Govee, Nanlite and
   Yongnuo lights from public documentation, and how the app will mark them as untested.
+- **Untested support (β) for six more kinds of light**, built from public documentation and open-source projects:
+  Neewer (older protocol: RGB660 PRO, RGB176 A1, RGB1, TL60 RGB, CB60B and more), Godox Bluetooth Mesh lights (184
+  models; they share the one mesh connection with amaran lights), ELK-BLEDOM / LEDBLE RGB strips, older Govee Bluetooth
+  bulbs and strips, Nanlite (NANLINK Bluetooth) and the Yongnuo YN-360. Nobody has tried these on a real light yet. The
+  app asks once before adding the first light of each brand, marks them with β, and has a **Report result** link in
+  Settings → Lights. Lights that differ by model get a model picker there (it sets the white range and whether color
+  is offered). Most of these lights don't answer, so the pre-show check flashes them and asks you to look.
 
 ### Changed
+- **amaran Ace 25c** is now marked “reported working” instead of untested.
 - **What's new** lists the changes version by version (newest open, the others folded), with New / Changed / Fixed
   under each. It's built from this changelog at every commit (scripts/whatsnew.mjs, run by the commit hook). After an
   update, versions you haven't seen yet are marked "new to you".

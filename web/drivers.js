@@ -4,9 +4,17 @@
 //
 // The app talks to a light only through its connection and its driver's encoder, so adding a brand means adding
 // a driver here. status: 'verified' (checked on real hardware), 'reported' (a user says it works), 'untested'.
+//
+// Drivers whose lights differ by model have `variants` (id → {label, caps, …}) and `guessModel(name)`: each light
+// stores its model (Settings → Lights lets the user change it) and gets that model's caps (capsFor).
+// Untested drivers name their source next to every byte (lightproto.js) and never offer raw writes.
 import { LightConnection, SERVICE } from './ble.js';
 import { GVMProtocol } from './gvm-protocol.js';
 import { AmaranConnection, AMARAN_ENC, MESH_UUIDS } from './amaran.js';
+import { GattLightConnection, STATE_ENC } from './gatt-light.js';
+import { GodoxConnection } from './godox.js';
+import { GODOX_MODELS } from './godox-models.js';
+import * as P from './lightproto.js';
 
 const DEVICE_INFO = '0000180a-0000-1000-8000-00805f9b34fb';
 
@@ -43,7 +51,7 @@ export const DRIVERS = {
     id: 'amaran',
     brand: 'amaran',
     models: 'Ace 25c (Bluetooth Mesh lights set up by this app)',
-    status: 'untested',
+    status: 'reported',          // works on two Ace 25c lights (user report, 2026-11-02); the shared mesh connection isn't confirmed yet
     products: [{
       model: 'amaran Ace 25c',
       url: 'https://amarancreators.com/pages/amaran-ace-25c',
@@ -62,10 +70,191 @@ export const DRIVERS = {
     services: [MESH_UUIDS.PROV_SERVICE, MESH_UUIDS.PROXY_SERVICE],
     create: (opts) => new AmaranConnection(opts),
     enc: AMARAN_ENC,
+    mesh: true,
+  },
+  neewer: {
+    id: 'neewer',
+    brand: 'Neewer',
+    models: 'RGB660 PRO, RGB176 A1, RGB1, RGB168, TL60 RGB, CB60B, CB120B and other Neewer lights (older protocol)',
+    status: 'untested',
+    source: 'keefo/NeewerLite (MIT)',
+    products: [{
+      model: 'Neewer RGB and bi-color lights (older Bluetooth protocol)',
+      url: 'https://github.com/keefo/NeewerLite',
+      listName: 'NEEWER-…, NW-… or NWR-…',
+      works: 'On/off, brightness, white, color on RGB models. Pick your model in Settings → Lights. Not supported: SL90, HS60C, HS60C Pro, BH20C, BH-30S RGB (they need the light’s hardware address, which browsers don’t give).',
+      setup: 'Close the NEEWER app. Untested: built from NeewerLite’s documentation, not tried on a real light yet.',
+    }],
+    caps: { cct: [3200, 5600], cctStep: 100, hsi: true, hueStep: 1, scenes: false, gm: false, oneConnection: true },
+    // Model → command family and range, from NeewerLite Database/lights.json (type in brackets).
+    variants: {
+      'other-db': { label: 'Other Neewer RGB light (database commands)', family: 'db' },
+      'other-classic': { label: 'Older Neewer RGB light (classic commands)', family: 'classic' },
+      'other-classic-bi': { label: 'Older Neewer bi-color light (classic commands)', family: 'classicBi', caps: { hsi: false } },
+      'RGB660 PRO': { label: 'RGB660 PRO [3]', family: 'db' },
+      'RGB176 A1': { label: 'RGB176 A1 [5]', family: 'db' },
+      'RGB1': { label: 'RGB1 [8]', family: 'db' },
+      'RGB168': { label: 'RGB168 [16]', family: 'db', caps: { cct: [2500, 8500] } },
+      'TL60 RGB': { label: 'TL60 RGB [59]', family: 'db' },
+      'GR18C': { label: 'GR18C [62]', family: 'db' },
+      'GL1C': { label: 'GL1C [39]', family: 'db', caps: { cct: [2900, 7000] } },
+      'RGB62': { label: 'RGB62 [40]', family: 'db', caps: { cct: [2500, 8500] } },
+      'CB100C': { label: 'CB100C [49]', family: 'db', gmNeutral: 0x00, caps: { cct: [2700, 6500] } },
+      'CB60B': { label: 'CB60B [31]', family: 'db', caps: { hsi: false } },
+      'CB120B': { label: 'CB120B [70]', family: 'db', caps: { hsi: false, cct: [2700, 6500] } },
+      'TL40': { label: 'TL40 [67]', family: 'db', caps: { hsi: false, cct: [2900, 7000] } },
+    },
+    guessModel: (name = '') => {
+      const n = name.toUpperCase().replace(/[\s_-]/g, '');
+      const hit = Object.keys(DRIVERS.neewer.variants).filter((k) => !k.startsWith('other')).sort((a, b) => b.length - a.length)
+        .find((k) => n.includes(k.replace(/[\s_-]/g, '')));
+      return hit ?? 'other-db';                  // NeewerLite's default light type (8) uses the database commands
+    },
+    filters: [{ namePrefix: 'NEEWER' }, { namePrefix: 'NW-' }, { namePrefix: 'NWR' }, { services: [P.NEEWER.SERVICE] }],
+    optionalServices: [P.NEEWER.SERVICE],
+    match: (device) => /^(neewer|nw-|nwr)/i.test(device.name ?? '') && !/^nh-/i.test(device.name ?? ''),
+    services: [P.NEEWER.SERVICE],
+    create: (opts) => new GattLightConnection({ ...opts, proto: {
+      service: P.NEEWER.SERVICE, write: P.NEEWER.CONTROL, notify: P.NEEWER.NOTIFY, gapMs: 15,   // NeewerLite: 15 ms between writes
+      frames: (st, c) => { const m = c.modelInfo ?? {}; return P.neewerFrames(st, { family: m.family ?? 'db', gmNeutral: m.gmNeutral ?? 0x32, hsi: c.caps?.hsi !== false, cct: c.caps?.cct }); },
+      key: (f) => `${f[1]}`,
+    } }),
+    enc: STATE_ENC,
+  },
+  godox: {
+    id: 'godox',
+    brand: 'Godox',
+    models: '184 Bluetooth Mesh models (SL, ML, LA, UL, LC, P…): pick yours in Settings → Lights',
+    status: 'untested',
+    source: 'binary-person/ha-godox-mesh (MIT)',
+    resetHint: 'Factory-reset the light (usually: hold its Bluetooth button until it flashes)',
+    products: [{
+      model: 'Godox Bluetooth Mesh lights (SL60IIBi, SL200IIIBi, ML60IIBi, LC500R…)',
+      url: 'https://github.com/binary-person/ha-godox-mesh/blob/main/docs/consolidated/models/models.md',
+      listName: 'GD_LED',
+      works: 'On/off (as 0 % brightness), brightness, white over the model’s range, color on RGB models. Shares the one mesh connection with amaran lights.',
+      setup: 'Close the Godox Light app and factory-reset the light (it can only be in one app’s network). Untested: built from ha-godox-mesh’s documentation.',
+    }],
+    caps: { cct: [2800, 6500], cctStep: 100, hsi: false, hueStep: 1, scenes: false, gm: false, oneConnection: false, minStepMs: 200 },
+    variants: Object.fromEntries(GODOX_MODELS.map(([m, lo, hi, hsi, ok]) => [m, { label: `${m} (${lo === hi ? `${lo} K` : `${lo}–${hi} K`}${hsi ? ', color' : ''}${ok ? ', confirmed by ha-godox-mesh' : ''})`, caps: { cct: [lo, hi], hsi: !!hsi } }])),
+    guessModel: () => 'SL60IIBi',              // the light doesn't say its model over Web Bluetooth: the user picks it
+    filters: [{ namePrefix: 'GD_LED' }],
+    optionalServices: [DEVICE_INFO, MESH_UUIDS.PROV_SERVICE, MESH_UUIDS.PROXY_SERVICE],
+    match: (device) => /^GD_LED/i.test(device.name ?? ''),
+    services: [],                               // same mesh services as amaran: told apart by the name GD_LED
+    mesh: true,
+    create: (opts) => new GodoxConnection(opts),
+    enc: STATE_ENC,
+  },
+  rgbstrip: {
+    id: 'rgbstrip',
+    brand: 'RGB strip',
+    models: 'ELK-BLEDOM and LEDBLE Bluetooth LED strip controllers and bulbs',
+    status: 'untested',
+    source: 'arduino12/ble_rgb_led_strip_controller, 8none1/ledble-ledlamp (facts only)',
+    products: [{
+      model: 'ELK-BLEDOM / LEDBLE strip controllers (“Lotus Lantern”, “LED Lamp”, “duoCo Strip” apps)',
+      listName: 'ELK-BLEDOM… or LEDBLE-…',
+      works: 'On/off, brightness, color. White is approximate (mixed from red, green and blue). For practicals and color washes, not stage lighting.',
+      setup: 'Close the strip’s phone app. Untested: built from public notes on these controllers.',
+    }],
+    caps: { cct: [2700, 6500], cctStep: 100, hsi: true, hueStep: 1, scenes: false, gm: false, oneConnection: true, approxWhite: true, minStepMs: 150 },
+    variants: {
+      elk: { label: 'ELK-BLEDOM (service FFF0)' },
+      ledble: { label: 'LEDBLE (service FFE0)' },
+    },
+    guessModel: (name = '') => (/^LEDBLE/i.test(name) ? 'ledble' : 'elk'),
+    filters: [{ namePrefix: 'ELK-' }, { namePrefix: 'LEDBLE' }],
+    optionalServices: [P.ELK.SERVICE, P.LEDBLE.SERVICE],
+    match: (device) => /^(ELK-|LEDBLE)/i.test(device.name ?? ''),
+    services: [],
+    create: (opts) => new GattLightConnection({ ...opts, proto: opts.model === 'ledble'
+      ? { service: P.LEDBLE.SERVICE, write: P.LEDBLE.WRITE, frames: (st) => P.ledbleFrames(st), key: (f) => `${f[2]}` }
+      : { service: P.ELK.SERVICE, frames: (st) => P.elkFrames(st), key: (f) => `${f[2]}` } }),
+    enc: STATE_ENC,
+  },
+  govee: {
+    id: 'govee',
+    brand: 'Govee',
+    models: 'Older Govee Bluetooth bulbs and strips (H6001, H6127…)',
+    status: 'untested',
+    source: 'chvolkmann/govee_btled, BeauJBurroughs/Govee-H6127-Reverse-Engineering (facts only)',
+    products: [{
+      model: 'Govee H6001 bulb, H6127 strip and similar Bluetooth-only Govee lights',
+      listName: 'ihoment_H…, Govee_H… or Minger_H…',
+      works: 'On/off, brightness, color. White is approximate (mixed from red, green and blue). Newer Wi-Fi Govee lights aren’t supported.',
+      setup: 'Close the Govee Home app. Untested: built from public notes on these lights.',
+    }],
+    caps: { cct: [2700, 6500], cctStep: 100, hsi: true, hueStep: 1, scenes: false, gm: false, oneConnection: true, approxWhite: true, minStepMs: 150 },
+    filters: [{ namePrefix: 'ihoment_' }, { namePrefix: 'Govee_' }, { namePrefix: 'Minger_' }],
+    optionalServices: [P.GOVEE.SERVICE],
+    match: (device) => /^(ihoment_|govee_|minger_)/i.test(device.name ?? ''),
+    services: [],                               // shares GVM's service UUID: never detected by service
+    create: (opts) => new GattLightConnection({ ...opts, proto: {
+      service: P.GOVEE.SERVICE, write: P.GOVEE.CONTROL, frames: (st) => P.goveeFrames(st), key: (f) => `${f[1]}`,
+      keepAlive: { ms: 2000, frame: P.goveeKeepAlive },
+    } }),
+    enc: STATE_ENC,
+  },
+  nanlite: {
+    id: 'nanlite',
+    brand: 'Nanlite',
+    models: 'Nanlite lights with Bluetooth (PavoTube II C and others using the NANLINK app’s Bluetooth protocol)',
+    status: 'untested',
+    source: 'vmedea’s “Nanlite app protocol” notes (CC-BY-4.0)',
+    products: [{
+      model: 'Nanlite PavoTube II C and other NANLINK Bluetooth lights',
+      listName: 'varies (the app finds it by its Bluetooth service)',
+      works: 'Brightness (off is 0 %), white 2700–7500 K, color. The source calls the Bluetooth link slow and unreliable, so simulated effects are limited to slow ones.',
+      setup: 'Close the NANLINK app. Untested: built from one person’s published notes.',
+    }],
+    caps: { cct: [2700, 7500], cctStep: 100, hsi: true, hueStep: 1, scenes: false, gm: false, oneConnection: true, minStepMs: 1000 },
+    filters: [{ services: [P.NANLITE.SERVICE] }],
+    optionalServices: [P.NANLITE.SERVICE],
+    match: () => false,
+    services: [P.NANLITE.SERVICE],
+    create: (opts) => new GattLightConnection({ ...opts, proto: {
+      service: P.NANLITE.SERVICE, write: P.NANLITE.WRITE, notify: P.NANLITE.NOTIFY, chunk: 20, gapMs: 60,
+      frames: (st, c) => P.nanliteFrames(st, (c.seq = (c.seq + 1) & 0xff)),
+    } }),
+    enc: STATE_ENC,
+  },
+  yongnuo: {
+    id: 'yongnuo',
+    brand: 'Yongnuo',
+    models: 'YN-360 light wand',
+    status: 'untested',
+    source: 'kenkeiter/lantern (MIT)',
+    products: [{
+      model: 'Yongnuo YN-360',
+      url: 'http://www.hkyongnuo.com/e-detaily.php?ID=375',
+      listName: 'YONGNUO…',
+      works: 'Off, brightness, white 3200–5500 K, color.',
+      setup: 'Untested: built from the lantern library (2017).',
+    }],
+    caps: { cct: [3200, 5500], cctStep: 100, hsi: true, hueStep: 1, scenes: false, gm: false, oneConnection: true },
+    filters: [{ namePrefix: 'YONGNUO' }],
+    optionalServices: [P.YONGNUO.SERVICE],
+    match: (device) => /^YONGNUO/i.test(device.name ?? ''),
+    services: [],
+    create: (opts) => new GattLightConnection({ ...opts, proto: { service: P.YONGNUO.SERVICE, write: P.YONGNUO.CONTROL, frames: (st) => P.yongnuoFrames(st), key: () => 'state' } }),
+    enc: STATE_ENC,
   },
 };
 
 export const DEFAULT_DRIVER = 'gvm';
+
+/** A model's details (null for drivers without models). */
+export function modelInfo(d, model) {
+  if (!d.variants) return null;
+  return d.variants[model] ?? d.variants[d.guessModel?.('')] ?? null;
+}
+
+/** Caps of a light: its driver's, narrowed by its model's. */
+export function capsFor(d, model) {
+  const m = modelInfo(d, model);
+  return m?.caps ? { ...d.caps, ...m.caps } : d.caps;
+}
 
 export const driverOf = (id) => DRIVERS[id] ?? DRIVERS[DEFAULT_DRIVER];
 
@@ -103,14 +292,15 @@ export function chooserOptions(extraServices = []) {
 
 /** Caps covering a set of lights (for controls shared by all of them): widest CCT range, any scenes / color. */
 export function unionCaps(drivers) {
-  const list = drivers.length ? drivers : [DRIVERS[DEFAULT_DRIVER]];
+  // Accepts drivers or caps objects.
+  const list = (drivers.length ? drivers : [DRIVERS[DEFAULT_DRIVER]]).map((d) => d.caps ?? d);
   return {
-    cct: [Math.min(...list.map((d) => d.caps.cct[0])), Math.max(...list.map((d) => d.caps.cct[1]))],
-    cctStep: Math.min(...list.map((d) => d.caps.cctStep)),
-    hsi: list.some((d) => d.caps.hsi),
-    hueStep: Math.min(...list.map((d) => d.caps.hueStep)),
-    scenes: list.some((d) => d.caps.scenes),
-    gm: list.some((d) => d.caps.gm),
+    cct: [Math.min(...list.map((c) => c.cct[0])), Math.max(...list.map((c) => c.cct[1]))],
+    cctStep: Math.min(...list.map((c) => c.cctStep)),
+    hsi: list.some((c) => c.hsi),
+    hueStep: Math.min(...list.map((c) => c.hueStep)),
+    scenes: list.some((c) => c.scenes),
+    gm: list.some((c) => c.gm),
   };
 }
 
@@ -123,4 +313,4 @@ export function snap(caps, k, v) {
 }
 
 /** What looks, cues and effects may store: the widest range of every driver (each light snaps on send). */
-export const APP_CAPS = unionCaps(Object.values(DRIVERS));
+export const APP_CAPS = unionCaps(Object.values(DRIVERS).flatMap((d) => [d.caps, ...Object.keys(d.variants ?? {}).map((m) => capsFor(d, m))]));

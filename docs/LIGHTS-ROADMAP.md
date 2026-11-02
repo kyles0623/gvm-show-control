@@ -1,5 +1,9 @@
 # Lights roadmap: more cheap lights, before we own them
 
+> **Status (2 Nov 2026):** phases A–E are built. Neewer, Godox, RGB strips (ELK-BLEDOM / LEDBLE), Govee, Nanlite and
+> Yongnuo drivers are in the app, marked **untested (β)**. Their encoders are checked against the sources' examples
+> (`tests/drivers.test.mjs`) and the app was tested with simulated lights only. Next: reports from real lights.
+
 GVM Show Control speaks to **GVM** (verified on hardware) and **amaran Ace 25c**
 (verified on hardware). This plan lists the next brands, where their protocols
 are documented, and how we add them **without hardware** while being honest in
