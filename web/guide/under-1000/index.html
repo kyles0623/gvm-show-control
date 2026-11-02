@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lighting a Small Theatre for Under $1,000 · GVM Show Control</title>
+<meta name="description" content="A complete shopping list for lighting a small stage or community theatre for under $1,000: five color Bluetooth LED lights (GVM 800D-RGB, amaran Ace 25c), stands, power and tape, run from a laptop with the free GVM Show Control app.">
+<meta name="keywords" content="cheap theatre lighting, theatre lighting under 1000, budget stage lighting, community theatre lighting kit, small stage lighting kit, Bluetooth stage lights, GVM 800D-RGB, amaran Ace 25c, DIY stage lighting">
+<link rel="canonical" href="https://kyles0623.github.io/gvm-show-control/guide/under-1000/">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Lighting a Small Theatre for Under $1,000">
+<meta property="og:description" content="Five color LED lights, stands, power and a free cue-list app: the full shopping list and where each light goes.">
+<meta property="og:url" content="https://kyles0623.github.io/gvm-show-control/guide/under-1000/">
+<meta property="og:image" content="https://kyles0623.github.io/gvm-show-control/guide/img/app-show-tab.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="../../icons/icon-192.png">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Article",
+  "headline": "Lighting a Small Theatre for Under $1,000",
+  "description": "Shopping list and layout for a five-light Bluetooth LED theatre rig run from a laptop with GVM Show Control.",
+  "image": "https://kyles0623.github.io/gvm-show-control/guide/img/app-show-tab.png",
+  "dateModified": "2026-11-02",
+  "mainEntityOfPage": "https://kyles0623.github.io/gvm-show-control/guide/under-1000/",
+  "isPartOf": { "@type": "WebSite", "name": "GVM Show Control", "url": "https://kyles0623.github.io/gvm-show-control/" }
+}
+</script>
+<style>
+  :root {
+    --bg: #f7f6f3; --panel: #ffffff; --text: #1d1c1a; --muted: #5f5c57; --border: #e2ded7; --accent: #b9770e;
+    --stage: #e9e4da; --house: #f1eee8; --beam-warm: rgba(245, 170, 60, .28); --beam-cool: rgba(80, 120, 230, .22);
+    --beam-white: rgba(255, 220, 160, .35); --code: #f0ece4;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #121214; --panel: #1b1b1f; --text: #ececf0; --muted: #a2a2ab; --border: #2e2e35; --accent: #e0a548;
+      --stage: #26241f; --house: #1e1d1a; --beam-warm: rgba(245, 170, 60, .22); --beam-cool: rgba(110, 150, 255, .22);
+      --beam-white: rgba(255, 220, 160, .22); --code: #24242a;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #121214; --panel: #1b1b1f; --text: #ececf0; --muted: #a2a2ab; --border: #2e2e35; --accent: #e0a548;
+    --stage: #26241f; --house: #1e1d1a; --beam-warm: rgba(245, 170, 60, .22); --beam-cool: rgba(110, 150, 255, .22);
+    --beam-white: rgba(255, 220, 160, .22); --code: #24242a;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 17px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+  header.top { border-bottom: 1px solid var(--border); background: var(--panel); }
+  header.top .in { max-width: 980px; margin: 0 auto; padding: 14px 16px; display: flex; gap: 16px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
+  header.top a { color: var(--text); text-decoration: none; font-weight: 700; }
+  header.top nav a { font-weight: 500; color: var(--muted); margin-left: 16px; }
+  main { max-width: 980px; margin: 0 auto; padding: 8px 16px 64px; }
+  h1 { font-size: clamp(28px, 4.5vw, 44px); line-height: 1.15; margin: 28px 0 10px; letter-spacing: -.01em; }
+  .lede { font-size: 19px; color: var(--muted); max-width: 46em; }
+  h2 { font-size: 26px; margin: 48px 0 8px; padding-top: 8px; border-top: 1px solid var(--border); }
+  h3 { font-size: 19px; margin: 26px 0 6px; }
+  p, li { max-width: 46em; }
+  a { color: var(--accent); }
+  code, kbd { background: var(--code); border-radius: 5px; padding: 1px 6px; font-size: .9em; }
+  kbd { border: 1px solid var(--border); }
+  figure { margin: 22px 0; }
+  figure img, figure svg { display: block; width: 100%; height: auto; border-radius: 12px; border: 1px solid var(--border); background: var(--panel); }
+  figcaption { color: var(--muted); font-size: 14px; margin-top: 8px; }
+  .toc { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 14px 20px; margin: 22px 0; }
+  .toc ol { margin: 6px 0; padding-left: 20px; columns: 2; column-gap: 32px; }
+  @media (max-width: 640px) { .toc ol { columns: 1; } }
+  .note { border-left: 4px solid var(--accent); background: var(--panel); padding: 10px 16px; border-radius: 0 10px 10px 0; margin: 18px 0; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+  @media (max-width: 760px) { .grid2 { grid-template-columns: 1fr; } }
+  table { border-collapse: collapse; width: 100%; font-size: 15px; background: var(--panel); border-radius: 12px; overflow: hidden; }
+  th, td { border-bottom: 1px solid var(--border); padding: 8px 10px; text-align: left; vertical-align: top; }
+  th { font-size: 13px; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+  .tablewrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 12px; }
+  .sw { display: inline-block; width: 14px; height: 14px; border-radius: 4px; vertical-align: -2px; margin-right: 6px; border: 1px solid rgba(0,0,0,.25); }
+  .off { color: var(--muted); }
+  ol.steps > li { margin: 6px 0; }
+  .cta { display: inline-block; background: var(--accent); color: #111; padding: 10px 18px; border-radius: 10px; font-weight: 700; text-decoration: none; margin: 8px 0; }
+  footer { border-top: 1px solid var(--border); color: var(--muted); font-size: 14px; }
+  footer .in { max-width: 980px; margin: 0 auto; padding: 18px 16px 40px; }
+  /* diagrams */
+  .dg text { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; fill: var(--text); }
+  .dg .muted { fill: var(--muted); }
+  .dg .line { stroke: var(--muted); }
+  .total td { font-weight: 700; }
+  td.num, th.num { text-align: right; white-space: nowrap; }
+  .est { color: var(--muted); }
+  .badge { display: inline-block; font-size: 12px; font-weight: 700; padding: 1px 8px; border-radius: 99px; border: 1px solid var(--border); color: var(--muted); }
+  .badge.ok { color: #2f8a3e; border-color: #2f8a3e; }
+</style>
+</head>
+<body>
+<header class="top"><div class="in">
+  <a href="../../">GVM Show Control</a>
+  <nav><a href="../">Setup guide</a><a href="../../">Open the app</a><a href="https://github.com/kyles0623/gvm-show-control">Source on GitHub</a></nav>
+</div></header>
+<main>
+<h1>Lighting a small theatre for under $1,000</h1>
+<p class="lede">Five color LED lights on stands, the cables and tape to run them, and a laptop with the free
+<a href="../../">GVM Show Control</a> app as your lighting desk. This is the shopping list, what each item is for, and
+where each light goes. Total: about <b>$900</b>, not counting the laptop.</p>
+
+<nav class="toc" aria-label="Contents"><b>Contents</b>
+<ol>
+  <li><a href="#list">The shopping list</a></li>
+  <li><a href="#why">Why these lights</a></li>
+  <li><a href="#where">Where each light goes</a></li>
+  <li><a href="#power">Power and batteries</a></li>
+  <li><a href="#budgets">Smaller and bigger budgets</a></li>
+  <li><a href="#notbuy">Lights to wait on</a></li>
+  <li><a href="#faq">Questions</a></li>
+</ol></nav>
+
+<p class="note"><b>About the prices.</b> The two light prices were checked on 2 November 2026 on the linked pages.
+Prices marked <span class="est">≈</span> are typical street prices that were not checked against a specific listing;
+compare a few shops before buying. Links go to the maker or a retailer. This project gets nothing from any sale.</p>
+
+<h2 id="list">1. The shopping list</h2>
+<div class="tablewrap"><table>
+<thead><tr><th>Item</th><th class="num">Qty</th><th class="num">Each</th><th class="num">Total</th><th>What it's for</th></tr></thead>
+<tbody>
+<tr><td><b>GVM 800D-RGB</b> LED panel<br>
+  <a href="https://shop.gvmled.com/products/gvm-800d-rgb-led-studio-video-light">GVM</a> ·
+  <a href="https://hotrodcameras.com/products/gvm-800d-rgb-led-studio-light">Hot Rod Cameras</a></td>
+  <td class="num">3</td><td class="num">$99</td><td class="num">$297</td>
+  <td>FRONT-L, FRONT-R and BACK. Color and white (3200–5600&nbsp;K), runs on the included AC adapter all show long.
+  <span class="badge ok">Verified with the app</span></td></tr>
+<tr><td><b>amaran Ace 25c</b> LED panel<br>
+  <a href="https://amarancreators.com/pages/amaran-ace-25c">amaran</a> ·
+  <a href="https://www.bhphotovideo.com/c/product/1847472-REG/amaran_mp0206000u_ace_25c_rgb_led.html">B&amp;H</a></td>
+  <td class="num">2</td><td class="num">$99</td><td class="num">$198</td>
+  <td>BAR (a special) and AUDIENCE (house light). Color and white (2300–10,000&nbsp;K), built-in battery, so it works where
+  there's no outlet. <span class="badge">Works with the app, still being verified</span></td></tr>
+<tr><td><b>Air-cushioned light stand</b>, 2.4–2.8&nbsp;m (8–9&nbsp;ft)<br>
+  e.g. <a href="https://amarancreators.com/products/heavy-duty-air-cushioned-light-stand">amaran heavy-duty</a> ·
+  <a href="https://reach.dog/shop/neewer/products/neewer-2-pack-air-cushioned-aluminum-light-stand-66602511">Neewer 2-pack</a></td>
+  <td class="num">5</td><td class="num est">≈$40</td><td class="num est">≈$200</td>
+  <td>Gets the lights above the actors' heads. Air-cushioned stands don't drop when a clamp slips.</td></tr>
+<tr><td><b>Sandbag</b> (empty "saddlebag" style, fill with sand or gravel)</td>
+  <td class="num">5</td><td class="num est">≈$12</td><td class="num est">≈$60</td>
+  <td>One on every stand leg, every show. Stands near an audience must not tip.</td></tr>
+<tr><td><b>USB-C PD charger, 45&nbsp;W or more</b>, with a 2&nbsp;m USB-C cable</td>
+  <td class="num">2</td><td class="num est">≈$25</td><td class="num est">≈$50</td>
+  <td>Runs or charges the Ace 25c. It draws up to 41&nbsp;W while on, so a phone charger isn't enough.</td></tr>
+<tr><td><b>Extension cords</b> (outdoor-rated, 7.5&nbsp;m / 25&nbsp;ft) and a <b>power strip</b></td>
+  <td class="num">3 + 1</td><td class="num est">≈$12</td><td class="num est">≈$50</td>
+  <td>Power to the GVM lights. Run cords along walls, never across an aisle without a cover.</td></tr>
+<tr><td><b>Gaffer tape</b>, 2" black</td>
+  <td class="num">2</td><td class="num est">≈$15</td><td class="num est">≈$30</td>
+  <td>Taping cables to the floor and marking stand positions. Comes off clean, unlike duct tape.</td></tr>
+<tr class="total"><td>Total</td><td></td><td></td><td class="num">≈$885</td><td>About $115 left for spares, a 6th light or
+  NP-F batteries for the GVM lights.</td></tr>
+</tbody></table></div>
+
+<p>You also need <b>a laptop with Bluetooth</b> running Google Chrome or Microsoft Edge (Windows, macOS, ChromeOS or
+Android). iPhone and iPad can't be used: Safari doesn't support Web Bluetooth.</p>
+<p><b>Check the mounts before show day.</b> Light stands end in a 5/8" stud. If a light's bracket doesn't fit it, a
+5/8" stud-to-1/4"-20 adapter (a few dollars) does.</p>
+
+<h2 id="why">2. Why these lights</h2>
+<ul>
+  <li><b>Both work with GVM Show Control today.</b> The GVM 800D-RGB is fully verified. The Ace 25c has been tested on
+    two real lights (pairing, brightness, white and color); some newer features are still being checked on it.</li>
+  <li><b>Both have full color.</b> One rig can do a warm day, a blue night, a red alarm and a party look without
+    changing gels.</li>
+  <li><b>Mixing brands helps.</b> A laptop holds about 7 Bluetooth connections. Each GVM light uses one, but amaran
+    lights share a single connection, so you can grow past 7 lights by adding amaran lights. (That shared connection is
+    new and is still being confirmed on real lights.)</li>
+  <li><b>GVM for the main lights, amaran for the extras.</b> The GVM 800D-RGB runs from mains power all night. The Ace 25c is
+    small and battery-powered, so it can hide behind a bar or sit at the back of the house with no cable.</li>
+</ul>
+
+<h2 id="where">3. Where each light goes</h2>
+<p>This is the five-light rig from the <a href="../#place">setup guide</a>; its stage plot shows the angles.</p>
+<div class="tablewrap"><table>
+<thead><tr><th>Name in the app</th><th>Light</th><th>Where</th><th>Job</th></tr></thead>
+<tbody>
+<tr><td><b>FRONT-L</b></td><td>GVM 800D-RGB</td><td>In the house, about 45° left of center and aimed about 45° down at the stage</td><td>Faces, from the left</td></tr>
+<tr><td><b>FRONT-R</b></td><td>GVM 800D-RGB</td><td>The same on the right</td><td>Faces, from the right</td></tr>
+<tr><td><b>BACK</b></td><td>GVM 800D-RGB</td><td>Upstage, high, pointing at the actors' backs</td><td>Separates actors from the set; carries the color of a scene</td></tr>
+<tr><td><b>BAR</b></td><td>amaran Ace 25c</td><td>Near the set piece it lights (bar, table, doorway)</td><td>A special for one area</td></tr>
+<tr><td><b>AUDIENCE</b></td><td>amaran Ace 25c</td><td>At the back of the house, pointed at the ceiling or a wall</td><td>House light for preshow and intermission</td></tr>
+</tbody></table></div>
+<p>Then follow the setup guide to <a href="../#pair">pair and name the lights</a>, make a
+<a href="../#group">FRONT group</a>, and build <a href="../#presets">presets</a> and a <a href="../#cues">cue list</a>.</p>
+
+<h2 id="power">4. Power and batteries</h2>
+<ul>
+  <li><b>GVM 800D-RGB:</b> runs on its AC adapter. It also takes NP-F batteries (not included) if there's no outlet nearby.</li>
+  <li><b>amaran Ace 25c:</b> built-in battery. amaran rates it about 70 minutes at full standard output and about
+    4&nbsp;h&nbsp;40&nbsp;min in its low-power mode. For a full show, plug it into a USB-C PD charger, or keep it dim.</li>
+  <li>Charge every battery light the day before, and run the app's <b>pre-show check</b> an hour before doors.</li>
+</ul>
+
+<h2 id="budgets">5. Smaller and bigger budgets</h2>
+<div class="tablewrap"><table>
+<thead><tr><th>Budget</th><th>Lights</th><th>What you give up / get</th></tr></thead>
+<tbody>
+<tr><td>≈$450</td><td>2× GVM 800D-RGB (front), 1× Ace 25c (back or special), 3 stands</td><td>No separate house light; the back light doubles as a special</td></tr>
+<tr><td>≈$900</td><td>3× GVM 800D-RGB, 2× Ace 25c (this page)</td><td>Front, back, one special and house light</td></tr>
+<tr><td>≈$1,200</td><td>Add 2× Ace 25c and 2 stands</td><td>A second special and a side light for dance or fight scenes; the amaran lights still share one connection</td></tr>
+</tbody></table></div>
+
+<h2 id="notbuy">6. Lights to wait on</h2>
+<p>Neewer, Godox, Govee, Nanlite, Yongnuo and the cheap "ELK-BLEDOM" RGB strips are on the
+<a href="https://github.com/kyles0623/gvm-show-control/blob/main/docs/LIGHTS-ROADMAP.md">lights roadmap</a>. None of them
+work with the app yet, and when they are added they will be marked <b>untested</b> until someone confirms them on a real
+light. If you're buying for a show, buy the two lights above.</p>
+
+<h2 id="faq">7. Questions</h2>
+<h3>Is this bright enough for a stage?</h3>
+<p>For a small room (a black box, classroom, café or church hall, roughly up to 100 seats) with the front lights
+3–5&nbsp;m (10–16&nbsp;ft) from the actors, yes. For a large proscenium house, no: you need conventional stage fixtures.</p>
+<h3>Do I need a lighting desk or DMX?</h3>
+<p>No. The laptop is the desk: looks, presets, fades and a GO-button cue list are all in the app, and it works offline.</p>
+<h3>Can I use the GVM or amaran phone apps too?</h3>
+<p>Use one controller at a time. Close the phone app before a show so it doesn't hold the light's Bluetooth connection.</p>
+
+<p><a class="cta" href="../">Read the setup guide →</a></p>
+</main>
+<footer><div class="in">GVM Show Control is free and open source (MIT). GVM and amaran are trademarks of their owners; this project is not
+affiliated with them. Prices change; check the linked pages.</div></footer>
+</body>
+</html>
