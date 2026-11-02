@@ -210,6 +210,10 @@ request goes out every 5 s; any reply with a valid 10-byte status payload update
 light: Bluetooth menu → hold Press to Reset. `mesh.js` is tested against the Mesh Profile sample data (8.1) and
 Node's AES-CCM (`tests/mesh.test.mjs`); `telink.js` against the values documented by wesbos/amaran-BLE-control
 (`tests/telink.test.mjs`). Nothing here has been checked on a real light yet.
+Built-in effects on a light without them (`caps.scenes` false) are simulated by the app (`simfx.js`): one generator
+per GVM effect number, approximations based on the effect's name and its settings (brightness, color temperature,
+cycle, color), never faster than 100 ms per step. Mesh lights take a whole look in one message (`conn.applyState`),
+so each step is one command.
 
 ## Protocol
 See the header of `web/gvm-protocol.js`. Source: an Apple PacketLogger trace of the official iOS app

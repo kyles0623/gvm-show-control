@@ -248,3 +248,23 @@ test('removed app effects map to the light’s built-in equivalents', async () =
   assert.deepEqual(names, { cops: 'Cop Car', tv: 'TV', fire: 'Fire', candle: 'Candle', party: 'Party' });
   assert.deepEqual(EFFECTS.map((e) => e.id), ['breathe']);
 });
+
+// ---------- simulated built-in effects (lights without them, e.g. amaran) ----------
+import { SIMULATED, MIN_MS } from '../web/simfx.js';
+
+test('simulated built-in effects: all 20, valid looks, never faster than MIN_MS, follow the brightness setting', () => {
+  assert.equal(Object.keys(SIMULATED).length, 20);
+  for (const [n, gen] of Object.entries(SIMULATED)) {
+    const p = { level: 40, cct: 4300, cycle: 0.5, hue: 200, sat: 80, duration: 0 };
+    const it = gen(p);
+    for (let i = 0; i < 300; i++) {
+      const { value, done } = it.next();
+      assert.ok(!done, `effect ${n} ended`);
+      assert.ok(value.wait >= MIN_MS, `effect ${n} step ${i}: wait ${value.wait}`);
+      const s = value.state;
+      assert.ok(['cct', 'hsi'].includes(s.mode), `effect ${n}: mode`);
+      assert.ok(s.bri >= 0 && s.bri <= 40, `effect ${n}: bri ${s.bri} above the level`);
+      if (s.mode === 'hsi') assert.ok(s.hue >= 0 && s.hue < 360 && s.sat >= 0 && s.sat <= 100, `effect ${n}: color`);
+    }
+  }
+});

@@ -1,4 +1,5 @@
 import { unionCaps, snap } from './drivers.js';
+import { simulatedSteps } from './simfx.js';
 import { parseHex, toHex, shortUuid, sleep } from './ble.js';
 import { Rig } from './rig.js';
 import { Show, describeState, normState, stateAt, fmtNum } from './show.js';
@@ -452,8 +453,8 @@ function applyCaps(p) {
   if (hsiBtn) { hsiBtn.hidden = !c.hsi; }
   // Built-in effect tiles only when some paired light has them.
   const sc = uiCaps().scenes;
-  const card = $('effects')?.closest('.effects-card');
-  if (card) card.classList.toggle('no-scenes', !sc);
+  // Built-in effect tiles stay: lights without them get a simulation (simfx.js). Note which ones in the tooltip.
+  void sc;
 }
 
 /** Sliders follow the primary light (first selected). */
@@ -526,6 +527,16 @@ async function sendValue(id, v, { quiet = true } = {}) {
 /** Sends only the params that differ from the light's known state: mode first, brightness last. */
 async function applyStateTo(l, s, { quiet = true, guard = () => true } = {}) {
   const L = l.conn.light;
+  // Lights that take a whole look in one command (mesh lights): one message instead of one per value.
+  if (l.conn.applyState) {
+    if (!guard()) return;
+    const t = { ...s };
+    for (const k of ['cct', 'hue', 'sat', 'bri']) if (t[k] != null) t[k] = snap(capsOf(l), k, t[k]);
+    if (t.mode === 'hsi' && !capsOf(l).hsi) t.mode = 'cct';
+    if (t.bri != null && isDarkLight(l)) l.blackoutPre = null;
+    await l.conn.applyState(t, { quiet });
+    return;
+  }
   if (s.mode === 'hsi' && !capsOf(l).hsi) s = { ...s, mode: 'cct' };   // white-only light: keep it white
   if (s.mode && L.mode !== s.mode) {
     if (!guard()) return;
@@ -1339,7 +1350,12 @@ async function toggleEffect(e, { params = null, lights = targets(), fromCue = fa
       if (rest > 0) await sleep(rest);
     }
   };
-  if (e.builtin) await each(lights, (l) => runBuiltin(run, l));
+  // Built-in effects: the light runs it if it has them; other lights (e.g. amaran) get a simulation from the app.
+  if (e.builtin) {
+    const sim = lights.filter((l) => !capsOf(l).scenes);
+    if (sim.length) rig.logLine(`EFFECT ${e.name}: simulated by the app on ${sim.map((l) => l.label).join(', ')}`);
+    await each(lights, (l) => (capsOf(l).scenes ? runBuiltin(run, l) : loop(simulatedSteps(e.scene, params), [l])));
+  }
   else if (e.perLight) await each(lights, (l) => loop(e.steps(params), [l]));
   else await loop(e.steps(params), lights);
 
@@ -1370,7 +1386,6 @@ function endRun(run) {
 async function runBuiltin(run, l) {
   const e = run.e, p = run.params;
   const live = () => !run.dead && run.lights.includes(l) && performance.now() < run.deadline;
-  if (!capsOf(l).scenes) { rig.logLine(`${l.label}: no built-in effects on this light, skipped`); return; }
   const P = E(l);
   const send = { level: (v) => P.brightness(v), cct: (v) => P.cct(v), cycle: (v) => P.cycle(v), hue: (v) => P.hue(v), sat: (v) => P.saturation(v) };
   let sent = null;

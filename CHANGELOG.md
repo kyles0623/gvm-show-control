@@ -9,6 +9,8 @@ the minor version (see [CONTRIBUTING.md](CONTRIBUTING.md#versions-and-the-change
 
 ## [Unreleased]
 
+## [1.15.0] - 2026-11-02
+
 ### Added
 - **Edit show** (My show ▾ → Edit on the open show): rename the show and choose which effect tiles, App effects and
   looks its Show tab offers, and their order (All / None / Default per list). Keys Q–Y and 1–9 follow the new order.
@@ -19,6 +21,10 @@ the minor version (see [CONTRIBUTING.md](CONTRIBUTING.md#versions-and-the-change
   shows every setup step. Undo on the light: Bluetooth menu → hold Press to Reset. Light commands ported from
   wesbos/amaran-BLE-control (MIT); mesh layer written from the Bluetooth Mesh Profile spec and tested against its
   sample data.
+- **Simulated built-in effects**: on lights without the GVM light's 20 built-in effects (amaran), the effect tiles
+  still work: the app plays an approximation of each effect (Cop Car, Candle, Fire, Strobe, SOS, …) using its
+  brightness, color temperature, cycle and color settings. Steps are at least 100 ms apart. A mixed selection runs the
+  real effect on GVM lights and the simulation on the others. Mesh lights now get each look in one command.
 - Settings → Lights shows each light's brand and whether its support is verified.
 - `tools/ble-probe.html`: a read-only page that lists what a Bluetooth light offers to the browser (services,
   characteristics, model and firmware strings), with a filter for Bluetooth Mesh lights and an optional scan. Never writes.

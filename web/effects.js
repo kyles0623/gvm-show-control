@@ -124,7 +124,7 @@ export const BUILTIN = SCENES.map((name, i) => {
   return {
     id: `scene:${n}`, name, scene: n, builtin: true,
     swatch: SCENE_SWATCH[n] ?? '#888',
-    desc: `${name}: the light's own built-in effect (runs on the light, no Bluetooth traffic while it runs)`,
+    desc: `${name}: the GVM light's own built-in effect (runs on the light). On lights without built-in effects (amaran) the app simulates it.`,
     params: [{ ...LEVEL(level), min: 0 }, ...(SCENE_SETTINGS[n] ?? []), DURATION],
   };
 });

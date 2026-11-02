@@ -437,6 +437,23 @@ export class AmaranConnection extends EventTarget {
     return ok;
   }
 
+  /** A whole look in one message (white or color carries the intensity): {mode, cct, hue, sat, bri}. */
+  async applyState(s, { quiet = true } = {}) {
+    if (!this.connected) return false;
+    const w = this._want;
+    if (s.bri != null) { w.bri = s.bri; this.levelBri = s.bri; }
+    if (s.mode) w.mode = s.mode === 'hsi' ? 'hsi' : 'cct';
+    if (s.cct != null) w.kelvin = s.cct;
+    if (s.hue != null) w.hue = s.hue;
+    if (s.sat != null) w.sat = s.sat;
+    const L = this.light;
+    const same = L.mode === w.mode && L.brightness === w.bri && (w.mode === 'hsi' ? L.hue === w.hue && L.saturation === w.sat : L.cct === w.kelvin);
+    if (same) return true;
+    // Only brightness changed: the short brightness command; otherwise the full white / color command.
+    const onlyBri = L.mode === w.mode && (w.mode === 'hsi' ? L.hue === w.hue && L.saturation === w.sat : L.cct === w.kelvin);
+    return this.sendFrames([onlyBri ? { t: 'bri', v: w.bri } : { t: 'mode', m: w.mode }], 'look', { quiet });
+  }
+
   requestStatus() { return this.connected ? this.sendFrames([{ t: 'status' }], 'status request', { quiet: true }) : false; }
   _startPoll() { clearInterval(this._poll); this._poll = setInterval(() => this.requestStatus(), POLL_MS); }
 

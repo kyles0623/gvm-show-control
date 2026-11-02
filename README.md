@@ -63,7 +63,7 @@ On Windows/Linux, any static server works, e.g. `cd web && python -m http.server
 | Brand | Models | Status |
 |---|---|---|
 | GVM | 800-RGB (shows up as `BT_LED`) | Verified on hardware |
-| amaran | Ace 25c (Bluetooth Mesh; the app sets the light up in its own network) | **Untested**: on/off, brightness, white, color |
+| amaran | Ace 25c (Bluetooth Mesh; the app sets the light up in its own network) | **Untested**: on/off, brightness, white, color; the 20 effects are simulated by the app |
 
 amaran lights: pairing one that isn't set up asks first, then joins it to the app's own mesh network (kept in this
 browser and in backups). While it's there the amaran app can't control it; to undo, hold **Press to Reset** in the
