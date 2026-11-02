@@ -330,7 +330,8 @@ li.ok .chk-body.collapsible { color: var(--muted); }
   color: var(--text); background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px;
   box-shadow: 0 8px 24px #000a; pointer-events: none; }
 .preset-bar { display: flex; align-items: center; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
-.preset-chips { display: flex; gap: 6px; flex-wrap: wrap; flex: 1; min-width: 0; }
+.preset-bar .label { flex: 1; }
+.preset-chips { display: flex; gap: 6px; flex-wrap: wrap; order: 3; flex-basis: 100%; min-width: 0; }
 .preset-chip { display: inline-flex; align-items: center; gap: 6px; border-radius: 999px; padding: 4px 10px; font-size: 13px;
   background: var(--panel-2); border: 1px solid var(--border); color: var(--text); }
 .preset-chip.active { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }

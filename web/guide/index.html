@@ -1,0 +1,374 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DIY Theatre Lighting with Bluetooth LED Panels: Setup Guide · GVM Show Control</title>
+<meta name="description" content="Step-by-step guide to a simple, low-cost theatre lighting system: where to place 3–6 Bluetooth LED lights (GVM, amaran) around a small stage, then name them, group them and build looks, presets and a cue list in the free GVM Show Control web app.">
+<meta name="keywords" content="DIY theatre lighting, community theatre lighting, small stage lighting, cheap stage lights, Bluetooth LED stage light, GVM 800D, amaran Ace 25c, stage lighting plot, McCandless method, cue list app, lighting presets">
+<link rel="canonical" href="https://kyles0623.github.io/gvm-show-control/guide/">
+<meta property="og:type" content="article">
+<meta property="og:title" content="DIY Theatre Lighting with Bluetooth LED Panels: Setup Guide">
+<meta property="og:description" content="Place 3–6 low-cost Bluetooth LED lights around a small stage and run the show from a browser: looks, presets and a GO-button cue list.">
+<meta property="og:url" content="https://kyles0623.github.io/gvm-show-control/guide/">
+<meta property="og:image" content="https://kyles0623.github.io/gvm-show-control/guide/img/app-show-tab.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="../icons/icon-192.png">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "HowTo",
+  "name": "Set up a simple theatre lighting system with Bluetooth LED lights",
+  "description": "Place 3–6 Bluetooth LED panels around a small stage, then control them from the free GVM Show Control web app with named lights, groups, looks, presets and a cue list.",
+  "image": "https://kyles0623.github.io/gvm-show-control/guide/img/app-show-tab.png",
+  "totalTime": "PT2H",
+  "tool": [{ "@type": "HowToTool", "name": "Laptop with Google Chrome or Microsoft Edge" }, { "@type": "HowToTool", "name": "Light stands and sandbags" }],
+  "supply": [{ "@type": "HowToSupply", "name": "3 to 6 Bluetooth LED lights (GVM 800D-RGB, amaran Ace 25c)" }, { "@type": "HowToSupply", "name": "Gaffer tape and extension cables" }],
+  "step": [
+    { "@type": "HowToStep", "name": "Plan the rig", "text": "Decide which areas need light: two front lights for faces, a back light, specials such as a bar, and the audience." },
+    { "@type": "HowToStep", "name": "Place the lights", "text": "Put the two front lights about 45° to each side of the acting area and about 45° above the actors' faces; put the back light behind and above the actors." },
+    { "@type": "HowToStep", "name": "Pair and name the lights", "text": "Open GVM Show Control in Chrome, pair each light, and rename each one after its job: FRONT-L, FRONT-R, BACK, BAR, AUDIENCE." },
+    { "@type": "HowToStep", "name": "Group them", "text": "Make a FRONT group of the two front lights so they can be set together." },
+    { "@type": "HowToStep", "name": "Build presets", "text": "Set each light for a moment in the show and save it as a preset such as PRESHOW, DAY, NIGHT or PARTY." },
+    { "@type": "HowToStep", "name": "Record the cue list", "text": "Apply a preset, record it as a cue with a fade time and a note, and run the show with the GO button." },
+    { "@type": "HowToStep", "name": "Check before every show", "text": "Run the pre-show check, export a backup, and lock the controls." }
+  ]
+}
+</script>
+<style>
+  :root {
+    --bg: #f7f6f3; --panel: #ffffff; --text: #1d1c1a; --muted: #5f5c57; --border: #e2ded7; --accent: #b9770e;
+    --stage: #e9e4da; --house: #f1eee8; --beam-warm: rgba(245, 170, 60, .28); --beam-cool: rgba(80, 120, 230, .22);
+    --beam-white: rgba(255, 220, 160, .35); --code: #f0ece4;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #121214; --panel: #1b1b1f; --text: #ececf0; --muted: #a2a2ab; --border: #2e2e35; --accent: #e0a548;
+      --stage: #26241f; --house: #1e1d1a; --beam-warm: rgba(245, 170, 60, .22); --beam-cool: rgba(110, 150, 255, .22);
+      --beam-white: rgba(255, 220, 160, .22); --code: #24242a;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #121214; --panel: #1b1b1f; --text: #ececf0; --muted: #a2a2ab; --border: #2e2e35; --accent: #e0a548;
+    --stage: #26241f; --house: #1e1d1a; --beam-warm: rgba(245, 170, 60, .22); --beam-cool: rgba(110, 150, 255, .22);
+    --beam-white: rgba(255, 220, 160, .22); --code: #24242a;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 17px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+  header.top { border-bottom: 1px solid var(--border); background: var(--panel); }
+  header.top .in { max-width: 980px; margin: 0 auto; padding: 14px 16px; display: flex; gap: 16px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
+  header.top a { color: var(--text); text-decoration: none; font-weight: 700; }
+  header.top nav a { font-weight: 500; color: var(--muted); margin-left: 16px; }
+  main { max-width: 980px; margin: 0 auto; padding: 8px 16px 64px; }
+  h1 { font-size: clamp(28px, 4.5vw, 44px); line-height: 1.15; margin: 28px 0 10px; letter-spacing: -.01em; }
+  .lede { font-size: 19px; color: var(--muted); max-width: 46em; }
+  h2 { font-size: 26px; margin: 48px 0 8px; padding-top: 8px; border-top: 1px solid var(--border); }
+  h3 { font-size: 19px; margin: 26px 0 6px; }
+  p, li { max-width: 46em; }
+  a { color: var(--accent); }
+  code, kbd { background: var(--code); border-radius: 5px; padding: 1px 6px; font-size: .9em; }
+  kbd { border: 1px solid var(--border); }
+  figure { margin: 22px 0; }
+  figure img, figure svg { display: block; width: 100%; height: auto; border-radius: 12px; border: 1px solid var(--border); background: var(--panel); }
+  figcaption { color: var(--muted); font-size: 14px; margin-top: 8px; }
+  .toc { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 14px 20px; margin: 22px 0; }
+  .toc ol { margin: 6px 0; padding-left: 20px; columns: 2; column-gap: 32px; }
+  @media (max-width: 640px) { .toc ol { columns: 1; } }
+  .note { border-left: 4px solid var(--accent); background: var(--panel); padding: 10px 16px; border-radius: 0 10px 10px 0; margin: 18px 0; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+  @media (max-width: 760px) { .grid2 { grid-template-columns: 1fr; } }
+  table { border-collapse: collapse; width: 100%; font-size: 15px; background: var(--panel); border-radius: 12px; overflow: hidden; }
+  th, td { border-bottom: 1px solid var(--border); padding: 8px 10px; text-align: left; vertical-align: top; }
+  th { font-size: 13px; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+  .tablewrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 12px; }
+  .sw { display: inline-block; width: 14px; height: 14px; border-radius: 4px; vertical-align: -2px; margin-right: 6px; border: 1px solid rgba(0,0,0,.25); }
+  .off { color: var(--muted); }
+  ol.steps > li { margin: 6px 0; }
+  .cta { display: inline-block; background: var(--accent); color: #111; padding: 10px 18px; border-radius: 10px; font-weight: 700; text-decoration: none; margin: 8px 0; }
+  footer { border-top: 1px solid var(--border); color: var(--muted); font-size: 14px; }
+  footer .in { max-width: 980px; margin: 0 auto; padding: 18px 16px 40px; }
+  /* diagrams */
+  .dg text { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; fill: var(--text); }
+  .dg .muted { fill: var(--muted); }
+  .dg .line { stroke: var(--muted); }
+</style>
+</head>
+<body>
+<header class="top"><div class="in">
+  <a href="../">GVM Show Control</a>
+  <nav><a href="../">Open the app</a><a href="https://github.com/kyles0623/gvm-show-control">Source on GitHub</a></nav>
+</div></header>
+<main>
+<h1>DIY theatre lighting with Bluetooth LED panels</h1>
+<p class="lede">A simple, low-cost lighting system for a small stage, community theatre, classroom or black-box space:
+three to six Bluetooth LED lights on stands, and a laptop running the free <a href="../">GVM Show Control</a> web app
+with named lights, presets and a GO-button cue list. No dimmer racks, no DMX, no lighting desk.</p>
+
+<nav class="toc" aria-label="Contents"><b>Contents</b>
+<ol>
+  <li><a href="#what-you-need">What you need</a></li>
+  <li><a href="#plan">Plan the rig</a></li>
+  <li><a href="#place">Place the lights</a></li>
+  <li><a href="#pair">Pair and name the lights</a></li>
+  <li><a href="#group">Group the front lights</a></li>
+  <li><a href="#looks">Looks for a single light</a></li>
+  <li><a href="#presets">Presets for the whole stage</a></li>
+  <li><a href="#cues">The cue list</a></li>
+  <li><a href="#showday">On show day</a></li>
+  <li><a href="#faq">Questions</a></li>
+</ol></nav>
+
+<h2 id="what-you-need">1. What you need</h2>
+<ul>
+  <li><b>Three to six Bluetooth LED lights.</b> Supported today: the <b>GVM 800D-RGB</b> (verified) and the
+    <b>amaran Ace 25c</b> (works, still being verified). Lights with color (RGB) give you the most looks; white-only
+    lights work for the front. The app's <a href="../">Supported lights</a> list (Settings → Lights) shows what's tested.</li>
+  <li><b>A light stand per light</b>, ideally 2–2.5&nbsp;m (7–8&nbsp;ft) tall, and a <b>sandbag</b> on each one.</li>
+  <li><b>A laptop</b> with Google Chrome or Microsoft Edge (Web Bluetooth). Windows, macOS, ChromeOS or Android.
+    Not iPhone/iPad: Safari doesn't support Web Bluetooth.</li>
+  <li><b>Power</b> for each light (or charged batteries), extension cables and <b>gaffer tape</b> for the cables.</li>
+</ul>
+<p>Keep the laptop within about 10&nbsp;m (30&nbsp;ft) of the lights, ideally with a clear line of sight. Most computers
+can hold around 7 Bluetooth connections at once; all amaran lights share one connection, so mixing brands helps.</p>
+
+<h2 id="plan">2. Plan the rig</h2>
+<p>Give every light one job. This five-light rig covers a small stage well and is what the rest of this guide uses.
+The names are the ones you'll give the lights in the app: presets find lights <b>by name</b>.</p>
+<div class="tablewrap"><table>
+  <thead><tr><th>Name</th><th>Where</th><th>Job</th><th>Light</th></tr></thead>
+  <tbody>
+    <tr><td><b>FRONT-L</b></td><td>In front of the stage, house left, about 45° off center</td><td>Faces: the main light (key)</td><td>Color or white panel</td></tr>
+    <tr><td><b>FRONT-R</b></td><td>In front of the stage, house right, about 45° off center</td><td>Faces: fills the shadows from FRONT-L</td><td>Color or white panel</td></tr>
+    <tr><td><b>BACK</b></td><td>Behind the actors, high, pointing down and forward</td><td>Separates actors from the background; sets the mood (night blue, sunset)</td><td>Color panel</td></tr>
+    <tr><td><b>BAR</b></td><td>Next to a set piece (here: a bar), low or on the floor</td><td>A "special" that pulls focus to one area</td><td>Small color light (e.g. amaran Ace 25c)</td></tr>
+    <tr><td><b>AUDIENCE</b></td><td>Over or beside the seating, aimed at the seats, not the stage</td><td>House light for preshow, intermission and bows</td><td>Warm white</td></tr>
+  </tbody>
+</table></div>
+<p>Fewer lights? Start with FRONT-L, FRONT-R and BACK. More? Add a second special, a backdrop (cyc) wash, or a
+second pair of front lights for a wider stage.</p>
+
+<h2 id="place">3. Place the lights</h2>
+<p>The classic approach (the <i>McCandless method</i>) lights each actor from two sides at about 45°: one light a
+little warmer and brighter, the other a little cooler and dimmer. Faces get shape instead of flat light, and the
+second light fills the shadow of the first.</p>
+<figure>
+<svg class="dg" viewBox="0 0 900 560" role="img" aria-labelledby="plotT plotD">
+  <title id="plotT">Stage plot, seen from above</title>
+  <desc id="plotD">The stage is at the top, the audience at the bottom. FRONT-L and FRONT-R stand in front of the stage at
+    about 45 degrees to each side of the center, both aimed at center stage. BACK is upstage center behind the actors, aimed
+    down and toward the audience. BAR sits beside the bar set piece at stage right. AUDIENCE is above the seating, aimed at
+    the seats.</desc>
+  <defs>
+    <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor" class="muted"/></marker>
+  </defs>
+  <rect x="0" y="0" width="900" height="560" fill="var(--panel)"/>
+  <!-- stage -->
+  <rect x="150" y="40" width="600" height="270" rx="6" fill="var(--stage)" stroke="var(--border)"/>
+  <text x="640" y="64" text-anchor="middle" class="muted" font-size="14" letter-spacing="2">UPSTAGE (back wall)</text>
+  <text x="640" y="300" text-anchor="middle" class="muted" font-size="14" letter-spacing="2">DOWNSTAGE (stage edge)</text>
+  <text x="166" y="180" class="muted" font-size="13" transform="rotate(-90 166 180)" text-anchor="middle">STAGE RIGHT</text>
+  <text x="734" y="180" class="muted" font-size="13" transform="rotate(90 734 180)" text-anchor="middle">STAGE LEFT</text>
+  <!-- beams -->
+  <path d="M215,400 L400,160 L505,215 Z" fill="var(--beam-warm)"/>
+  <path d="M685,400 L500,160 L395,215 Z" fill="var(--beam-white)"/>
+  <path d="M450,78 L360,250 L540,250 Z" fill="var(--beam-cool)"/>
+  <path d="M232,150 L300,110 L320,210 Z" fill="var(--beam-warm)"/>
+  <path d="M450,520 L300,470 L600,470 Z" fill="var(--beam-white)"/>
+  <!-- set piece + actor -->
+  <rect x="250" y="110" width="40" height="110" rx="4" fill="var(--border)"/>
+  <text x="270" y="240" text-anchor="middle" font-size="13" class="muted">bar (set)</text>
+  <circle cx="450" cy="190" r="13" fill="var(--text)"/>
+  <text x="450" y="226" text-anchor="middle" font-size="13">actor</text>
+  <!-- audience -->
+  <rect x="150" y="430" width="600" height="110" rx="6" fill="var(--house)" stroke="var(--border)"/>
+  <g fill="var(--border)">
+    <rect x="200" y="470" width="500" height="10" rx="3"/><rect x="200" y="492" width="500" height="10" rx="3"/><rect x="200" y="514" width="500" height="10" rx="3"/>
+  </g>
+  <text x="450" y="455" text-anchor="middle" class="muted" font-size="14" letter-spacing="2">AUDIENCE</text>
+  <!-- lights -->
+  <g font-size="15" font-weight="700">
+    <rect x="195" y="385" width="40" height="28" rx="5" fill="#e0a548"/><text x="215" y="434" text-anchor="middle">FRONT-L</text>
+    <rect x="665" y="385" width="40" height="28" rx="5" fill="#f2e3c4"/><text x="685" y="434" text-anchor="middle">FRONT-R</text>
+    <rect x="430" y="60" width="40" height="24" rx="5" fill="#5a7ae0"/><text x="490" y="30" text-anchor="middle">BACK (high, behind)</text>
+    <line x1="470" y1="30" x2="452" y2="58" class="line" stroke-width="1.5" marker-end="url(#arr)" color="var(--muted)"/>
+    <rect x="212" y="138" width="30" height="22" rx="5" fill="#e88a3a"/><text x="196" y="130" text-anchor="middle">BAR</text>
+    <rect x="430" y="524" width="40" height="24" rx="5" fill="#f2e3c4"/><text x="530" y="545" text-anchor="start">AUDIENCE (aimed at seats)</text>
+  </g>
+  <!-- 45° marks -->
+  <g class="line" stroke-width="1.5" fill="none" stroke-dasharray="5 5">
+    <line x1="450" y1="205" x2="450" y2="420"/>
+  </g>
+  <text x="330" y="350" font-size="14" class="muted">≈45° off center</text>
+  <text x="470" y="350" font-size="14" class="muted">≈45° off center</text>
+</svg>
+<figcaption>Top view of the five-light rig. FRONT-L and FRONT-R cross at the actor; BACK lights them from behind; BAR
+is a "special" on one set piece; AUDIENCE lights the seats. Shaded wedges show roughly where each light reaches.</figcaption>
+</figure>
+
+<figure>
+<svg class="dg" viewBox="0 0 900 340" role="img" aria-labelledby="sideT sideD">
+  <title id="sideT">Side view: height and angle of a front light</title>
+  <desc id="sideD">A light on a stand about 2 to 2.5 meters high, placed in front of the stage, is tilted down about 45 degrees so
+    its beam meets the actor's face. A back light behind the actor is higher and points down and forward.</desc>
+  <rect x="0" y="0" width="900" height="340" fill="var(--panel)"/>
+  <line x1="40" y1="290" x2="860" y2="290" class="line" stroke-width="2"/>
+  <rect x="470" y="270" width="390" height="20" fill="var(--stage)" stroke="var(--border)"/>
+  <text x="665" y="314" text-anchor="middle" class="muted" font-size="13">stage</text>
+  <!-- stand -->
+  <line x1="200" y1="290" x2="200" y2="120" stroke="var(--text)" stroke-width="4"/>
+  <line x1="200" y1="290" x2="170" y2="290" stroke="var(--text)" stroke-width="4"/><line x1="200" y1="290" x2="230" y2="290" stroke="var(--text)" stroke-width="4"/>
+  <rect x="186" y="102" width="44" height="30" rx="5" fill="#e0a548" transform="rotate(40 208 117)"/>
+  <rect x="180" y="276" width="40" height="12" rx="3" fill="var(--muted)"/><text x="200" y="315" text-anchor="middle" class="muted" font-size="12">sandbag</text>
+  <!-- beam -->
+  <path d="M225,128 L620,170 L560,262 Z" fill="var(--beam-warm)"/>
+  <line x1="225" y1="128" x2="590" y2="210" stroke="var(--accent)" stroke-width="2" stroke-dasharray="6 5"/>
+  <!-- actor -->
+  <circle cx="600" cy="196" r="14" fill="var(--text)"/><rect x="590" y="212" width="20" height="58" rx="6" fill="var(--text)"/>
+  <!-- back light -->
+  <line x1="790" y1="270" x2="790" y2="60" stroke="var(--text)" stroke-width="4"/>
+  <rect x="770" y="40" width="44" height="28" rx="5" fill="#5a7ae0" transform="rotate(-35 792 54)"/>
+  <path d="M770,62 L585,175 L640,220 Z" fill="var(--beam-cool)"/>
+  <!-- labels -->
+  <g font-size="14">
+    <text x="120" y="100">FRONT-L</text>
+    <text x="232" y="214" class="muted">2–2.5 m (7–8 ft)</text>
+    <line x1="250" y1="290" x2="250" y2="125" class="line" stroke-dasharray="3 4"/>
+    <text x="360" y="150" class="muted">tilted ≈45° down</text>
+    <text x="806" y="40">BACK (higher)</text>
+    <text x="600" y="150" text-anchor="middle">actor</text>
+    <text x="330" y="282" class="muted">about the same distance as the height difference</text>
+  </g>
+</svg>
+<figcaption>Side view. A front light about 2–2.5&nbsp;m up, tilted roughly 45° down, lights the face without
+blinding the actor. The back light sits higher and points down and forward onto heads and shoulders.</figcaption>
+</figure>
+
+<h3>Placement tips</h3>
+<ul>
+  <li><b>Height beats brightness.</b> Too low and actors' shadows land on the back wall; too high and eyes go dark.
+    About 45° up is the sweet spot.</li>
+  <li><b>Cross the front lights.</b> FRONT-L lights the right side of the stage best, FRONT-R the left: aim each one past
+    center so their beams overlap where actors stand most.</li>
+  <li><b>Keep the back light out of the audience's eyes:</b> high and pointing down.</li>
+  <li><b>Sandbag every stand and tape every cable</b> along walls and edges, never across an exit path.</li>
+  <li><b>Walk the stage</b> with a helper before deciding: look for dark gaps between the front lights and fix them by
+    re-aiming before you touch the app.</li>
+</ul>
+
+<h2 id="pair">4. Pair and name the lights</h2>
+<ol class="steps">
+  <li>Open <a href="../">the app</a> in Chrome or Edge. Turn the lights on.
+    <ul>
+      <li><b>GVM:</b> set each light to <b>App</b> mode (the small mode button on the light) and close the GVM phone app.
+        It shows up as <code>BT_LED</code>.</li>
+      <li><b>amaran:</b> close the amaran phone app. The light may show up without a name ("Unknown or Unsupported
+        Device"). The first time, the app asks to set it up in its own network.</li>
+    </ul></li>
+  <li>Press <b>Pair light</b> for the first light, then <b>+</b> in the light chips at the top for each next one.
+    Pair them in the order you'll name them, so you know which is which.</li>
+  <li><b>Name each light after its job:</b> double-click its chip at the top and type FRONT-L, FRONT-R, BACK, BAR,
+    AUDIENCE. Not sure which is which? Click a chip and press <kbd>B</kbd> (blackout) to see which light goes dark.</li>
+</ol>
+<figure>
+  <img src="img/app-top-bar.png" width="1440" height="64" alt="The app's top bar with five light chips named FRONT-L, FRONT-R, BACK, BAR and AUDIENCE, plus a FRONT group chip." loading="lazy">
+  <figcaption>The top bar after naming: one chip per light (green dot = connected), and the FRONT group at the end.
+    With more than one brand, chips are grouped under GVM, AMARAN and so on.</figcaption>
+</figure>
+<figure>
+  <img src="img/app-settings-lights.png" alt="Settings, Lights section: each light with its name, brand, status, Reconnect and Forget buttons, and the groups below." loading="lazy">
+  <figcaption>Settings → Lights lists every light with its brand and whether that brand is verified on hardware.</figcaption>
+</figure>
+
+<h2 id="group">5. Group the front lights</h2>
+<p>Settings → Lights → Groups → <b>+ New group</b>, name it <b>FRONT</b>, tick FRONT-L and FRONT-R. Its chip at the top
+now selects both, so brightness, color temperature and looks change them together. Click a single light's chip to go
+back to one light. <kbd>Tab</kbd> steps through All → each light.</p>
+
+<h2 id="looks">6. Looks for a single light</h2>
+<p>A <b>look</b> is one color and brightness you'll use often (Daylight, Tungsten, Night…). Select a light or group,
+press a look tile (keys <kbd>1</kbd>–<kbd>9</kbd>), and it fades in using the Fade time. <b>+ Save look</b> keeps the
+selected light's current color; <b>Update look</b> replaces one.</p>
+<figure>
+  <img src="img/app-show-tab.png" width="1440" height="860" alt="The app's Show tab: cue bar with GO, power and blackout, brightness and color temperature, the looks grid, the presets row and the effects." loading="lazy">
+  <figcaption>The Show tab: the cue bar and GO across the top, controls for the selected light in the middle, looks and
+    presets below them, and the light's built-in effects on the right.</figcaption>
+</figure>
+
+<h2 id="presets">7. Presets for the whole stage</h2>
+<p>A <b>preset</b> sets every light at once, each to its own color and brightness, matched by the light's name. That's
+the "state of the stage" for a moment in the show. Build one like this:</p>
+<ol class="steps">
+  <li>Set each light by hand (click its chip, then brightness, color, a look or an effect).</li>
+  <li>Press <b>+ Save preset</b> under the looks and give it a name, e.g. <b>BAR-FOCUSED</b>. The dialog lists what
+    each light will be set to.</li>
+  <li>Apply it any time with its chip or <kbd>Shift</kbd>+<kbd>1</kbd>–<kbd>9</kbd>. Lights not in the preset are left alone.</li>
+</ol>
+<p>A starter set for the five-light rig:</p>
+<div class="tablewrap"><table>
+  <thead><tr><th>Preset</th><th>FRONT-L</th><th>FRONT-R</th><th>BACK</th><th>BAR</th><th>AUDIENCE</th></tr></thead>
+  <tbody>
+    <tr><td><b>PRESHOW</b></td><td class="off">off</td><td class="off">off</td><td><span class="sw" style="background:#3550d8"></span>blue 15%</td><td><span class="sw" style="background:#ffbf75"></span>3200 K 25%</td><td><span class="sw" style="background:#ffbf75"></span>3200 K 60%</td></tr>
+    <tr><td><b>DAY</b></td><td><span class="sw" style="background:#fff0dc"></span>5000 K 70%</td><td><span class="sw" style="background:#fff0dc"></span>5000 K 55%</td><td><span class="sw" style="background:#f5f3ff"></span>5600 K 50%</td><td><span class="sw" style="background:#ffd8a8"></span>4300 K 30%</td><td class="off">off</td></tr>
+    <tr><td><b>NIGHT</b></td><td><span class="sw" style="background:#8fb0e8"></span>pale blue 30%</td><td><span class="sw" style="background:#8fb0e8"></span>pale blue 20%</td><td><span class="sw" style="background:#1e2fe0"></span>deep blue 40%</td><td><span class="sw" style="background:#ffbf75"></span>3200 K 15%</td><td class="off">off</td></tr>
+    <tr><td><b>BAR-FOCUSED</b></td><td><span class="sw" style="background:#ffbf75"></span>3200 K 15%</td><td><span class="sw" style="background:#ffbf75"></span>3200 K 15%</td><td><span class="sw" style="background:#e8a060"></span>amber 25%</td><td><span class="sw" style="background:#ffbf75"></span>3200 K 85%</td><td class="off">off</td></tr>
+    <tr><td><b>PARTY</b></td><td><span class="sw" style="background:#e23ce0"></span>magenta 50%</td><td><span class="sw" style="background:#22c4f0"></span>cyan 50%</td><td><span class="sw" style="background:#f0d020"></span>yellow 60%</td><td><span class="sw" style="background:#e8307a"></span>pink 60%</td><td class="off">off</td></tr>
+  </tbody>
+</table></div>
+<figure>
+  <img src="img/app-presets-library.png" alt="Looks tab, Presets section: PRESHOW, DAY, NIGHT and BAR-FOCUSED, each listing its lights by name with a color swatch and value." loading="lazy">
+  <figcaption>Looks tab → Presets: rename, re-capture (Update), remove or add a light, and reorder. A name with no
+    matching light is shown in grey.</figcaption>
+</figure>
+<div class="note">Because presets match lights <b>by name</b>, they keep working if you swap a light, re-pair it or run the
+show from another laptop: just give the new light the same name.</div>
+
+<h2 id="cues">8. The cue list</h2>
+<p>The cue list runs the show with one button. Open <b>☰ Cue list</b> (<kbd>C</kbd>), then for each moment:</p>
+<ol class="steps">
+  <li>Apply the preset (or set the lights by hand).</li>
+  <li>Press <b>● Record</b>. Set the <b>Fade</b> time (seconds), and write the GO point in the <b>Notes</b> line, e.g.
+    <i>GO on "Another round?"</i>. The note appears under <b>Next</b> in the cue bar during the show.</li>
+  <li>Need a cue in between later? Select cue 2 and Record: it becomes 2.5.</li>
+</ol>
+<figure class="grid2">
+  <img src="img/app-cue-list.png" alt="Cue list with cues 1 House open, 2 Scene 1 Day, 3 Bar scene, 4 Scene 2 Night, each with a fade time and a notes line." loading="lazy">
+  <img src="img/app-presets-row.png" alt="The looks grid and, under it, the presets row: PRESHOW, DAY, NIGHT, BAR-FOCUSED and PARTY chips, each with colored dots for its lights." loading="lazy">
+  <figcaption>Left: the cue list, one cue per moment with a fade and a GO note. Right: the presets row on the Show tab.</figcaption>
+</figure>
+<p>During the show press <b>GO</b> or <kbd>Space</kbd> for the next cue and <kbd>Shift</kbd>+<kbd>Space</kbd> to go back.
+<b>Next cue in</b> makes a cue follow on by itself after a set time.</p>
+
+<h2 id="showday">9. On show day</h2>
+<ul>
+  <li><b>Check</b> (top right) confirms every light is connected and answering, one at a time.</li>
+  <li><b>Lock</b> (<kbd>L</kbd>) leaves only GO, Back and Blackout working, so a stray click can't change a light.</li>
+  <li><b>Dim UI</b> darkens the laptop screen for the booth.</li>
+  <li><b>Grand master</b> (under Blackout) trims every light at once if the room is brighter or darker than in rehearsal.</li>
+  <li><b>Blackout</b> (<kbd>B</kbd>) takes everything out; press again to restore.</li>
+  <li><b>Export a backup</b> (Settings → Backup) after the final rehearsal. The show lives in this browser only.</li>
+</ul>
+
+<h2 id="faq">10. Questions</h2>
+<h3>How many lights can I use?</h3>
+<p>Most computers hold around 7 Bluetooth connections at once. Each GVM light uses one; all amaran lights together
+use one, because they relay each other's messages over a mesh. For bigger rigs, use a second laptop for some lights.</p>
+<h3>Can I mix brands?</h3>
+<p>Yes. Looks, presets, cues, groups and the grand master work across brands. Built-in effects run on lights that have
+them and are simulated on lights that don't (fast ones like strobes are only offered where the light can keep up).</p>
+<h3>Does it need the internet?</h3>
+<p>Only to open the app the first time. After that it works offline (install it from the browser's address bar).</p>
+<h3>Which lights are supported?</h3>
+<p>GVM 800D-RGB (verified) and amaran Ace 25c (works; still being verified). More are planned; see the
+<a href="https://github.com/kyles0623/gvm-show-control#supported-lights">supported lights list</a>. Have a light that
+isn't listed? <a href="https://github.com/kyles0623/gvm-show-control/issues/new?template=light_report.yml">Send a light report</a>.</p>
+
+<p><a class="cta" href="../">Open GVM Show Control</a></p>
+</main>
+<footer><div class="in">
+  GVM Show Control is free and open source (<a href="https://github.com/kyles0623/gvm-show-control">GitHub</a>).
+  Not affiliated with or endorsed by GVM or amaran. Diagrams are illustrative; always follow your venue's safety rules
+  for stands, power and cables.
+</div></footer>
+</body>
+</html>

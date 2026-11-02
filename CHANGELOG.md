@@ -17,6 +17,11 @@ the minor version (see [CONTRIBUTING.md](CONTRIBUTING.md#versions-and-the-change
 - **Lights grouped by brand** in the top bar: GVM lights together, amaran lights together, each group led by its brand
   name (click it to control all lights of that brand, Shift-click to add them). Tab and Settings → Lights follow the
   same order. When there are more chips than fit, they get their own row under the top bar.
+- **Guide: set up a small theatre lighting system** (https://kyles0623.github.io/gvm-show-control/guide/): where to
+  place 3–6 lights around a small stage, with stage-plot diagrams, then how to name and group them in the app and build
+  looks, presets and a cue list. Linked from Help.
+- **Lights roadmap** (docs/LIGHTS-ROADMAP.md): the plan for adding Neewer, Godox, generic RGB strips, Govee, Nanlite and
+  Yongnuo lights from public documentation, and how the app will mark them as untested.
 
 ### Changed
 - **What's new** lists the changes version by version (newest open, the others folded), with New / Changed / Fixed

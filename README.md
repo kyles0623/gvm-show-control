@@ -59,6 +59,15 @@ On Windows/Linux, any static server works, e.g. `cd web && python -m http.server
 
 ![Building a custom effect on the Effects tab](docs/screenshot-effects.png)
 
+## Guide: a small theatre lighting system
+
+**[DIY theatre lighting with Bluetooth LED panels](https://kyles0623.github.io/gvm-show-control/guide/)**: where to
+place 3–6 lights around a small stage (with stage-plot diagrams), then how to name and group them in the app and build
+looks, presets and a cue list.
+
+Want your light supported? See the [lights roadmap](docs/LIGHTS-ROADMAP.md) for what's planned and how untested
+drivers are marked.
+
 ## Supported lights
 
 | | Light | Status | Works | In the device list |
