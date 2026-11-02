@@ -91,5 +91,15 @@ export function* simulatedSteps(n, p, minMs = MIN_MS) {
   for (const s of (SIMULATED[n] ?? SIMULATED[10])(p)) yield s.wait >= minMs ? s : { ...s, wait: minMs };
 }
 
+/**
+ * The fastest step each simulated effect needs to look like itself (ms). A light whose fastest clean step is slower
+ * (minStepMs, or its speed-test result) doesn't offer the effect: e.g. on the Ace 25c (500 ms) Strobe, Cop Car,
+ * Lightning, Fire and Candle would only be a blur.
+ */
+export const NEEDS_MS = {
+  1: 150, 2: 250, 3: 250, 4: 500, 5: 200, 6: 500, 7: 500, 8: 100, 9: 500, 10: 500,
+  11: 150, 12: 500, 13: 100, 14: 500, 15: 500, 16: 300, 17: 300, 18: 500, 19: 100, 20: 100,
+};
+
 /** Speed test: on/off flashes at each interval, `flashes` times each. */
 export const SPEED_TEST_MS = [500, 300, 200, 150, 100];

@@ -9,6 +9,12 @@ the minor version (see [CONTRIBUTING.md](CONTRIBUTING.md#versions-and-the-change
 
 ## [Unreleased]
 
+### Changed
+- amaran lights: built-in effects that need faster changes than the light can show are greyed out for it (Lightning,
+  Cop Car, Candle, Bad Bulb, Paparazzi, Fire, Welding, Ambulance, Fire Engine, Strobe, Strobe II). The Ace 25c glides
+  into each change, so its cleanest step is 500 ms (speed test); TV, Party, Disco, Explosion, Pulsing, Fireworks,
+  CCT Loop, Hue Loop and SOS stay. With GVM and amaran lights selected together, a fast effect runs on the GVM lights only.
+
 ## [1.18.0] - 2026-11-02
 
 ### Added

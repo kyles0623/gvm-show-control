@@ -49,13 +49,13 @@ export const DRIVERS = {
       url: 'https://amarancreators.com/pages/amaran-ace-25c',
       image: 'https://cdn.sanity.io/images/7n7ckclh/production/73e66b2ec6ee19e1e477e431463f657d1e9a2442-960x960.png?w=600',
       listName: 'no name (Chrome may show “Unknown or Unsupported Device”)',
-      works: 'On/off, brightness, white 2300–10,000 K, color; the 20 effects simulated by the app',
+      works: 'On/off, brightness, white 2300–10,000 K, color; 9 slower effects simulated by the app (fast ones like Strobe and Cop Car aren’t offered: the light glides into each change)',
       setup: 'Close the amaran app. The first time, the app asks to set the light up in its own network (undo: hold Press to Reset in the light’s Bluetooth menu).',
     }],
     // Ace 25c: 2300-10,000 K and full color (amarancreators.com product page). Commands carry kelvin/10 and hue in 1°.
     // minStepMs: the light glides into each change by itself (seen on the Ace 25c), so simulated effects step no faster
-    // than this. Starting value; the speed test (Settings → Lights) sets it from the real light.
-    caps: { cct: [2300, 10000], cctStep: 100, hsi: true, hueStep: 1, scenes: false, gm: false, oneConnection: false, minStepMs: 250 },
+    // than this. 500 ms looked cleanest on the Ace 25c (speed test, 2026-11-02); the speed test can change it.
+    caps: { cct: [2300, 10000], cctStep: 100, hsi: true, hueStep: 1, scenes: false, gm: false, oneConnection: false, minStepMs: 500 },
     filters: [{ services: [MESH_UUIDS.PROV_SERVICE] }, { services: [MESH_UUIDS.PROXY_SERVICE] }, { namePrefix: 'amaran' }],
     optionalServices: [DEVICE_INFO, MESH_UUIDS.PROV_SERVICE, MESH_UUIDS.PROXY_SERVICE],
     match: (device) => /^(amaran|aputure|slck)/i.test(device.name ?? ''),

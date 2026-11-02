@@ -63,7 +63,7 @@ On Windows/Linux, any static server works, e.g. `cd web && python -m http.server
 | | Light | Status | Works | In the device list |
 |---|---|---|---|---|
 | <img src="https://shop.gvmled.com/cdn/shop/products/gvm-800d-40w-powerful-bi-color-and-rgb-video-panel-light-kit-908428.jpg?v=1773209171&width=600" alt="GVM 800D-RGB" width="120"> | [GVM 800D-RGB (800D-II)](https://shop.gvmled.com/products/gvm-800d-rgb-led-studio-video-light) | ✅ Verified on hardware | On/off, brightness, white 3200–5600 K, color, the light's 20 built-in effects | `BT_LED` |
-| <img src="https://cdn.sanity.io/images/7n7ckclh/production/73e66b2ec6ee19e1e477e431463f657d1e9a2442-960x960.png?w=600" alt="amaran Ace 25c" width="120"> | [amaran Ace 25c](https://amarancreators.com/pages/amaran-ace-25c) | ⚠️ Untested | On/off, brightness, white 2300–10,000 K, color; the 20 effects simulated by the app | no name (may show as "Unknown or Unsupported Device") |
+| <img src="https://cdn.sanity.io/images/7n7ckclh/production/73e66b2ec6ee19e1e477e431463f657d1e9a2442-960x960.png?w=600" alt="amaran Ace 25c" width="120"> | [amaran Ace 25c](https://amarancreators.com/pages/amaran-ace-25c) | ⚠️ Untested | On/off, brightness, white 2300–10,000 K, color; 9 slower effects simulated by the app (TV, Party, Disco, Explosion, Pulsing, Fireworks, CCT Loop, Hue Loop, SOS). Fast ones (Strobe, Cop Car, …) aren't offered: the light glides into each change | no name (may show as "Unknown or Unsupported Device") |
 
 Product photos are linked from each maker's website. In the app: Settings → Lights → **Supported lights**, or Help.
 

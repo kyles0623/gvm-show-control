@@ -1,5 +1,5 @@
 import { unionCaps, snap, DRIVERS } from './drivers.js';
-import { simulatedSteps, SPEED_TEST_MS } from './simfx.js';
+import { simulatedSteps, SPEED_TEST_MS, NEEDS_MS } from './simfx.js';
 import { parseHex, toHex, shortUuid, sleep } from './ble.js';
 import { Rig } from './rig.js';
 import { Show, describeState, normState, stateAt, fmtNum } from './show.js';
@@ -52,6 +52,8 @@ const capsOf = (l) => l.conn.driver.caps;
 /** Caps for controls that act on several lights: the paired lights' widest range. */
 /** Fastest step for simulated effects on this light: the speed-test result for its kind of light, else its driver's default. */
 const minStepOf = (l) => prefs.get(`minStep.${l.conn.driver.id}`, capsOf(l).minStepMs ?? 100);
+/** Can light l show built-in effect e? Its own, or a simulation that isn't too fast for it. */
+const canRun = (l, e) => !e.builtin || capsOf(l).scenes || (NEEDS_MS[e.scene] ?? 500) >= minStepOf(l);
 const uiCaps = () => unionCaps([...new Set(rig.lights.map((l) => l.conn.driver))]);
 
 // ---------- light helpers ----------
@@ -1318,6 +1320,16 @@ function effectState(id, lights = targets()) {
  * and steps with `alt` give every other light the alternate color when params.multi = 'alternate'.
  */
 async function toggleEffect(e, { params = null, lights = targets(), fromCue = false } = {}) {
+  // Lights that can't show this effect (too fast for them) are left out.
+  const cant = lights.filter((l) => !canRun(l, e));
+  if (cant.length) {
+    rig.logLine(`EFFECT ${e.name}: too fast for ${cant.map((l) => l.label).join(', ')}, skipped`);
+    lights = lights.filter((l) => canRun(l, e));
+    if (!lights.length) {
+      if (!fromCue) toast({ level: 'warn', title: `${e.name} isn’t available on ${[...new Set(cant.map((l) => l.conn.driver.brand))].join(', ')}`, body: 'It needs faster changes than this light can show.' });
+      return;
+    }
+  }
   if (!lights.length) return;
   if (!fromCue && effectState(e.id, lights) === 'all') { stopEffectOn(lights, { restore: true }); return; }
   // Each light's "before" look: if it was running another effect, the look from before that one.
@@ -1735,6 +1747,11 @@ function renderPresets() {
   }
   for (const b of effects.children) {
     const st = effectState(b.dataset.id, sel);
+    // Too fast for every selected light: greyed out (a mixed selection runs it on the lights that can).
+    const item0 = findEffect(b.dataset.id);
+    const na = sel.length > 0 && !sel.some((l) => canRun(l, item0));
+    b.classList.toggle('na', na);
+    b.title = na ? `${item0.name}: not available on ${[...new Set(sel.map((l) => l.conn.driver.brand))].join(', ')} (needs faster changes than the light can show)` : item0.desc;
     b.classList.toggle('running', st === 'all');
     b.classList.toggle('partial', st === 'some');
     const nm = b.querySelector('.nm');
@@ -1748,7 +1765,7 @@ function renderPresets() {
     }
   }
   const on = rig.anyConnected;
-  for (const b of document.querySelectorAll('#tab-show .tile')) b.disabled = !on;
+  for (const b of document.querySelectorAll('#tab-show .tile')) b.disabled = !on || b.classList.contains('na');
   $('saveLookBtn').disabled = !on;
   $('updateLookBtn').disabled = !on || !show.looks.length;
   if (ui.lookPick && $('updateLookBtn').disabled) setLookPick(false);
@@ -2613,7 +2630,8 @@ function initSettings() {
 
   $('setAddLight').addEventListener('click', () => rig.pair());
   $('setAddGroup').addEventListener('click', () => openGroupDialog(null));
-  $('setSpeedTest').addEventListener('click', () => { $('speedNow').textContent = ''; $('speedPick').innerHTML = ''; openDialog('speedDlg'); });
+  $('setSpeedTest').addEventListener('click', () => {
+    $('speedNow').textContent = ''; $('speedPick').innerHTML = ''; openDialog('speedDlg'); });
   $('speedRun').addEventListener('click', runSpeedTest);
   $('speedDlg').addEventListener('close', () => { ui.speedTest = false; });
   $('copyBtn').addEventListener('click', openCopyMenu);

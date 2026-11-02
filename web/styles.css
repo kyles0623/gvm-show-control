@@ -316,6 +316,7 @@ li.ok .chk-body.collapsible { color: var(--muted); }
 @media (max-width: 520px) { .light-card { grid-template-columns: 1fr; } }
 .speed-now { font-weight: 600; min-height: 1.4em; }
 .speed-pick { gap: 6px; flex-wrap: wrap; }
+.tile.na { opacity: .35; }
 .board-list { display: flex; flex-direction: column; gap: 4px; max-height: 240px; overflow-y: auto; }
 .board-row { display: grid; grid-template-columns: 22px 18px minmax(0, 1fr) 28px auto auto; gap: 8px; align-items: center; padding: 3px 4px; border-radius: 6px; }
 .board-row.off { opacity: .45; }
