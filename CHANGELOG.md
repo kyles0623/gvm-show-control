@@ -9,6 +9,15 @@ the minor version (see [CONTRIBUTING.md](CONTRIBUTING.md#versions-and-the-change
 
 ## [Unreleased]
 
+### Added
+- **One Bluetooth connection for all amaran lights.** The app connects to one amaran light and reaches the others
+  through the mesh (each light is still controlled on its own, by its address), so more amaran lights no longer use up
+  the computer's Bluetooth connections. If that light goes off or out of range, the app switches to another amaran
+  light by itself. A light reached this way shows "via <light>" in its status.
+- **Lights grouped by brand** in the top bar: GVM lights together, amaran lights together, each group led by its brand
+  name (click it to control all lights of that brand, Shift-click to add them). Tab and Settings → Lights follow the
+  same order. When there are more chips than fit, they get their own row under the top bar.
+
 ### Changed
 - **What's new** lists the changes version by version (newest open, the others folded), with New / Changed / Fixed
   under each. It's built from this changelog at every commit (scripts/whatsnew.mjs, run by the commit hook). After an

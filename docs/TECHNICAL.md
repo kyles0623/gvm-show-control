@@ -198,6 +198,10 @@ Saved lights carry their driver id (`gvm` for lights saved before drivers existe
 A chosen device without a known name is identified by the services it offers (`detectDriver`, read-only).
 
 ### amaran (`amaran.js`, `mesh.js`, `telink.js`)
+**One connection for all amaran lights (mesh hub).** `MeshHub` connects to one light's Mesh Proxy service and every
+amaran light is addressed by its unicast address through it; each light's replies are routed back to that light by
+source address. If the carrying light drops, the hub reconnects through another paired amaran light (then retries
+with back-off). Setting up a new light still uses that light's own connection (PB-GATT) until it joins the network.
 Bluetooth Mesh. The app keeps its own mesh network in this browser (`gvm.mesh`: NetKey, AppKey, IV index,
 sequence number, and per light its unicast address and device key; included in backups). Pairing an amaran light
 that isn't set up asks first, then provisions it over PB-GATT (Mesh Profile 5.4: P-256, no OOB), waits for it to

@@ -198,7 +198,10 @@ function renderChips() {
   const multi = rig.lights.length > 1;
   // Build the chips only when the set of lights changes; otherwise update them in place, so a
   // double-click (rename) isn't broken by the re-render that the first click's selection causes.
-  const ids = multi ? ['all', ...rig.lights.map((l) => l.id), ...rig.groups.map((g) => g.id + ':' + g.name), 'add'].join('|') : 'add';
+  // Lights are grouped by brand (GVM, amaran, …), each group led by a brand label that selects all of them.
+  const brands = Object.values(DRIVERS).map((d) => ({ d, ls: rig.lights.filter((l) => l.conn.driver === d) })).filter((b) => b.ls.length);
+  const ordered = brands.flatMap((b) => b.ls);
+  const ids = multi ? ['all', ...brands.map((b) => `${b.d.id}:${b.ls.map((l) => l.id).join(',')}`), ...rig.groups.map((g) => g.id + ':' + g.name), 'add'].join('|') : 'add';
   if (bar.dataset.ids !== ids) {
     bar.dataset.ids = ids;
     bar.innerHTML = '';
@@ -209,7 +212,15 @@ function renderChips() {
     all.title = 'Controls act on every light (Tab cycles)';
     all.addEventListener('click', () => rig.select(null));
     bar.appendChild(all);
-    for (const l of rig.lights) {
+    for (const l of ordered) {
+      const br = brands.find((x) => x.ls[0] === l);
+      if (br && brands.length > 1) {
+        const h = document.createElement('button');
+        h.className = 'lbrand'; h.dataset.brand = br.d.id; h.textContent = br.d.brand;
+        h.title = `${br.d.brand}: click to control all ${br.ls.length} ${br.d.brand} light${br.ls.length > 1 ? 's' : ''} · Shift-click to add them`;
+        h.addEventListener('click', (e) => rig.selectIds(br.ls.map((x) => x.id), { add: e.shiftKey || e.metaKey || e.ctrlKey }));
+        bar.appendChild(h);
+      }
       const b = document.createElement('button');
       b.className = 'lchip';
       b.dataset.id = l.id;
@@ -234,11 +245,18 @@ function renderChips() {
     }
   }
   updateAddChip();
+  // Too many chips for the top bar: give them their own row instead of hiding some off to the side.
+  bar.classList.remove('row');
+  if (bar.scrollWidth > bar.clientWidth + 2) bar.classList.add('row');
   $('copyBtn').hidden = !multi;
   $('copyBtn').disabled = rig.connected.length < 2;
   if ($('settingsDlg').open) renderSettingsGroups();
   if (!multi) return;
   bar.firstChild.classList.toggle('sel', !rig.selection);
+  for (const h of bar.querySelectorAll('.lbrand')) {
+    const ids = rig.lights.filter((l) => l.conn.driver.id === h.dataset.brand).map((l) => l.id);
+    h.classList.toggle('sel', !!rig.selection && ids.length === rig.selection.size && ids.every((id) => rig.selection.has(id)));
+  }
   for (const b of bar.querySelectorAll('.gchip')) {
     const g = rig.group(b.dataset.group);
     if (!g) continue;
@@ -403,8 +421,11 @@ async function addLight() {
 }
 
 /** Tab / Shift+Tab: All → first light → second light → … → All. */
+/** Lights in brand order (GVM, then amaran, …), as the chips show them. */
+const lightsByBrand = () => Object.values(DRIVERS).flatMap((d) => rig.lights.filter((l) => l.conn.driver === d));
+
 function cycleLights(dir) {
-  const order = [null, ...rig.lights.map((l) => l.id)];
+  const order = [null, ...lightsByBrand().map((l) => l.id)];
   const cur = rig.selection && rig.selection.size === 1 ? order.indexOf([...rig.selection][0]) : 0;
   const next = order[(Math.max(0, cur) + dir + order.length) % order.length];
   rig.select(next);
@@ -2779,7 +2800,7 @@ function renderSettingsLights() {
     const p = document.createElement('p'); p.className = 'hint'; p.textContent = 'No light paired yet.';
     box.appendChild(p);
   }
-  for (const l of rig.lights) {
+  for (const l of lightsByBrand()) {
     const row = document.createElement('div');
     row.className = 'light-row';
     row.dataset.id = l.id;

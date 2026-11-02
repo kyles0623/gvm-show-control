@@ -28,10 +28,10 @@ button:disabled { cursor: default; opacity: .4; }
 
 /* ---------- top bar ---------- */
 .bar {
-  display: flex; align-items: center; gap: 16px; padding: 10px 16px;
+  display: flex; align-items: center; gap: 8px 16px; padding: 10px 16px;
   border-bottom: 1px solid var(--border); background: var(--panel);
 }
-.conn { display: flex; align-items: center; gap: 10px; min-width: 160px; flex: 1; }
+.conn { display: flex; align-items: center; gap: 10px; flex: 0 0 auto; }
 .dot { width: 12px; height: 12px; border-radius: 50%; background: var(--muted); flex: none; }
 .dot.connected { background: var(--ok); box-shadow: 0 0 8px var(--ok); }
 .dot.connecting, .dot.reconnecting { background: var(--warn); animation: pulse 1s infinite; }
@@ -301,6 +301,12 @@ li.ok .chk-body.collapsible { color: var(--muted); }
 .import-map { display: grid; grid-template-columns: auto 1fr; gap: 6px 12px; align-items: center; font-size: 14px; }
 .import-map select { max-width: 240px; }
 .gchip { border-style: dashed; }
+.lchips.row { order: 3; flex-basis: 100%; max-width: 100%; }   /* many lights: the chips get their own row */
+.bar:has(.lchips.row) { flex-wrap: wrap; }
+.lbrand { flex: none; margin-left: 6px; padding: 3px 6px; border: 0; border-left: 1px solid var(--border); border-radius: 0; background: transparent;
+  color: var(--muted); font: 700 10px/1 -apple-system, BlinkMacSystemFont, sans-serif; text-transform: uppercase; letter-spacing: .08em; }
+.lbrand:hover { color: var(--text); }
+.lbrand.sel { color: var(--accent); }
 .lights-list { display: flex; flex-direction: column; gap: 12px; margin-bottom: 10px; }
 .light-card { display: grid; grid-template-columns: 128px minmax(0, 1fr); gap: 14px; align-items: start;
   border: 1px solid var(--border); border-radius: 12px; padding: 12px; background: var(--panel-2); }

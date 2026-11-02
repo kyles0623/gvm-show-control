@@ -1,6 +1,7 @@
 // amaran (Sidus) lights over Bluetooth Mesh: the app sets the light up in its own mesh network (provisioning),
-// adds and binds an application key, then sends the light's "Telink 0x26" commands through the light's
-// Mesh Proxy service. Same interface as LightConnection (ble.js), so the rest of the app is unchanged.
+// adds and binds an application key, then sends the light's "Telink 0x26" commands. All amaran lights share ONE
+// Bluetooth connection (MeshHub): the light it's made to relays every message to the others. Each light keeps the
+// LightConnection interface (ble.js), so the rest of the app is unchanged.
 //
 // Status: UNTESTED on hardware. Mesh formats are from the Bluetooth Mesh Profile spec (mesh.js, tested against the
 // spec's sample data); the light commands are from wesbos/amaran-BLE-control (telink.js). Each step logs what it
@@ -18,7 +19,6 @@ const SRC = 0x0001;                 // this app's address in its network
 const TTL = 7;
 const STORE_KEY = 'gvm.mesh';
 const POLL_MS = 5000;
-const RETRY_DELAYS_MS = [1000, 2000, 4000, 8000, 15000, 30000];
 
 // ---------- the app's mesh network (keys, addresses, sequence number), kept in this browser ----------
 
@@ -45,7 +45,224 @@ export class MeshStore {
 }
 export const meshStore = new MeshStore();
 
-// ---------- connection ----------
+// ---------- the mesh hub: one Bluetooth connection for every amaran light ----------
+//
+// Any light in the network can relay ("proxy") messages to all the others, so the app connects to just one of them
+// and addresses each light by its own unicast address. If that light goes away, the hub switches to another one.
+
+const HUB_RETRY_MS = [1000, 2000, 4000, 8000, 15000];
+
+class MeshHub {
+  constructor() {
+    this.members = new Set();     // AmaranConnections that want to be connected
+    this.via = null;              // the member whose light carries the connection
+    this.state = 'idle';          // idle | connecting | connected
+    this.keys = null;
+    this._in = null;
+    this._queue = Promise.resolve();
+    this._reader = new M.ProxyReader();
+    this._rx = new Map();
+    this._waiters = [];
+    this._ensure = null;
+    this._retry = 0;
+    this._onDisc = () => this._lost();
+  }
+
+  get connected() { return this.state === 'connected' && !!this.via?.device?.gatt.connected; }
+  log(msg) { const m = [...this.members][0] ?? this.via; m?.logger?.(`[mesh] ${msg}`); }
+
+  async _keys() {
+    const store = meshStore.ensure();
+    this.keys = await M.networkKeys({ netKey: M.unhex(store.netKey), appKey: M.unhex(store.appKey), ivIndex: store.ivIndex });
+  }
+
+  /** Connects (once, shared by every caller) through `prefer` if it can, else any other member. */
+  ensure(prefer = null) {
+    if (this.connected) return Promise.resolve(true);
+    if (!this._ensure) this._ensure = this._connect(prefer).finally(() => { this._ensure = null; });
+    return this._ensure;
+  }
+
+  async _connect(prefer) {
+    this.state = 'connecting';
+    await this._keys();
+    const order = [prefer, ...this.members].filter((m, i, a) => m && m.device && m.node && a.indexOf(m) === i && this.members.has(m));
+    for (const m of order) {
+      try {
+        await this._open(m);
+        this._retry = 0;
+        this.state = 'connected';
+        this.log(`connected through ${m.label}: ${this.members.size} light(s) on one Bluetooth connection`);
+        for (const x of this.members) x._hubUp();
+        return true;
+      } catch (e) {
+        this.log(`can’t connect through ${m.label}: ${e.message}`);
+        try { if (m.device.gatt.connected) m.device.gatt.disconnect(); } catch {}
+      }
+    }
+    this.state = 'idle';
+    this._scheduleRetry();
+    return false;
+  }
+
+  async _open(m) {
+    const server = await Promise.race([m.device.gatt.connect(), sleep(10000).then(() => { throw new Error('connect timeout'); })]);
+    const svc = await server.getPrimaryService(MESH_UUIDS.PROXY_SERVICE);
+    this._in = await svc.getCharacteristic(MESH_UUIDS.PROXY_IN);
+    const out = await svc.getCharacteristic(MESH_UUIDS.PROXY_OUT);
+    this._reader = new M.ProxyReader();
+    out.addEventListener('characteristicvaluechanged', (ev) => {
+      const v = ev.target.value;
+      this._onNotify(new Uint8Array(v.buffer.slice(v.byteOffset, v.byteOffset + v.byteLength)));
+    });
+    await out.startNotifications();
+    if (this.via?.device && this.via !== m) this.via.device.removeEventListener('gattserverdisconnected', this._onDisc);
+    this.via = m;
+    m.device.removeEventListener('gattserverdisconnected', this._onDisc);
+    m.device.addEventListener('gattserverdisconnected', this._onDisc);
+    m.chars = [
+      { id: 'proxy-in', svc: MESH_UUIDS.PROXY_SERVICE, uuid: MESH_UUIDS.PROXY_IN, props: ['writeWithoutResponse'], ch: this._in },
+      { id: 'proxy-out', svc: MESH_UUIDS.PROXY_SERVICE, uuid: MESH_UUIDS.PROXY_OUT, props: ['notify'], ch: out },
+    ];
+    await sleep(500);
+    // Accept list: messages to this app (0x0001) are forwarded to us.
+    const set = this.waitFor((x) => x.kind === 'proxy-config', 2000);
+    await this._sendProxyConfig(M.proxyConfig.setFilterType(0x00), 'proxy filter: accept list');
+    this.log((await set) ? 'proxy filter status received' : 'no proxy filter status (continuing)');
+    await this._sendProxyConfig(M.proxyConfig.addAddresses([SRC]), 'proxy filter: add 0x0001');
+  }
+
+  /** The carrying light went away: every member waits, and the hub tries another light. */
+  _lost() {
+    if (this.state === 'idle') return;
+    const was = this.via;
+    this.state = 'idle';
+    if (was) was.chars = [];
+    this.log(`lost the connection through ${was?.label ?? '?'}${this.members.size > 1 ? ': trying another light' : ''}`);
+    for (const x of this.members) x._hubDown();
+    if (this.members.size) this.ensure([...this.members].find((x) => x !== was) ?? was);
+  }
+
+  _scheduleRetry() {
+    if (!this.members.size) return;
+    clearTimeout(this._retryTimer);
+    const delay = HUB_RETRY_MS[Math.min(this._retry++, HUB_RETRY_MS.length - 1)];
+    for (const x of this.members) x._setStatus('reconnecting', `retry in ${Math.round(delay / 1000)}s`);
+    this._retryTimer = setTimeout(() => this.ensure(), delay);
+  }
+
+  join(m) { this.members.add(m); }
+  /** A member leaves (Disconnect / Forget). The last one out closes the connection. */
+  leave(m) {
+    this.members.delete(m);
+    if (this.members.size) {
+      if (this.via === m) { this.via.device?.removeEventListener('gattserverdisconnected', this._onDisc); this.via = null; try { m.device?.gatt.disconnect(); } catch {} this.state = 'idle'; this.ensure(); }
+      return;
+    }
+    clearTimeout(this._retryTimer);
+    this.state = 'idle';
+    try { if (this.via?.device?.gatt.connected) this.via.device.gatt.disconnect(); } catch {}
+    this.via = null;
+  }
+
+  // ---------- sending ----------
+
+  _write(type, data, label, m = null) {
+    const parts = M.proxySegments(type, data, 20);
+    const ch = this._in;
+    const job = this._queue.then(async () => {
+      if (!ch) return false;
+      for (const p of parts) { await ch.writeValueWithoutResponse(p); await sleep(15); }
+      if (label) { const t = `TX ${label} (${parts.length} write${parts.length > 1 ? 's' : ''})`; if (m) m.logLine(t); else this.log(t); }
+      return true;
+    }).catch((e) => { this.log(`TX error [${label}]: ${e.name}: ${e.message}`); return false; });
+    this._queue = job;
+    return job;
+  }
+
+  async _sendProxyConfig(transport, label) {
+    const pdu = await M.encodeNetwork(this.keys, { ctl: 1, ttl: 0, seq: meshStore.nextSeq(), src: SRC, dst: 0, transport, proxy: true });
+    return this._write(M.PROXY.CONFIG, pdu, null).then((ok) => { this.log(`TX ${label}`); return ok; });
+  }
+
+  /** Access message to `dst` with the app key (akf=1) or a light's device key (akf=0, devKey). */
+  async sendAccess(dst, access, { akf = 1, devKey = null, label = '', quiet = false, from = null } = {}) {
+    const k = this.keys;
+    if (!k || !this.connected) return false;
+    const seq = meshStore.nextSeq();
+    const upper = await M.encryptAccess(akf ? k.appKey : devKey, akf, { seq, src: SRC, dst, iv: k.ivIndex, access });
+    const lowers = M.segmentAccess(upper, { akf, aid: k.aid, seq });
+    let ok = true;
+    for (let i = 0; i < lowers.length; i++) {
+      const s = i === 0 ? seq : meshStore.nextSeq();
+      const net = await M.encodeNetwork(k, { ctl: 0, ttl: TTL, seq: s, src: SRC, dst, transport: lowers[i] });
+      ok = (await this._write(M.PROXY.NETWORK, net, quiet ? null : `${label} → 0x${dst.toString(16).padStart(4, '0')}: ${M.hex(access)}`, from)) && ok;
+    }
+    return ok;
+  }
+
+  async _sendControl(dst, transport) {
+    const net = await M.encodeNetwork(this.keys, { ctl: 1, ttl: TTL, seq: meshStore.nextSeq(), src: SRC, dst, transport });
+    return this._write(M.PROXY.NETWORK, net, null);
+  }
+
+  waitFor(match, ms) {
+    return new Promise((resolve) => {
+      const w = { match, done: (v) => { clearTimeout(w.t); this._waiters = this._waiters.filter((x) => x !== w); resolve(v); } };
+      w.t = setTimeout(() => w.done(null), ms);
+      this._waiters.push(w);
+    });
+  }
+  _deliver(msg) { for (const w of [...this._waiters]) if (w.match(msg)) w.done(msg); }
+
+  // ---------- receiving: every light's replies come through here; each goes to the light it's from ----------
+
+  _memberFor(src) {
+    for (const m of this.members) { const n = m.node; if (n && src >= n.addr && src < n.addr + Math.max(1, n.elements ?? 1)) return m; }
+    return null;
+  }
+  _devKeyFor(src) {
+    for (const n of Object.values(meshStore.d?.nodes ?? {})) if (src >= n.addr && src < n.addr + Math.max(1, n.elements ?? 1)) return M.unhex(n.devKey);
+    return null;
+  }
+
+  async _onNotify(bytes) {
+    const m = this._reader.push(bytes);
+    if (!m || !this.keys) return;
+    if (m.type === M.PROXY.BEACON) {
+      const b = M.parseBeacon(m.data);
+      if (b && M.hex(b.networkId) === M.hex(this.keys.networkId) && b.ivIndex !== this.keys.ivIndex) {
+        this.log(`network beacon: IV index ${b.ivIndex}`);
+        this.keys.ivIndex = b.ivIndex; meshStore.d.ivIndex = b.ivIndex; meshStore.save();
+      }
+      return;
+    }
+    if (m.type === M.PROXY.CONFIG) {
+      const d = await M.decodeNetwork(this.keys, m.data, { proxy: true });
+      if (d) { this.log(`RX proxy filter status ${M.hex(d.transport)}`); this._deliver({ kind: 'proxy-config' }); }
+      return;
+    }
+    if (m.type !== M.PROXY.NETWORK) return;
+    const net = await M.decodeNetwork(this.keys, m.data);
+    if (!net || net.dst !== SRC) return;
+    const low = M.receiveLower(this._rx, net);
+    if (!low) return;
+    if (low.ack) await this._sendControl(net.src, M.segmentAck(low.ack));
+    if (low.kind !== 'access') return;
+    const key = low.akf ? this.keys.appKey : this._devKeyFor(net.src);
+    if (!key) return;
+    const access = await M.decryptAccess(key, low.akf, { seqAuth: low.seqAuth, src: net.src, dst: net.dst, iv: this.keys.ivIndex, upper: low.upper });
+    const who = this._memberFor(net.src);
+    if (!access) { (who ?? this).logLine?.(`RX from 0x${net.src.toString(16)}: couldn’t decrypt`); return; }
+    const a = M.parseAccess(access);
+    const msg = { kind: 'access', src: net.src, ...a };
+    this._deliver(msg);
+    who?._onAccess(msg);
+  }
+}
+export const meshHub = new MeshHub();
+
+// ---------- one amaran light (a member of the hub) ----------
 
 export class AmaranConnection extends EventTarget {
   constructor({ id, name, logger }) {
@@ -69,151 +286,108 @@ export class AmaranConnection extends EventTarget {
     this.lastStatusAt = 0;
     this.master = 1;
     this.levelBri = null;
-    this.noReply = false;
     this.confirmSetup = null;     // async (conn) => boolean: asked before the light is set up (set by the rig)
-    this._retry = 0;
-    this._queue = Promise.resolve();
-    this._rx = new Map();
-    this._reader = new M.ProxyReader();
-    this._waiters = [];
-    this._onDisc = () => this._handleDisconnect();
     this._want = { on: true, mode: 'cct', kelvin: 5600, hue: 0, sat: 100, bri: 50 };
   }
 
   logLine(msg) { this.logger?.(`[${this.label}] ${msg}`); }
   _setStatus(status, detail = '') { this.status = status; this.statusDetail = detail; this.dispatchEvent(new Event('status')); }
   _problem(code, error = null) { this.dispatchEvent(new CustomEvent('problem', { detail: { code, error } })); }
-  get connected() { return this.status === 'connected' && !!this.device?.gatt.connected; }
+  get connected() { return this.status === 'connected' && meshHub.connected; }
   get wanted() { return { ...this.light, brightness: this.levelBri ?? this.light.brightness }; }
   get node() { return meshStore.node(this.id); }
+  /** No status from this light for a while although the mesh connection is up (out of range, switched off). */
+  get noReply() { return this.connected && this.lastStatusAt > 0 && Date.now() - this.lastStatusAt > 3 * POLL_MS; }
 
   // ---------- connect ----------
 
   async connect(device, { auto = false } = {}) {
-    clearTimeout(this._retryTimer);
     this.device = device;
     this._userDisconnect = false;
-    device.removeEventListener('gattserverdisconnected', this._onDisc);
-    device.addEventListener('gattserverdisconnected', this._onDisc);
-    this._setStatus(this._retry ? 'reconnecting' : 'connecting');
+    this._setStatus('connecting');
     this.logLine(`CONNECT → ${device.name ?? '(unnamed)'} id=${device.id}`);
     try {
-      let server = await this._gatt(device);
-      let proxy = await server.getPrimaryService(MESH_UUIDS.PROXY_SERVICE).catch(() => null);
-      if (!proxy) {
-        const prov = await server.getPrimaryService(MESH_UUIDS.PROV_SERVICE).catch(() => null);
-        if (!prov) { const e = new Error('no Bluetooth Mesh service'); e.code = 'not-light'; throw e; }
-        // Not in any network yet: set it up in this app's network (asks first; it leaves the amaran app).
-        if (auto) { const e = new Error('this light needs setting up: pair it again'); e.code = 'needs-setup'; throw e; }
-        if (!(await this.confirmSetup?.(this))) { const e = new Error('setup cancelled'); e.code = 'cancelled'; throw e; }
-        await this._provision(server, prov);
-        server = await this._reconnectAfterSetup(device);
-        proxy = await server.getPrimaryService(MESH_UUIDS.PROXY_SERVICE);
-      }
-      if (!this.node) {
-        const e = new Error('this light is in another app’s mesh network (amaran app?). Hold “Press to Reset” in the light’s Bluetooth menu, then pair it again');
-        e.code = 'mesh-foreign'; throw e;
-      }
-      await this._openProxy(proxy);
+      if (!this.node) await this._setUp(device, auto);
+      meshHub.join(this);
+      if (!(await meshHub.ensure(this))) return;          // the hub retries and calls _hubUp when it's back
       if (!this.node.configured) await this._configure();
-      this._retry = 0;
-      this._setStatus('connected');
-      this._startPoll();
-      this.requestStatus();
+      this._hubUp();
     } catch (e) {
       this.logLine(`CONNECT FAILED: ${e.name ?? 'Error'}: ${e.message}`);
-      this._settingUp = false;
-      try { if (device.gatt.connected) device.gatt.disconnect(); } catch {}
-      if (['not-light', 'mesh-foreign', 'needs-setup', 'cancelled'].includes(e.code)) {
-        this._userDisconnect = true;
-        this._setStatus('disconnected', e.code === 'not-light' ? 'not a supported light' : e.message);
-        if (e.code !== 'cancelled') this._problem(e.code === 'not-light' ? 'not-light' : 'mesh', e);
-      } else if (auto || this._retry) {
-        this._scheduleReconnect();
-      } else {
-        this._setStatus('disconnected', 'connect failed');
-        this._problem('mesh', e);
-      }
+      try { if (device.gatt.connected && meshHub.via !== this) device.gatt.disconnect(); } catch {}
+      meshHub.leave(this);
+      this._userDisconnect = true;
+      this._setStatus('disconnected', e.code === 'not-light' ? 'not a supported light' : e.code === 'cancelled' ? 'setup cancelled' : e.message);
+      if (e.code !== 'cancelled') this._problem(e.code === 'not-light' ? 'not-light' : 'mesh', e);
     }
   }
 
-  async _gatt(device) {
-    return Promise.race([device.gatt.connect(), sleep(10000).then(() => { throw new Error('connect timeout'); })]);
+  /** A light that isn't in this app's network yet: set it up over its own connection (it restarts afterwards). */
+  async _setUp(device, auto) {
+    const server = await Promise.race([device.gatt.connect(), sleep(10000).then(() => { throw new Error('connect timeout'); })]);
+    const prov = await server.getPrimaryService(MESH_UUIDS.PROV_SERVICE).catch(() => null);
+    if (!prov) {
+      const proxy = await server.getPrimaryService(MESH_UUIDS.PROXY_SERVICE).catch(() => null);
+      try { device.gatt.disconnect(); } catch {}
+      const e = proxy
+        ? Object.assign(new Error('this light is in another app’s mesh network (amaran app?). Hold “Press to Reset” in the light’s Bluetooth menu, then pair it again'), { code: 'mesh-foreign' })
+        : Object.assign(new Error('no Bluetooth Mesh service'), { code: 'not-light' });
+      throw e;
+    }
+    if (auto) throw Object.assign(new Error('this light needs setting up: pair it again'), { code: 'needs-setup' });
+    if (!(await this.confirmSetup?.(this))) { try { device.gatt.disconnect(); } catch {} throw Object.assign(new Error('setup cancelled'), { code: 'cancelled' }); }
+    await this._provision(prov);
+    try { device.gatt.disconnect(); } catch {}
+    await sleep(2500);                                       // the light restarts as a member of the network
   }
 
-  _scheduleReconnect() {
-    if (this._userDisconnect || !this.device) return;
-    const delay = RETRY_DELAYS_MS[Math.min(this._retry, RETRY_DELAYS_MS.length - 1)];
-    this._retry++;
-    this._setStatus('reconnecting', `retry in ${Math.round(delay / 1000)}s`);
-    this._retryTimer = setTimeout(() => this.connect(this.device), delay);
-  }
-
-  _handleDisconnect() {
+  /** The shared connection is up: this light is reachable through it. */
+  _hubUp() {
+    if (this._userDisconnect || !this.node?.configured) return;
+    this._setStatus('connected', meshHub.via && meshHub.via !== this ? `via ${meshHub.via.label}` : '');
     clearInterval(this._poll);
-    this.ctrl = null; this.chars = [];
-    this.dispatchEvent(new Event('gatt'));
-    if (this._settingUp) return;                       // the light restarts after setup: expected
-    if (this._userDisconnect) { this.logLine('DISCONNECTED'); this._setStatus('disconnected'); return; }
-    this.logLine('CONNECTION LOST: reconnecting');
+    this._poll = setInterval(() => this.requestStatus(), POLL_MS);
+    this.requestStatus();
+  }
+  _hubDown() {
+    clearInterval(this._poll);
+    if (this._userDisconnect) return;
+    this._setStatus('reconnecting', 'mesh connection lost');
     this._problem('lost');
-    this._scheduleReconnect();
   }
 
   disconnect() {
     this._userDisconnect = true;
     clearInterval(this._poll);
-    clearTimeout(this._retryTimer);
-    this._retry = 0;
-    if (this.device?.gatt.connected) { this.logLine('DISCONNECT requested'); this.device.gatt.disconnect(); }
-    else this._setStatus('disconnected');
+    meshHub.leave(this);
+    this.logLine('DISCONNECTED');
+    this._setStatus('disconnected');
   }
-
-  // ---------- writes ----------
-
-  /** Serialized writes of one proxy PDU (split into 20-byte writes). */
-  _write(ch, type, data, label) {
-    const parts = M.proxySegments(type, data, 20);
-    const job = this._queue.then(async () => {
-      for (const p of parts) { await ch.writeValueWithoutResponse(p); await sleep(15); }
-      if (label) this.logLine(`TX ${label} (${parts.length} write${parts.length > 1 ? 's' : ''})`);
-      return true;
-    }).catch((e) => { this.logLine(`TX error [${label}]: ${e.name}: ${e.message}`); return false; });
-    this._queue = job;
-    return job;
-  }
-
-  _waitFor(match, ms) {
-    return new Promise((resolve) => {
-      const w = { match, done: (v) => { clearTimeout(w.t); this._waiters = this._waiters.filter((x) => x !== w); resolve(v); } };
-      w.t = setTimeout(() => w.done(null), ms);
-      this._waiters.push(w);
-    });
-  }
-  _deliver(msg) { for (const w of [...this._waiters]) if (w.match(msg)) w.done(msg); }
 
   // ---------- provisioning (Mesh Profile 5.4, PB-GATT) ----------
 
-  async _provision(server, svc) {
-    this._settingUp = true;
+  async _provision(svc) {
     const store = meshStore.ensure();
     const keys = await M.networkKeys({ netKey: M.unhex(store.netKey), appKey: M.unhex(store.appKey), ivIndex: store.ivIndex });
     const pin = await svc.getCharacteristic(MESH_UUIDS.PROV_IN), pout = await svc.getCharacteristic(MESH_UUIDS.PROV_OUT);
     const reader = new M.ProxyReader(), inbox = [];
-    let wake = null;
+    let wake = null, q = Promise.resolve();
     pout.addEventListener('characteristicvaluechanged', (ev) => {
       const b = new Uint8Array(ev.target.value.buffer.slice(ev.target.value.byteOffset, ev.target.value.byteOffset + ev.target.value.byteLength));
       const m = reader.push(b);
       if (m && m.type === M.PROXY.PROVISIONING) { inbox.push(m.data); wake?.(); }
     });
     await pout.startNotifications();
-    const send = (pdu, label) => this._write(pin, M.PROXY.PROVISIONING, new Uint8Array(pdu), `provisioning: ${label}`);
+    const send = (pdu, label) => {
+      const parts = M.proxySegments(M.PROXY.PROVISIONING, new Uint8Array(pdu), 20);
+      q = q.then(async () => { for (const p of parts) { await pin.writeValueWithoutResponse(p); await sleep(15); } this.logLine(`TX provisioning: ${label} (${parts.length} write${parts.length > 1 ? 's' : ''})`); });
+      return q;
+    };
     const recv = async (type, ms = 15000) => {
       const end = Date.now() + ms;
       for (;;) {
-        const i = inbox.findIndex(() => true);
-        if (i >= 0) {
-          const p = inbox.splice(i, 1)[0];
+        if (inbox.length) {
+          const p = inbox.shift();
           if (p[0] === M.PROV.FAILED) throw new Error(`the light refused setup: ${M.PROV_ERRORS[p[1]] ?? p[1]}`);
           if (p[0] === type) { this.logLine(`RX provisioning: type ${type} (${p.length - 1} bytes)`); return p.subarray(1); }
           this.logLine(`RX provisioning: unexpected type ${p[0]}`);
@@ -255,109 +429,49 @@ export class AmaranConnection extends EventTarget {
     this.logLine(`SETUP: done. The light is node 0x${addr.toString(16).padStart(4, '0')} (${caps.elements} element(s))`);
   }
 
-  /** After setup the light restarts and comes back with the Mesh Proxy service. */
-  async _reconnectAfterSetup(device) {
-    try { if (device.gatt.connected) device.gatt.disconnect(); } catch {}
-    await sleep(2000);
-    for (let i = 0; i < 10; i++) {
-      try {
-        const server = await this._gatt(device);
-        if (await server.getPrimaryService(MESH_UUIDS.PROXY_SERVICE).catch(() => null)) { this._settingUp = false; return server; }
-        device.gatt.disconnect();
-      } catch {}
-      await sleep(1500);
-    }
-    this._settingUp = false;
-    throw new Error('the light didn’t come back after setup: switch it off and on, then Connect');
-  }
+  // ---------- configuration (app key + model bindings), once after setup, through the hub ----------
 
-  // ---------- proxy ----------
-
-  async _openProxy(svc) {
-    const store = meshStore.ensure();
-    this.keys = await M.networkKeys({ netKey: M.unhex(store.netKey), appKey: M.unhex(store.appKey), ivIndex: store.ivIndex });
-    this.devKey = M.unhex(this.node.devKey);
-    this._in = await svc.getCharacteristic(MESH_UUIDS.PROXY_IN);
-    const out = await svc.getCharacteristic(MESH_UUIDS.PROXY_OUT);
-    this.chars = [
-      { id: 'proxy-in', svc: MESH_UUIDS.PROXY_SERVICE, uuid: MESH_UUIDS.PROXY_IN, props: ['writeWithoutResponse'], ch: this._in },
-      { id: 'proxy-out', svc: MESH_UUIDS.PROXY_SERVICE, uuid: MESH_UUIDS.PROXY_OUT, props: ['notify'], ch: out },
-    ];
-    this.dispatchEvent(new Event('gatt'));
-    out.addEventListener('characteristicvaluechanged', (ev) => {
-      const v = ev.target.value;
-      this._onNotify(new Uint8Array(v.buffer.slice(v.byteOffset, v.byteOffset + v.byteLength)));
-    });
-    await out.startNotifications();
-    await sleep(500);
-    // Accept list: messages to this app (0x0001) and from the light's elements are forwarded to us.
-    const set = this._waitFor((m) => m.kind === 'proxy-config', 2000);
-    await this._sendProxyConfig(M.proxyConfig.setFilterType(0x00), 'proxy filter: accept list');
-    this.logLine((await set) ? 'proxy filter status received' : 'no proxy filter status (continuing)');
-    await this._sendProxyConfig(M.proxyConfig.addAddresses([SRC]), 'proxy filter: add 0x0001');
-  }
-
-  async _sendProxyConfig(transport, label) {
-    const pdu = await M.encodeNetwork(this.keys, { ctl: 1, ttl: 0, seq: meshStore.nextSeq(), src: SRC, dst: 0, transport, proxy: true });
-    return this._write(this._in, M.PROXY.CONFIG, pdu, label);
-  }
-
-  /** Sends an access message to `dst`: app key (akf=1) or the light's device key (akf=0). */
-  async _sendAccess(dst, access, { akf = 1, label, quiet = false } = {}) {
-    const k = this.keys;
-    const seq = meshStore.nextSeq();
-    const upper = await M.encryptAccess(akf ? k.appKey : this.devKey, akf, { seq, src: SRC, dst, iv: k.ivIndex, access });
-    const lowers = M.segmentAccess(upper, { akf, aid: k.aid, seq });
-    let ok = true;
-    for (let i = 0; i < lowers.length; i++) {
-      const s = i === 0 ? seq : meshStore.nextSeq();
-      const net = await M.encodeNetwork(k, { ctl: 0, ttl: TTL, seq: s, src: SRC, dst, transport: lowers[i] });
-      ok = (await this._write(this._in, M.PROXY.NETWORK, net, quiet ? null : `${label} → 0x${dst.toString(16).padStart(4, '0')}: ${M.hex(access)}`)) && ok;
-    }
-    return ok;
-  }
-
-  async _sendControl(dst, transport) {
-    const net = await M.encodeNetwork(this.keys, { ctl: 1, ttl: TTL, seq: meshStore.nextSeq(), src: SRC, dst, transport });
-    return this._write(this._in, M.PROXY.NETWORK, net, null);
-  }
-
-  async _onNotify(bytes) {
-    const m = this._reader.push(bytes);
-    if (!m) return;
-    this.lastRxAt = Date.now();
-    if (m.type === M.PROXY.BEACON) {
-      const b = M.parseBeacon(m.data);
-      if (b && this.keys && M.hex(b.networkId) === M.hex(this.keys.networkId) && b.ivIndex !== this.keys.ivIndex) {
-        this.logLine(`network beacon: IV index ${b.ivIndex}`);
-        this.keys.ivIndex = b.ivIndex; meshStore.d.ivIndex = b.ivIndex; meshStore.save();
+  async _configure() {
+    const node = this.node, a = node.addr, devKey = M.unhex(node.devKey);
+    const ask = async (access, opcode, ms, label, tries = 1, quiet = false) => {
+      for (let i = 0; i < tries; i++) {
+        const w = meshHub.waitFor((m) => m.kind === 'access' && m.src === a && m.opcode === opcode, ms);
+        await meshHub.sendAccess(a, access, { akf: 0, devKey, label, quiet, from: this });
+        const r = await w;
+        if (r) return r;
       }
-      return;
+      return null;
+    };
+    this.logLine('SETUP: adding the app key');
+    // Tried for a while: a light that was just set up may still be restarting.
+    const st = await ask(M.cfg.appKeyAdd(meshHub.keys.appKey), M.CFG.APPKEY_STATUS, 3000, 'Config AppKey Add', 6);
+    if (!st) throw new Error('setup: the light didn’t confirm the app key');
+    this.logLine(`SETUP: app key status ${st.params[0]}`);
+    const comp = await ask(M.cfg.compositionGet(0), M.CFG.COMPOSITION_STATUS, 5000, 'Config Composition Data Get', 2);
+    let elements = [];
+    if (comp) {
+      const c = M.parseComposition(comp.params);
+      this.logLine(`SETUP: composition company 0x${c.cid.toString(16)} product 0x${c.pid.toString(16)} version 0x${c.vid.toString(16)}: ${c.elements.map((e, i) => `element ${i}: SIG ${e.sig.map((x) => x.toString(16)).join(',')} vendor ${e.vendor.map((v) => `${v.company.toString(16)}:${v.id.toString(16)}`).join(',')}`).join(' · ')}`);
+      elements = c.elements;
+      node.composition = { cid: c.cid, pid: c.pid, vid: c.vid, elements: c.elements };
+    } else this.logLine('SETUP: no composition data (continuing without model bindings)');
+    // Bind the app key to every model except Configuration Server/Client, so whichever one handles the light's
+    // commands accepts them.
+    for (let i = 0; i < elements.length; i++) {
+      for (const model of [...elements[i].sig.filter((x) => x > 0x0001), ...elements[i].vendor]) {
+        const r = await ask(M.cfg.modelAppBind(a + i, model), M.CFG.MODEL_APP_STATUS, 2500, 'Config Model App Bind', 1, true);
+        this.logLine(`SETUP: bind ${typeof model === 'number' ? model.toString(16) : `${model.company.toString(16)}:${model.id.toString(16)}`} on element ${i}: ${r ? `status ${r.params[0]}` : 'no answer'}`);
+      }
     }
-    if (!this.keys) return;
-    if (m.type === M.PROXY.CONFIG) {
-      const d = await M.decodeNetwork(this.keys, m.data, { proxy: true });
-      if (d) { this.logLine(`RX proxy filter status ${M.hex(d.transport)}`); this._deliver({ kind: 'proxy-config' }); }
-      return;
-    }
-    if (m.type !== M.PROXY.NETWORK) return;
-    const net = await M.decodeNetwork(this.keys, m.data);
-    if (!net || net.dst !== SRC) return;
-    // The mesh relays every light's replies to 0x0001 through every proxy: only this light's elements count here
-    // (otherwise one light takes on another's color, seen with two Ace 25c lights).
-    const node = this.node;
-    if (!node || net.src < node.addr || net.src >= node.addr + Math.max(1, node.elements ?? 1)) return;
-    const low = M.receiveLower(this._rx, net);
-    if (!low) return;
-    if (low.ack) await this._sendControl(net.src, M.segmentAck(low.ack));
-    if (low.kind !== 'access') return;
-    const key = low.akf ? this.keys.appKey : this.devKey;
-    const access = await M.decryptAccess(key, low.akf, { seqAuth: low.seqAuth, src: net.src, dst: net.dst, iv: this.keys.ivIndex, upper: low.upper });
-    if (!access) { this.logLine(`RX from 0x${net.src.toString(16)}: couldn’t decrypt`); return; }
-    const a = M.parseAccess(access);
-    this.logLine(`RX 0x${net.src.toString(16).padStart(4, '0')} opcode 0x${a.opcode.toString(16)}: ${M.hex(a.params)}`);
-    this._deliver({ kind: 'access', src: net.src, ...a });
-    // The light's state, if this is a status payload (checked by its checksum).
+    node.configured = true;
+    meshStore.save();
+  }
+
+  // ---------- replies from this light (routed here by the hub) ----------
+
+  _onAccess(a) {
+    this.lastRxAt = Date.now();
+    this.logLine(`RX 0x${a.src.toString(16).padStart(4, '0')} opcode 0x${a.opcode.toString(16)}: ${M.hex(a.params)}`);
     if (a.params.length >= 10) {
       const st = T.decodeStatus(a.params.subarray(a.params.length - 10));
       if (st) this._onStatus(st, a.params);
@@ -374,44 +488,7 @@ export class AmaranConnection extends EventTarget {
     if (st.mode === 'cct') this.light.cct = st.kelvin; else { this.light.hue = st.hue; this.light.saturation = st.sat; }
     Object.assign(this._want, { on: st.on, mode: st.mode, bri: this.light.brightness, ...(st.mode === 'cct' ? { kelvin: st.kelvin } : { hue: st.hue, sat: st.sat }) });
     this.dispatchEvent(new CustomEvent('light', { detail: { source: 'status' } }));
-    this._deliver({ kind: 'status' });
-  }
-
-  // ---------- configuration (app key + model bindings), once after setup ----------
-
-  async _configure() {
-    const node = this.node, a = node.addr;
-    this.logLine('SETUP: adding the app key');
-    let st = null;
-    for (let i = 0; i < 3 && !st; i++) {
-      const w = this._waitFor((m) => m.kind === 'access' && m.opcode === M.CFG.APPKEY_STATUS, 3000);
-      await this._sendAccess(a, M.cfg.appKeyAdd(this.keys.appKey), { akf: 0, label: 'Config AppKey Add' });
-      st = await w;
-    }
-    if (!st) throw new Error('setup: the light didn’t confirm the app key');
-    this.logLine(`SETUP: app key status ${st.params[0]}`);
-    const cw = this._waitFor((m) => m.kind === 'access' && m.opcode === M.CFG.COMPOSITION_STATUS, 5000);
-    await this._sendAccess(a, M.cfg.compositionGet(0), { akf: 0, label: 'Config Composition Data Get' });
-    const comp = await cw;
-    let elements = [];
-    if (comp) {
-      const c = M.parseComposition(comp.params);
-      this.logLine(`SETUP: composition company 0x${c.cid.toString(16)} product 0x${c.pid.toString(16)} version 0x${c.vid.toString(16)}: ${c.elements.map((e, i) => `element ${i}: SIG ${e.sig.map((x) => x.toString(16)).join(',')} vendor ${e.vendor.map((v) => `${v.company.toString(16)}:${v.id.toString(16)}`).join(',')}`).join(' · ')}`);
-      elements = c.elements;
-      node.composition = { cid: c.cid, pid: c.pid, vid: c.vid, elements: c.elements };
-    } else this.logLine('SETUP: no composition data (continuing without model bindings)');
-    // Bind the app key to every model except Configuration Server/Client, so whichever one handles the light's
-    // commands accepts them.
-    for (let i = 0; i < elements.length; i++) {
-      for (const model of [...elements[i].sig.filter((x) => x > 0x0001), ...elements[i].vendor]) {
-        const w = this._waitFor((m) => m.kind === 'access' && m.opcode === M.CFG.MODEL_APP_STATUS, 2500);
-        await this._sendAccess(a, M.cfg.modelAppBind(a + i, model), { akf: 0, label: 'Config Model App Bind', quiet: true });
-        const r = await w;
-        this.logLine(`SETUP: bind ${typeof model === 'number' ? model.toString(16) : `${model.company.toString(16)}:${model.id.toString(16)}`} on element ${i}: ${r ? `status ${r.params[0]}` : 'no answer'}`);
-      }
-    }
-    node.configured = true;
-    meshStore.save();
+    this._statusWaiters?.splice(0).forEach((f) => f(true));
   }
 
   // ---------- light commands ----------
@@ -433,11 +510,13 @@ export class AmaranConnection extends EventTarget {
       else if (c.t === 'mode') { w.mode = c.m === 'hsi' ? 'hsi' : 'cct'; payload = w.mode === 'hsi' ? T.hsi(w.hue, w.sat, this._intensity()) : T.cct(w.kelvin, this._intensity()); }
       else if (c.t === 'status') payload = T.statusRequest();
       else continue;
-      ok = (await this._sendAccess(this.node.addr, new Uint8Array([T.OPCODE, ...payload]), { label: `${label} [${c.t}]`, quiet })) && ok;
+      ok = (await meshHub.sendAccess(this.node.addr, new Uint8Array([T.OPCODE, ...payload]), { label: `${label} [${c.t}]`, quiet, from: this })) && ok;
     }
-    // No acknowledgment comes back for these: show what was sent.
-    Object.assign(this.light, { power: w.on, mode: w.mode, brightness: w.bri, cct: w.kelvin, hue: w.hue, saturation: w.sat });
-    this.dispatchEvent(new CustomEvent('light', { detail: { source: 'sent' } }));
+    if (cmds.some((c) => c.t !== 'status')) {
+      // No acknowledgment comes back for these: show what was sent.
+      Object.assign(this.light, { power: w.on, mode: w.mode, brightness: w.bri, cct: w.kelvin, hue: w.hue, saturation: w.sat });
+      this.dispatchEvent(new CustomEvent('light', { detail: { source: 'sent' } }));
+    }
     return ok;
   }
 
@@ -459,13 +538,12 @@ export class AmaranConnection extends EventTarget {
   }
 
   requestStatus() { return this.connected ? this.sendFrames([{ t: 'status' }], 'status request', { quiet: true }) : false; }
-  _startPoll() { clearInterval(this._poll); this._poll = setInterval(() => this.requestStatus(), POLL_MS); }
 
   /** Pre-show check: asks the light for its state; true if it answers within ms. */
   async waitAck(_param, ms = 1500) {
-    const w = this._waitFor((m) => m.kind === 'status', ms);
+    const got = new Promise((r) => { (this._statusWaiters ??= []).push(r); setTimeout(() => r(false), ms); });
     await this.requestStatus();
-    return !!(await w);
+    return got;
   }
 
   async setMaster(m) {
