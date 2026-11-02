@@ -9,7 +9,7 @@ export const FORMAT = 1;
 const APP = 'gvm-show-control';
 
 // localStorage keys in each part of the backup.
-const K = { looks: 'gvm.looks', cues: 'gvm.cues', customfx: 'gvm.customfx', lights: 'gvm.lights', groups: 'gvm.groups', board: 'gvm.board' };
+const K = { looks: 'gvm.looks', cues: 'gvm.cues', customfx: 'gvm.customfx', lights: 'gvm.lights', groups: 'gvm.groups', board: 'gvm.board', mesh: 'gvm.mesh' };
 const PREF = 'gvm.ui.';
 // Preferences that belong to this browser, not to the show.
 const LOCAL_PREFS = new Set(['setupDone', 'lastVersion', 'lightName', 'tab', 'cuePanel', 'imported', 'openedShow']);
@@ -34,6 +34,7 @@ export function buildBackup(storage, version, showName = null) {
     lights: (arr(K.lights) ?? []).map(({ id, label, name }) => ({ id, label, name })),
     groups: arr(K.groups) ?? [],
     board: parse(storage.getItem(K.board)),
+    mesh: parse(storage.getItem(K.mesh)),          // mesh network keys (amaran lights set up by this app)
     prefs,
   };
 }
@@ -53,6 +54,7 @@ export function summarize(b) {
   return {
     looks: b.looks?.length ?? 0, cues: b.cues?.length ?? 0, customEffects: b.customEffects?.length ?? 0,
     prefs: Object.keys(b.prefs).length, lights: b.lights.length, groups: b.groups.length, board: b.board && typeof b.board === 'object' ? 1 : 0,
+    mesh: b.mesh?.netKey ? Object.keys(b.mesh.nodes ?? {}).length : 0,
   };
 }
 
@@ -111,6 +113,14 @@ export function applyBackup(storage, b, { parts, mode = 'replace', map = {} }) {
   if (parts.looks && b.looks) done.looks = list(K.looks, b.looks);
   if (parts.customEffects && b.customEffects) done.customEffects = list(K.customfx, b.customEffects);
   if (parts.cues && b.cues) done.cues = list(K.cues, b.cues.map((c) => remapCue(c, map)));
+  if (parts.mesh && b.mesh?.netKey) {
+    // The whole network replaces this browser's; its lights are moved onto the lights picked in the light map.
+    const nodes = {};
+    for (const [id, n] of Object.entries(b.mesh.nodes ?? {})) { const to = id in map ? map[id] : id; if (to) nodes[to] = n; }
+    const cur = parse(storage.getItem(K.mesh));
+    storage.setItem(K.mesh, JSON.stringify({ ...b.mesh, nodes, seq: Math.max(b.mesh.seq ?? 0, cur?.seq ?? 0) + 1000 }));
+    done.mesh = Object.keys(nodes).length;
+  }
   if (parts.board && b.board && typeof b.board === 'object') { storage.setItem(K.board, JSON.stringify(b.board)); done.board = 1; }
   if (parts.groups && b.groups.length) {
     const to = (id) => (id in map ? map[id] : id);

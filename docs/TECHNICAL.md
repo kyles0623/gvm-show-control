@@ -194,7 +194,22 @@ only through `l.conn.driver.enc` and `l.conn.sendFrames`, and each light snaps v
 Looks, cues and effects store values in the widest range of all drivers (`APP_CAPS`). Controls follow the selected
 light's caps (CCT range, Color button); built-in effect tiles show only if some paired light has scenes.
 Saved lights carry their driver id (`gvm` for lights saved before drivers existed). `status` per driver:
-`verified` (checked on real hardware), `reported`, `untested`. Only `gvm` exists so far.
+`verified` (checked on real hardware), `reported`, `untested`. Drivers: `gvm` (verified), `amaran` (untested).
+A chosen device without a known name is identified by the services it offers (`detectDriver`, read-only).
+
+### amaran (`amaran.js`, `mesh.js`, `telink.js`)
+Bluetooth Mesh. The app keeps its own mesh network in this browser (`gvm.mesh`: NetKey, AppKey, IV index,
+sequence number, and per light its unicast address and device key; included in backups). Pairing an amaran light
+that isn't set up asks first, then provisions it over PB-GATT (Mesh Profile 5.4: P-256, no OOB), waits for it to
+restart with the Mesh Proxy service, sets the proxy filter (accept list: 0x0001), adds the AppKey (Config AppKey Add,
+device key), reads Composition Data page 0, and binds the AppKey to every model except Configuration Server/Client.
+Light commands: access opcode 0x26 with a 10-byte payload (`telink.js`: on/off 0x8c, brightness 0x8f, white 0x82
+with kelvin/10 and intensity, color 0x81, status request 0x0e), sent to the light's unicast address with the AppKey.
+White and color commands carry the intensity, so the connection keeps the wanted state and sends it whole. A status
+request goes out every 5 s; any reply with a valid 10-byte status payload updates the light's state. Undo on the
+light: Bluetooth menu → hold Press to Reset. `mesh.js` is tested against the Mesh Profile sample data (8.1) and
+Node's AES-CCM (`tests/mesh.test.mjs`); `telink.js` against the values documented by wesbos/amaran-BLE-control
+(`tests/telink.test.mjs`). Nothing here has been checked on a real light yet.
 
 ## Protocol
 See the header of `web/gvm-protocol.js`. Source: an Apple PacketLogger trace of the official iOS app

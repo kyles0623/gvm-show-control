@@ -2,7 +2,7 @@
 // Web Bluetooth problems. No DOM access here; app.js renders what these return.
 
 // Shown in the lower-right corner and in Settings. Bump it (and CACHE in sw.js) with every release.
-export const APP_VERSION = '1.15.0';
+export const APP_VERSION = '1.14.0';
 
 /** Where the project lives (changelog, issues). A fork served from <user>.github.io/<repo>/ links to itself. */
 export const REPO_URL = 'https://github.com/kyles0623/gvm-show-control';
@@ -143,8 +143,13 @@ export function explainProblem(code, err, env) {
         body: 'The light was found but didn’t accept the connection.',
         steps: ['Make sure the GVM phone app is closed — if the phone is connected, the light refuses others.', 'Check the light is on, set to App mode, and nearby.', 'Press Connect to try again.'],
       };
+    case 'mesh':
+      return {
+        level: 'error', title: 'Couldn’t connect to the mesh light', body: err?.message ?? 'Unknown error.',
+        steps: ['Close the amaran / Sidus app (or turn off the phone’s Bluetooth) so the light is free.', 'Check the light is on and nearby.', 'Press Connect to try again. The Debug tab log shows each step.'],
+      };
     case 'not-light':
-      return { level: 'error', title: 'That device isn’t a supported light', body: 'It doesn’t have the GVM control channel.', steps: ['Choose “BT_LED” from the list.', 'Settings → Forget this light, then pair again.'] };
+      return { level: 'error', title: 'That device isn’t a supported light', body: 'It doesn’t offer a control channel this app knows (GVM, or Bluetooth Mesh for amaran).', steps: ['Choose “BT_LED” (GVM) or the mesh light from the list.', 'Settings → Forget this light, then pair again.'] };
     case 'forgotten':
       return {
         level: 'info', title: 'Pick the light again',

@@ -6,6 +6,7 @@
 // a driver here. status: 'verified' (checked on real hardware), 'reported' (a user says it works), 'untested'.
 import { LightConnection, SERVICE } from './ble.js';
 import { GVMProtocol } from './gvm-protocol.js';
+import { AmaranConnection, AMARAN_ENC, MESH_UUIDS } from './amaran.js';
 
 const DEVICE_INFO = '0000180a-0000-1000-8000-00805f9b34fb';
 
@@ -24,9 +25,24 @@ export const DRIVERS = {
     },
     filters: [{ namePrefix: 'BT_LED' }, { services: [SERVICE] }],
     optionalServices: [DEVICE_INFO, SERVICE],
-    match: (device) => !device.name || device.name.startsWith('BT_LED'),
+    match: (device) => device.name?.startsWith('BT_LED'),
+    services: [SERVICE],                 // a light offering one of these is this driver's (detectDriver)
     create: (opts) => new LightConnection(opts),
     enc: GVMProtocol,
+  },
+  amaran: {
+    id: 'amaran',
+    brand: 'amaran',
+    models: 'Ace 25c (Bluetooth Mesh lights set up by this app)',
+    status: 'untested',
+    // Ace 25c: 2300-10,000 K and full color (amarancreators.com product page). Commands carry kelvin/10 and hue in 1°.
+    caps: { cct: [2300, 10000], cctStep: 100, hsi: true, hueStep: 1, scenes: false, gm: false, oneConnection: false },
+    filters: [{ services: [MESH_UUIDS.PROV_SERVICE] }, { services: [MESH_UUIDS.PROXY_SERVICE] }, { namePrefix: 'amaran' }],
+    optionalServices: [DEVICE_INFO, MESH_UUIDS.PROV_SERVICE, MESH_UUIDS.PROXY_SERVICE],
+    match: (device) => /^(amaran|aputure|slck)/i.test(device.name ?? ''),
+    services: [MESH_UUIDS.PROV_SERVICE, MESH_UUIDS.PROXY_SERVICE],
+    create: (opts) => new AmaranConnection(opts),
+    enc: AMARAN_ENC,
   },
 };
 
@@ -37,6 +53,24 @@ export const driverOf = (id) => DRIVERS[id] ?? DRIVERS[DEFAULT_DRIVER];
 /** The driver for a device picked in the chooser (first match; GVM if none). */
 export function driverFor(device) {
   return Object.values(DRIVERS).find((d) => d.match(device)) ?? DRIVERS[DEFAULT_DRIVER];
+}
+
+/**
+ * Works out a chosen device's driver: by name when it has a known one, else by connecting and looking at which
+ * services it offers (an unnamed device is common: the Ace 25c advertises no name). Read-only.
+ */
+export async function detectDriver(device, log = () => {}) {
+  const byName = Object.values(DRIVERS).find((d) => d.match(device));
+  if (byName) return byName;
+  try {
+    const server = await device.gatt.connect();
+    for (const d of Object.values(DRIVERS)) {
+      for (const u of d.services) {
+        if (await server.getPrimaryService(u).then(() => true, () => false)) { log(`${device.name ?? '(unnamed)'}: ${d.brand} (offers ${u.slice(4, 8)})`); return d; }
+      }
+    }
+  } catch (e) { log(`detect: ${e.name}: ${e.message}`); }
+  return DRIVERS[DEFAULT_DRIVER];
 }
 
 /** Chooser options covering every driver. */

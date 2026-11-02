@@ -2554,7 +2554,10 @@ function renderSettingsLights() {
     name.type = 'text'; name.maxLength = 24; name.value = l.label; name.placeholder = l.name; name.className = 'light-name';
     name.setAttribute('aria-label', 'Light name');
     name.addEventListener('change', () => { rig.rename(l.id, name.value); renderConn(); });
-    const st = document.createElement('span'); st.className = 'hint'; st.textContent = STATUS_TEXT[l.conn.status];
+    const d = l.conn.driver;
+    const st = document.createElement('span'); st.className = 'hint';
+    st.textContent = `${d.brand}${d.status === 'verified' ? '' : ` (${d.status})`} · ${STATUS_TEXT[l.conn.status]}`;
+    st.title = `${d.brand}: ${d.models}. ${d.status === 'verified' ? 'Checked on real hardware.' : 'Not yet checked on real hardware: some controls may not work.'}`;
     const rc = document.createElement('button'); rc.className = 'btn sm'; rc.textContent = 'Reconnect';
     rc.disabled = !env.supported || l.conn.connected;
     rc.addEventListener('click', () => rig.reconnect(l));
@@ -2621,6 +2624,17 @@ function initSettings() {
   initBackup();
   initSetup();
 }
+
+// ---------- mesh lights: asked before the app joins one to its own network ----------
+
+rig.onSetupNeeded = (conn) => new Promise((resolve) => {
+  $('meshSetupName').textContent = conn.device?.name || 'This light';
+  const f = $('meshSetupForm');
+  const done = (ok) => { f.onsubmit = null; $('meshSetupDlg').onclose = null; closeDialog($('meshSetupDlg')); resolve(ok); };
+  f.onsubmit = (e) => { e.preventDefault(); done(true); };
+  $('meshSetupDlg').onclose = () => resolve(false);
+  openDialog('meshSetupDlg');
+});
 
 // ---------- grand master ----------
 
@@ -2814,6 +2828,7 @@ async function openImport(file) {
   row('customEffects', `Effects built on the Effects tab (${n.customEffects})`, n.customEffects);
   row('prefs', `Effect settings and preferences (${n.prefs})`, n.prefs);
   row('board', 'Show-tab layout (which effects and looks, in what order)', n.board);
+  row('mesh', `Mesh network keys for amaran lights (${n.mesh}) — replaces this browser’s`, n.mesh, false);
   row('groups', `Light groups (${n.groups})`, n.groups && rig.lights.length);
   row('lightNames', `Light names (${n.lights})`, n.lights && rig.lights.length, false);
   // Light map: only needed when the backup's lights aren't the ones here.
@@ -2858,7 +2873,7 @@ function initBackup() {
   const imp = prefs.get('imported', null);
   if (imp) {
     try { localStorage.removeItem('gvm.ui.imported'); } catch {}
-    const names = { looks: 'looks', cues: 'cues', customEffects: 'effects', prefs: 'settings', lightNames: 'light names', groups: 'groups', board: 'board layout' };
+    const names = { looks: 'looks', cues: 'cues', customEffects: 'effects', prefs: 'settings', lightNames: 'light names', groups: 'groups', board: 'board layout', mesh: 'mesh lights' };
     const body = Object.entries(imp.done ?? {}).map(([k, v]) => `${v} ${names[k] ?? k}`).join(', ');
     setTimeout(() => toast({ level: 'ok', title: 'Backup imported', body }), 300);
   }

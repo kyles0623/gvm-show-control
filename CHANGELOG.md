@@ -13,6 +13,13 @@ the minor version (see [CONTRIBUTING.md](CONTRIBUTING.md#versions-and-the-change
 - **Edit show** (My show ▾ → Edit on the open show): rename the show and choose which effect tiles, App effects and
   looks its Show tab offers, and their order (All / None / Default per list). Keys Q–Y and 1–9 follow the new order.
   Each show keeps its own layout; it's in backups too. New looks and effects appear at the end unless hidden.
+- **amaran Ace 25c support (untested)**: pairing an amaran light that isn't set up asks first, then joins it to the
+  app's own Bluetooth Mesh network (kept in this browser and in backups) and controls on/off, brightness, white
+  (2300-10,000 K) and color. Built-in GVM effects are hidden for it. Not yet checked on a real light; the Debug log
+  shows every setup step. Undo on the light: Bluetooth menu → hold Press to Reset. Light commands ported from
+  wesbos/amaran-BLE-control (MIT); mesh layer written from the Bluetooth Mesh Profile spec and tested against its
+  sample data.
+- Settings → Lights shows each light's brand and whether its support is verified.
 - `tools/ble-probe.html`: a read-only page that lists what a Bluetooth light offers to the browser (services,
   characteristics, model and firmware strings), with a filter for Bluetooth Mesh lights and an optional scan. Never writes.
 

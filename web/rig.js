@@ -3,7 +3,7 @@
 // driven in parallel. Events re-dispatched with detail.light = the light object:
 //   'status' | 'light' | 'gatt' | 'problem' (detail also has code/error), plus 'lights' and 'log'.
 import { chooseDevice } from './ble.js';
-import { driverOf, driverFor, chooserOptions, DEFAULT_DRIVER } from './drivers.js';
+import { driverOf, detectDriver, chooserOptions, DEFAULT_DRIVER } from './drivers.js';
 
 const KEY = 'gvm.lights';
 const GROUPS_KEY = 'gvm.groups';
@@ -75,6 +75,7 @@ export class Rig extends EventTarget {
     const d = driverOf(driver);
     const conn = d.create({ id, name: label || name, logger: (m) => this.logLine(m) });
     conn.driver = d;                 // what the app uses to encode commands (conn.driver.enc) and gate controls (caps)
+    conn.confirmSetup = (c) => this.onSetupNeeded?.(c) ?? false;   // mesh lights: asked before joining one to the app's network
     const light = { id, name: name || 'BT_LED', label: label || name || 'BT_LED', driver: d.id, conn };
     for (const type of ['status', 'light', 'gatt', 'problem']) {
       conn.addEventListener(type, (ev) => {
@@ -182,13 +183,17 @@ export class Rig extends EventTarget {
       return null;
     }
     let light = this.get(device.id);
+    const isNew = !light;
     if (!light) {
-      const d = driverFor(device);
-      light = this._add({ id: device.id, name: device.name ?? 'BT_LED', label: this._uniqueLabel(device.name ?? 'BT_LED'), driver: d.id });
+      const d = await detectDriver(device, (m) => this.logLine(m));
+      const nm = device.name ?? (d.id === 'gvm' ? 'BT_LED' : d.brand);
+      light = this._add({ id: device.id, name: nm, label: this._uniqueLabel(nm), driver: d.id });
       this._save();
       this.dispatchEvent(new Event('lights'));
     }
     await light.conn.connect(device);
+    // A new mesh light that wasn't set up (cancelled or failed): don't keep it in the list.
+    if (isNew && light.driver === 'amaran' && light.conn.status !== 'connected' && !light.conn.node) { await this.forget(light.id); return null; }
     if (light.conn.status === 'disconnected' && light.conn.statusDetail === 'not a supported light') {
       await this.forget(light.id);   // explorer pick that isn't a light: don't keep it
     }

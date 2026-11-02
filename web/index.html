@@ -398,6 +398,27 @@
   </section>
 </dialog>
 
+<!-- Mesh light setup -->
+<dialog id="meshSetupDlg" class="dlg dlg-sm">
+  <form id="meshSetupForm" method="dialog">
+    <div class="dlg-head"><h2>Set up this light?</h2></div>
+    <section>
+      <p><b id="meshSetupName">This light</b> is a Bluetooth Mesh light (amaran) that isn't set up yet. The app can add it
+        to its own mesh network, kept in this browser, so the app can control it.</p>
+      <ul class="hint">
+        <li>While it's in this app's network, the amaran app can't control it.</li>
+        <li>To undo: on the light, open the Bluetooth menu and hold <b>Press to Reset</b>.</li>
+        <li>Support for this light is <b>untested</b>: some controls may not work yet.</li>
+        <li>Export a backup afterwards (Settings → Backup): the network keys are in it.</li>
+      </ul>
+      <div class="row dlg-actions">
+        <button type="button" class="btn" data-close>Cancel</button>
+        <button type="submit" class="btn primary">Set up</button>
+      </div>
+    </section>
+  </form>
+</dialog>
+
 <!-- Light group -->
 <dialog id="groupDlg" class="dlg dlg-sm">
   <form id="groupForm" method="dialog">

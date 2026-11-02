@@ -130,9 +130,16 @@ test('crossfade: White ↔ Color dips through dark at the midpoint', () => {
   assert.equal(stateAt(plan, 1).bri, 80);
 });
 
-test('looks and cues are rounded to what the light can show', () => {
-  assert.deepEqual(normState({ mode: 'hsi', hue: 362, sat: 101, bri: -3, cct: 9000 }), { mode: 'hsi', cct: 5600, hue: 360, sat: 100, bri: 0 });
-  assert.deepEqual(normState({ mode: 'cct', cct: 3149, power: 0 }), { mode: 'cct', cct: 3200, hue: 0, sat: 100, bri: 50, power: false });
+test('looks and cues are rounded to what any supported light can show; each light snaps on send', async () => {
+  // Stored range = every driver's widest (GVM 3200-5600 K, amaran Ace 25c 2300-10,000 K, hue in 1°).
+  assert.deepEqual(normState({ mode: 'hsi', hue: 362, sat: 101, bri: -3, cct: 12000 }), { mode: 'hsi', cct: 10000, hue: 360, sat: 100, bri: 0 });
+  assert.deepEqual(normState({ mode: 'cct', cct: 3149, power: 0 }), { mode: 'cct', cct: 3100, hue: 0, sat: 100, bri: 50, power: false });
+  const { DRIVERS, snap } = await import('../web/drivers.js');
+  assert.equal(snap(DRIVERS.gvm.caps, 'cct', 9000), 5600);
+  assert.equal(snap(DRIVERS.gvm.caps, 'cct', 3149), 3100 < 3200 ? 3200 : 3100);
+  assert.equal(snap(DRIVERS.gvm.caps, 'hue', 123), 125);
+  assert.equal(snap(DRIVERS.amaran.caps, 'hue', 123), 123);
+  assert.equal(snap(DRIVERS.amaran.caps, 'cct', 2000), 2300);
 });
 
 // ---------- custom effects and gels ----------

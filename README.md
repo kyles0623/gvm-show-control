@@ -58,6 +58,18 @@ On Windows/Linux, any static server works, e.g. `cd web && python -m http.server
 
 ![Building a custom effect on the Effects tab](docs/screenshot-effects.png)
 
+## Supported lights
+
+| Brand | Models | Status |
+|---|---|---|
+| GVM | 800-RGB (shows up as `BT_LED`) | Verified on hardware |
+| amaran | Ace 25c (Bluetooth Mesh; the app sets the light up in its own network) | **Untested**: on/off, brightness, white, color |
+
+amaran lights: pairing one that isn't set up asks first, then joins it to the app's own mesh network (kept in this
+browser and in backups). While it's there the amaran app can't control it; to undo, hold **Press to Reset** in the
+light's Bluetooth menu. The light commands come from [wesbos/amaran-BLE-control](https://github.com/wesbos/amaran-BLE-control)
+(MIT, see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)).
+
 ## Other lights
 The protocol was worked out from Bluetooth traffic between the official GVM iOS app and a GVM 800-RGB
 ([details](docs/TECHNICAL.md#protocol), [captured frames](protocol/gvm-800rgb-frames.json)).
@@ -66,7 +78,7 @@ If you have a different GVM model:
 2. If it does, the app may just work. Please open a [Light report](https://github.com/kyles0623/gvm-show-control/issues/new?template=light_report.yml) with the model and what worked.
 3. If not, a filtered capture of the official app's traffic (see [protocol/README.md](protocol/README.md)) is what's needed to add support.
 
-The app never writes to firmware-update characteristics and only sends commands seen in real traffic.
+The app never writes to firmware-update characteristics. GVM commands come from captured traffic; other brands' commands come from published specs or documented open-source projects and are marked untested until confirmed on the real light.
 
 ## Development
 No build step and no dependencies — plain HTML, CSS and ES modules in `web/`.
