@@ -22,7 +22,9 @@ the minor version (see [CONTRIBUTING.md](CONTRIBUTING.md#versions-and-the-change
   looks, presets and a cue list. Linked from Help.
 - **Lighting a small theatre for under $1,000** (https://kyles0623.github.io/gvm-show-control/guide/under-1000/): a
   shopping list for a five-light rig (3× GVM 800D-RGB, 2× amaran Ace 25c, stands, sandbags, chargers, cords, tape) with
-  links, where each light goes, power and battery notes, and smaller and bigger budgets.
+  links, where each light goes, power and battery notes, and smaller and bigger budgets. A **Cheaper (or free)** column
+  lists cheaper and household alternatives for each item (borrowed stands, water-jug weights, painter's tape…), and a
+  ≈$200 two-light option.
 - **Lights roadmap** (docs/LIGHTS-ROADMAP.md): the plan for adding Neewer, Godox, generic RGB strips, Govee, Nanlite and
   Yongnuo lights from public documentation, and how the app will mark them as untested.
 - **Untested support (β) for six more kinds of light**, built from public documentation and open-source projects:

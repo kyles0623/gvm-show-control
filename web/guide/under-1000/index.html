@@ -88,6 +88,11 @@
   .est { color: var(--muted); }
   .badge { display: inline-block; font-size: 12px; font-weight: 700; padding: 1px 8px; border-radius: 99px; border: 1px solid var(--border); color: var(--muted); }
   .badge.ok { color: #2f8a3e; border-color: #2f8a3e; }
+  table.shop { min-width: 900px; }
+  td.cheap { font-size: 14px; min-width: 230px; }
+  td.cheap b { color: var(--accent); font-weight: 700; }
+  td.cheap > span { display: block; margin: 2px 0; }
+  td.cheap .badge { display: inline-block; margin-top: 2px; }
 </style>
 </head>
 <body>
@@ -99,7 +104,8 @@
 <h1>Lighting a small theatre for under $1,000</h1>
 <p class="lede">Five color LED lights on stands, the cables and tape to run them, and a laptop with the free
 <a href="../../">GVM Show Control</a> app as your lighting desk. This is the shopping list, what each item is for, and
-where each light goes. Total: about <b>$900</b>, not counting the laptop.</p>
+where each light goes. Total: about <b>$900</b>, not counting the laptop, and about $300–500 if you borrow or reuse
+the stands, cords and chargers (see the <a href="#list">Cheaper (or free)</a> column).</p>
 
 <nav class="toc" aria-label="Contents"><b>Contents</b>
 <ol>
@@ -117,41 +123,65 @@ Prices marked <span class="est">≈</span> are typical street prices that were n
 compare a few shops before buying. Links go to the maker or a retailer. This project gets nothing from any sale.</p>
 
 <h2 id="list">1. The shopping list</h2>
-<div class="tablewrap"><table>
-<thead><tr><th>Item</th><th class="num">Qty</th><th class="num">Each</th><th class="num">Total</th><th>What it's for</th></tr></thead>
+<div class="tablewrap"><table class="shop">
+<thead><tr><th>Item</th><th class="num">Qty</th><th class="num">Each</th><th class="num">Total</th><th>What it's for</th><th>Cheaper (or free)</th></tr></thead>
 <tbody>
 <tr><td><b>GVM 800D-RGB</b> LED panel<br>
   <a href="https://shop.gvmled.com/products/gvm-800d-rgb-led-studio-video-light">GVM</a> ·
   <a href="https://hotrodcameras.com/products/gvm-800d-rgb-led-studio-light">Hot Rod Cameras</a></td>
   <td class="num">3</td><td class="num">$99</td><td class="num">$297</td>
   <td>FRONT-L, FRONT-R and BACK. Color and white (3200–5600&nbsp;K), runs on the included AC adapter all show long.
-  <span class="badge ok">Verified with the app</span></td></tr>
+  <span class="badge ok">Verified with the app</span></td>
+  <td class="cheap"><span><b>$0:</b> buy 2 instead of 3. The two fronts light the actors; the BAR light can double as a back light.</span>
+  <span>No cheaper light has been checked with the app.</span></td></tr>
 <tr><td><b>amaran Ace 25c</b> LED panel<br>
   <a href="https://amarancreators.com/pages/amaran-ace-25c">amaran</a> ·
   <a href="https://www.bhphotovideo.com/c/product/1847472-REG/amaran_mp0206000u_ace_25c_rgb_led.html">B&amp;H</a></td>
   <td class="num">2</td><td class="num">$99</td><td class="num">$198</td>
   <td>BAR (a special) and AUDIENCE (house light). Color and white (2300–10,000&nbsp;K), built-in battery, so it works where
-  there's no outlet. <span class="badge">Works with the app, still being verified</span></td></tr>
+  there's no outlet. <span class="badge">Reported working with the app</span></td>
+  <td class="cheap"><span><b>Free:</b> a table or floor lamp you already own, as a practical (BAR) or house light. You switch it by
+  hand; the app can't control it.</span><span><b>≈$15:</b> an ELK-BLEDOM RGB strip behind the bar for color.
+  <span class="badge">Untested in the app (β)</span></span></td></tr>
 <tr><td><b>Air-cushioned light stand</b>, 2.4–2.8&nbsp;m (8–9&nbsp;ft)<br>
   e.g. <a href="https://amarancreators.com/products/heavy-duty-air-cushioned-light-stand">amaran heavy-duty</a> ·
   <a href="https://reach.dog/shop/neewer/products/neewer-2-pack-air-cushioned-aluminum-light-stand-66602511">Neewer 2-pack</a></td>
   <td class="num">5</td><td class="num est">≈$40</td><td class="num est">≈$200</td>
-  <td>Gets the lights above the actors' heads. Air-cushioned stands don't drop when a clamp slips.</td></tr>
+  <td>Gets the lights above the actors' heads. Air-cushioned stands don't drop when a clamp slips.</td>
+  <td class="cheap"><span><b>Free:</b> borrow mic or music stands from the venue, a school or a church; or set a light on top of a
+  tall, sturdy bookcase or the back wall of the set, aimed down, with the cable taped.</span>
+  <span><b>Free:</b> a camera tripod you own (most panels have a 1/4"-20 thread).</span>
+  <span><b>≈$15–20:</b> a light 6.5&nbsp;ft (2&nbsp;m) stand. Lighter and lower, so weigh it down.</span></td></tr>
 <tr><td><b>Sandbag</b> (empty "saddlebag" style, fill with sand or gravel)</td>
   <td class="num">5</td><td class="num est">≈$12</td><td class="num est">≈$60</td>
-  <td>One on every stand leg, every show. Stands near an audience must not tip.</td></tr>
+  <td>One on every stand leg, every show. Stands near an audience must not tip.</td>
+  <td class="cheap"><span><b>Free:</b> a 1-gallon (4&nbsp;L) water jug, or a tote bag of rice, books or gravel hung on the stand
+  low, between the legs.</span></td></tr>
 <tr><td><b>USB-C PD charger, 45&nbsp;W or more</b>, with a 2&nbsp;m USB-C cable</td>
   <td class="num">2</td><td class="num est">≈$25</td><td class="num est">≈$50</td>
-  <td>Runs or charges the Ace 25c. It draws up to 41&nbsp;W while on, so a phone charger isn't enough.</td></tr>
+  <td>Runs or charges the Ace 25c. It draws up to 41&nbsp;W while on, so a phone charger isn't enough.</td>
+  <td class="cheap"><span><b>Free:</b> a USB-C laptop charger (45&nbsp;W or more) you already have.</span>
+  <span><b>Free:</b> skip it. Charge the Ace the day before and keep it at house-light levels: it runs much longer when dim.</span></td></tr>
 <tr><td><b>Extension cords</b> (outdoor-rated, 7.5&nbsp;m / 25&nbsp;ft) and a <b>power strip</b></td>
   <td class="num">3 + 1</td><td class="num est">≈$12</td><td class="num est">≈$50</td>
-  <td>Power to the GVM lights. Run cords along walls, never across an aisle without a cover.</td></tr>
+  <td>Power to the GVM lights. Run cords along walls, never across an aisle without a cover.</td>
+  <td class="cheap"><span><b>Free:</b> borrow from the venue or from home. Use cords meant for the load, and don't chain
+  power strips into each other.</span></td></tr>
 <tr><td><b>Gaffer tape</b>, 2" black</td>
   <td class="num">2</td><td class="num est">≈$15</td><td class="num est">≈$30</td>
-  <td>Taping cables to the floor and marking stand positions. Comes off clean, unlike duct tape.</td></tr>
+  <td>Taping cables to the floor and marking stand positions. Comes off clean, unlike duct tape.</td>
+  <td class="cheap"><span><b>≈$5:</b> painter's tape. It also comes off clean but holds less, so check it before each show.
+  Don't use duct tape on floors: it leaves residue.</span></td></tr>
 <tr class="total"><td>Total</td><td></td><td></td><td class="num">≈$885</td><td>About $115 left for spares, a 6th light or
-  NP-F batteries for the GVM lights.</td></tr>
+  NP-F batteries for the GVM lights.</td>
+  <td class="cheap"><span><b>≈$300–500:</b> the same lights with borrowed stands, cords and chargers. Or <b>≈$300</b> with three
+  lights (2 GVM + 1 Ace) and lamps you own.</span></td></tr>
 </tbody></table></div>
+
+<p class="note"><b>Free stands and shelves: safety first.</b> Whatever holds a light above people must not be able to
+tip or fall: weigh down the base, keep it out of the way of actors and the audience, and never hang a light over seats
+with tape. The lights in this list stay cool to the touch, but keep any household lamp with a hot bulb away from fabric
+and paper.</p>
 
 <p>You also need <b>a laptop with Bluetooth</b> running Google Chrome or Microsoft Edge (Windows, macOS, ChromeOS or
 Android). iPhone and iPad can't be used: Safari doesn't support Web Bluetooth.</p>
@@ -197,6 +227,7 @@ Android). iPhone and iPad can't be used: Safari doesn't support Web Bluetooth.</
 <div class="tablewrap"><table>
 <thead><tr><th>Budget</th><th>Lights</th><th>What you give up / get</th></tr></thead>
 <tbody>
+<tr><td>≈$200</td><td>2× GVM 800D-RGB (FRONT-L, FRONT-R) on borrowed stands, lamps you own as practicals</td><td>Faces lit in color, from both sides; no back light, specials or house light from the app</td></tr>
 <tr><td>≈$450</td><td>2× GVM 800D-RGB (front), 1× Ace 25c (back or special), 3 stands</td><td>No separate house light; the back light doubles as a special</td></tr>
 <tr><td>≈$900</td><td>3× GVM 800D-RGB, 2× Ace 25c (this page)</td><td>Front, back, one special and house light</td></tr>
 <tr><td>≈$1,200</td><td>Add 2× Ace 25c and 2 stands</td><td>A second special and a side light for dance or fight scenes; the amaran lights still share one connection</td></tr>
