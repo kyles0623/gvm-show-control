@@ -53,7 +53,9 @@ export const DRIVERS = {
       setup: 'Close the amaran app. The first time, the app asks to set the light up in its own network (undo: hold Press to Reset in the light’s Bluetooth menu).',
     }],
     // Ace 25c: 2300-10,000 K and full color (amarancreators.com product page). Commands carry kelvin/10 and hue in 1°.
-    caps: { cct: [2300, 10000], cctStep: 100, hsi: true, hueStep: 1, scenes: false, gm: false, oneConnection: false },
+    // minStepMs: the light glides into each change by itself (seen on the Ace 25c), so simulated effects step no faster
+    // than this. Starting value; the speed test (Settings → Lights) sets it from the real light.
+    caps: { cct: [2300, 10000], cctStep: 100, hsi: true, hueStep: 1, scenes: false, gm: false, oneConnection: false, minStepMs: 250 },
     filters: [{ services: [MESH_UUIDS.PROV_SERVICE] }, { services: [MESH_UUIDS.PROXY_SERVICE] }, { namePrefix: 'amaran' }],
     optionalServices: [DEVICE_INFO, MESH_UUIDS.PROV_SERVICE, MESH_UUIDS.PROXY_SERVICE],
     match: (device) => /^(amaran|aputure|slck)/i.test(device.name ?? ''),

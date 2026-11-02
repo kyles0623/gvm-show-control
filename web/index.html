@@ -342,6 +342,7 @@
     <div class="row">
       <button id="setAddLight" class="btn">Add another light</button>
       <button type="button" class="btn open-lights">Supported lights</button>
+      <button type="button" id="setSpeedTest" class="btn" title="How fast simulated effects can go on lights without built-in effects">Effect speed test…</button>
     </div>
     <div class="label">Groups</div>
     <div id="setGroups" class="set-groups"></div>
@@ -397,6 +398,19 @@
   </section>
   <section class="news-more">
     <a id="newsMore" target="_blank" rel="noopener">More: every change, version by version (changelog on GitHub) →</a>
+  </section>
+</dialog>
+
+<!-- Speed test -->
+<dialog id="speedDlg" class="dlg dlg-sm">
+  <div class="dlg-head"><h2>Effect speed test</h2><button class="btn sm" data-close>Close</button></div>
+  <section>
+    <p class="hint">For lights without built-in effects (amaran), the app plays the effects step by step. Some lights
+      glide into each change, so very fast steps blur. Watch the light: it flashes on and off at 500, 300, 200, 150
+      and 100 ms, six times each, with a pause between speeds.</p>
+    <p id="speedNow" class="speed-now"></p>
+    <div id="speedPick" class="row speed-pick"></div>
+    <div class="row dlg-actions"><button id="speedRun" class="btn primary">Start</button></div>
   </section>
 </dialog>
 

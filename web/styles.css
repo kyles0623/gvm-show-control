@@ -314,6 +314,8 @@ li.ok .chk-body.collapsible { color: var(--muted); }
 .badge.verified { background: #173d22; color: #9be7ad; }
 .badge.untested, .badge.reported { background: #43320f; color: #ffd27a; }
 @media (max-width: 520px) { .light-card { grid-template-columns: 1fr; } }
+.speed-now { font-weight: 600; min-height: 1.4em; }
+.speed-pick { gap: 6px; flex-wrap: wrap; }
 .board-list { display: flex; flex-direction: column; gap: 4px; max-height: 240px; overflow-y: auto; }
 .board-row { display: grid; grid-template-columns: 22px 18px minmax(0, 1fr) 28px auto auto; gap: 8px; align-items: center; padding: 3px 4px; border-radius: 6px; }
 .board-row.off { opacity: .45; }

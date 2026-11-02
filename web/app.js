@@ -1,5 +1,5 @@
 import { unionCaps, snap, DRIVERS } from './drivers.js';
-import { simulatedSteps } from './simfx.js';
+import { simulatedSteps, SPEED_TEST_MS } from './simfx.js';
 import { parseHex, toHex, shortUuid, sleep } from './ble.js';
 import { Rig } from './rig.js';
 import { Show, describeState, normState, stateAt, fmtNum } from './show.js';
@@ -50,6 +50,8 @@ const each = (arr, fn) => Promise.all(arr.map(fn));
 const E = (l) => l.conn.driver.enc;
 const capsOf = (l) => l.conn.driver.caps;
 /** Caps for controls that act on several lights: the paired lights' widest range. */
+/** Fastest step for simulated effects on this light: the speed-test result for its kind of light, else its driver's default. */
+const minStepOf = (l) => prefs.get(`minStep.${l.conn.driver.id}`, capsOf(l).minStepMs ?? 100);
 const uiCaps = () => unionCaps([...new Set(rig.lights.map((l) => l.conn.driver))]);
 
 // ---------- light helpers ----------
@@ -1354,7 +1356,7 @@ async function toggleEffect(e, { params = null, lights = targets(), fromCue = fa
   if (e.builtin) {
     const sim = lights.filter((l) => !capsOf(l).scenes);
     if (sim.length) rig.logLine(`EFFECT ${e.name}: simulated by the app on ${sim.map((l) => l.label).join(', ')}`);
-    await each(lights, (l) => (capsOf(l).scenes ? runBuiltin(run, l) : loop(simulatedSteps(e.scene, params), [l])));
+    await each(lights, (l) => (capsOf(l).scenes ? runBuiltin(run, l) : loop(simulatedSteps(e.scene, params, minStepOf(l)), [l])));
   }
   else if (e.perLight) await each(lights, (l) => loop(e.steps(params), [l]));
   else await loop(e.steps(params), lights);
@@ -2554,6 +2556,7 @@ function setDim(on) {
 /** Settings → Lights: one row per light (name, status, reconnect, forget). */
 function renderSettingsLights() {
   renderSettingsGroups();
+  $('setSpeedTest').hidden = !rig.lights.some((l) => !capsOf(l).scenes);
   const box = $('setLights');
   box.innerHTML = '';
   if (!rig.lights.length) {
@@ -2610,6 +2613,9 @@ function initSettings() {
 
   $('setAddLight').addEventListener('click', () => rig.pair());
   $('setAddGroup').addEventListener('click', () => openGroupDialog(null));
+  $('setSpeedTest').addEventListener('click', () => { $('speedNow').textContent = ''; $('speedPick').innerHTML = ''; openDialog('speedDlg'); });
+  $('speedRun').addEventListener('click', runSpeedTest);
+  $('speedDlg').addEventListener('close', () => { ui.speedTest = false; });
   $('copyBtn').addEventListener('click', openCopyMenu);
   $('setAuto').addEventListener('change', () => prefs.set('autoConnect', $('setAuto').checked));
   $('wakeChk').checked = prefs.get('wake', true);
@@ -2669,6 +2675,44 @@ function renderSupportedLights() {
       card.append(img, body);
       box.appendChild(card);
     }
+  }
+}
+
+// ----- speed test: how fast a light without built-in effects can flash cleanly -----
+
+async function runSpeedTest() {
+  const l = targets().find((x) => !capsOf(x).scenes) ?? rig.connected.find((x) => !capsOf(x).scenes);
+  if (!l) { $('speedNow').textContent = 'Connect a light without built-in effects (e.g. amaran) first.'; return; }
+  const box = $('speedPick');
+  box.innerHTML = '';
+  $('speedRun').disabled = true;
+  releaseFromEffect([l]);
+  const before = stateOf(l), on = { ...before, bri: Math.max(40, before.bri) };
+  rig.logLine(`SPEED TEST on ${l.label}`);
+  ui.speedTest = true;
+  for (const ms of SPEED_TEST_MS) {
+    if (!ui.speedTest) break;
+    $('speedNow').textContent = `${l.label}: ${ms} ms on / ${ms} ms off`;
+    for (let i = 0; i < 6 && ui.speedTest; i++) {
+      await applyStateTo(l, on); await sleep(ms);
+      await applyStateTo(l, { ...on, bri: 0 }); await sleep(ms);
+    }
+    await applyStateTo(l, on); await sleep(1200);
+  }
+  await applyStateTo(l, before);
+  ui.speedTest = false;
+  $('speedRun').disabled = false;
+  $('speedNow').textContent = 'Which was the fastest that still looked like a clean on / off?';
+  const cur = minStepOf(l);
+  for (const ms of SPEED_TEST_MS) {
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'btn' + (ms === cur ? ' primary' : ''); b.textContent = `${ms} ms`;
+    b.addEventListener('click', () => {
+      prefs.set(`minStep.${l.conn.driver.id}`, ms);
+      rig.logLine(`SPEED TEST: ${l.conn.driver.brand} effects step no faster than ${ms} ms`);
+      toast({ level: 'ok', title: `Effects on ${l.conn.driver.brand} lights: ${ms} ms steps`, body: 'Restart a running effect to use the new speed.' });
+      closeDialog($('speedDlg'));
+    });
+    box.appendChild(b);
   }
 }
 

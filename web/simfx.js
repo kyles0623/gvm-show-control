@@ -86,5 +86,10 @@ export const SIMULATED = {
   20: function* (p) { for (;;) yield* flash(color(p, p.hue ?? 0, p.sat ?? 100), Math.min(cyc(p) / 2, 150), cyc(p) - Math.min(cyc(p) / 2, 150)); },
 };
 
-/** Steps for built-in effect number n (falls back to a gentle pulse). */
-export function simulatedSteps(n, p) { return (SIMULATED[n] ?? SIMULATED[10])(p); }
+/** Steps for built-in effect number n (falls back to a gentle pulse), none shorter than minMs. */
+export function* simulatedSteps(n, p, minMs = MIN_MS) {
+  for (const s of (SIMULATED[n] ?? SIMULATED[10])(p)) yield s.wait >= minMs ? s : { ...s, wait: minMs };
+}
+
+/** Speed test: on/off flashes at each interval, `flashes` times each. */
+export const SPEED_TEST_MS = [500, 300, 200, 150, 100];

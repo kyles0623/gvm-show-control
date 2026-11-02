@@ -9,6 +9,13 @@ the minor version (see [CONTRIBUTING.md](CONTRIBUTING.md#versions-and-the-change
 
 ## [Unreleased]
 
+## [1.18.0] - 2026-11-02
+
+### Added
+- **Effect speed test** (Settings → Lights, shown when a light without built-in effects is paired): flashes the light
+  at 500, 300, 200, 150 and 100 ms; pick the fastest that still looks clean, and simulated effects on that kind of
+  light never step faster. amaran lights start at 250 ms (the Ace 25c glides into each change, so faster steps blur).
+
 ## [1.17.0] - 2026-11-02
 
 ### Added
