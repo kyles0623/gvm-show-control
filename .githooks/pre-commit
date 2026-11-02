@@ -1,11 +1,17 @@
 #!/bin/sh
 # Every commit gets a minor version bump (1.4.0 -> 1.5.0), shown in the app's lower-right corner.
 # Skipped when the commit already changes APP_VERSION (keeps a manual major/patch bump).
+# Then web/whatsnew.js (the app's "What's new", one entry per version) is rebuilt from CHANGELOG.md.
 # Skip once with:  SKIP_BUMP=1 git commit ...
 # Enable once per clone:  git config core.hooksPath .githooks
 [ -n "$SKIP_BUMP" ] && exit 0
-git diff --cached -U0 -- web/setup.js | grep -q "^+export const APP_VERSION" && exit 0
-new=$(scripts/bump-version.sh minor) || exit 1
-git add web/setup.js web/sw.js
-[ -f CHANGELOG.md ] && git add CHANGELOG.md
-echo "pre-commit: version $new"
+if ! git diff --cached -U0 -- web/setup.js | grep -q "^+export const APP_VERSION"; then
+  new=$(scripts/bump-version.sh minor) || exit 1
+  git add web/setup.js web/sw.js
+  [ -f CHANGELOG.md ] && git add CHANGELOG.md
+  echo "pre-commit: version $new"
+fi
+if [ -f CHANGELOG.md ] && command -v node >/dev/null 2>&1; then
+  node scripts/whatsnew.mjs >/dev/null && git add web/whatsnew.js
+fi
+exit 0

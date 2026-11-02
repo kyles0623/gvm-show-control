@@ -4,7 +4,7 @@ import { parseHex, toHex, shortUuid, sleep } from './ble.js';
 import { Rig } from './rig.js';
 import { Show, describeState, normState, stateAt, fmtNum } from './show.js';
 import { EFFECTS, GELS, BUILTIN, ALIASES, defaults } from './effects.js';
-import { HIGHLIGHTS } from './whatsnew.js';
+import { VERSIONS } from './whatsnew.js';
 import { CustomEffects, PREFIX as CUSTOM, stepColor, normStep, cycleSeconds, changedValues, hasRandom, RANGES, TEMPLATES } from './customfx.js';
 import { Shows } from './shows.js';
 import { buildBackup, parseBackup, summarize, defaultLightMap, applyBackup, backupFileName } from './backup.js';
@@ -916,20 +916,41 @@ function renderEffectEditor() {
 
 // ---------- links: what's new, changelog, issues ----------
 
-function openWhatsNew() {
+/** Compares versions '1.10.0' > '1.9.0'. */
+const verCmp = (a, b) => { const x = a.split('.').map(Number), y = b.split('.').map(Number); for (let i = 0; i < 3; i++) if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) - (y[i] || 0); return 0; };
+const SECTION_LABEL = { Added: 'New', Changed: 'Changed', Fixed: 'Fixed', Removed: 'Removed' };
+
+/** What's new: one block per version, newest first. since = versions newer than this are marked "new to you". */
+function openWhatsNew({ since = null } = {}) {
   const list = $('newsList');
-  if (!list.children.length) {
-    for (const h of HIGHLIGHTS) {
-      const li = document.createElement('li');
-      li.innerHTML = '<b></b><p></p><span class="hint"></span>';
-      li.querySelector('b').textContent = h.title;
-      li.querySelector('p').textContent = h.text;
-      li.querySelector('.hint').textContent = h.where;
-      list.appendChild(li);
+  list.innerHTML = '';
+  VERSIONS.forEach((v, i) => {
+    const d = document.createElement('details');
+    d.className = 'news-ver';
+    const fresh = since && verCmp(v.version, since) > 0;
+    d.open = i === 0 || fresh;
+    const sum = document.createElement('summary');
+    const vn = document.createElement('b'); vn.textContent = `v${v.version}`;
+    const dt = document.createElement('span'); dt.className = 'hint'; dt.textContent = v.date;
+    sum.append(vn, ' ', dt);
+    if (v.version === APP_VERSION) { const t = document.createElement('span'); t.className = 'news-tag'; t.textContent = 'this version'; sum.append(' ', t); }
+    else if (fresh) { const t = document.createElement('span'); t.className = 'news-tag'; t.textContent = 'new to you'; sum.append(' ', t); }
+    d.appendChild(sum);
+    for (const sec of v.sections) {
+      const h = document.createElement('div'); h.className = 'news-sec'; h.textContent = SECTION_LABEL[sec.type] ?? sec.type;
+      const ul = document.createElement('ul');
+      for (const it of sec.items) {
+        const li = document.createElement('li');
+        if (it.title) { const b = document.createElement('b'); b.textContent = it.title; li.append(b, ' '); }
+        li.append(it.text);
+        ul.appendChild(li);
+      }
+      d.append(h, ul);
     }
-  }
-  $('newsVersion').textContent = `· v${APP_VERSION}`;
-  document.querySelectorAll('dialog[open]').forEach((d) => { if (d.id !== 'newsDlg') closeDialog(d); });
+    list.appendChild(d);
+  });
+  $('newsVersion').textContent = `· you have v${APP_VERSION}`;
+  document.querySelectorAll('dialog[open]').forEach((dl) => { if (dl.id !== 'newsDlg') closeDialog(dl); });
   openDialog('newsDlg');
 }
 
@@ -964,7 +985,7 @@ function initLinks() {
   // One notice after an update (not on first run).
   const last = prefs.get('lastVersion', null);
   if (last && last !== APP_VERSION) {
-    toast({ level: 'ok', title: `Updated to v${APP_VERSION}`, body: `You were on v${last}.`, actions: [{ label: 'What’s new', fn: openWhatsNew }] });
+    toast({ level: 'ok', title: `Updated to v${APP_VERSION}`, body: `You were on v${last}.`, actions: [{ label: 'What’s new', fn: () => openWhatsNew({ since: last }) }] });
   }
   prefs.set('lastVersion', APP_VERSION);
 }

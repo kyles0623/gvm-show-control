@@ -9,6 +9,15 @@ the minor version (see [CONTRIBUTING.md](CONTRIBUTING.md#versions-and-the-change
 
 ## [Unreleased]
 
+### Changed
+- **What's new** lists the changes version by version (newest open, the others folded), with New / Changed / Fixed
+  under each. It's built from this changelog at every commit (scripts/whatsnew.mjs, run by the commit hook). After an
+  update, versions you haven't seen yet are marked "new to you".
+
+### Fixed
+- Changelog: notes from 1.12.0 to 1.21.0 were filed one version late (and two releases were both called 1.15.0);
+  they're now under the version each change actually shipped in.
+
 ## [1.21.0] - 2026-11-02
 
 ### Added
@@ -18,6 +27,14 @@ the minor version (see [CONTRIBUTING.md](CONTRIBUTING.md#versions-and-the-change
   starts the saved effects (lights with the same effect run in sync) and leaves other lights alone. Because entries
   match by name, presets keep working after re-pairing or on another computer. Edit on the Looks tab: rename, apply,
   update from the lights, remove or add a light, reorder, delete. Presets belong to the open show and are in backups.
+
+## [1.20.0] - 2026-11-02
+
+### Changed
+- Effects that are too fast for the selected light say so: the tile reads "too fast", hovering shows why right away
+  (the light fades into each change; lights with the effect built in still run it), and tapping explains it too.
+
+## [1.19.0] - 2026-11-02
 
 ### Changed
 - amaran lights: built-in effects that need faster changes than the light can show are greyed out for it (Lightning,
@@ -30,9 +47,16 @@ the minor version (see [CONTRIBUTING.md](CONTRIBUTING.md#versions-and-the-change
 ### Added
 - **Effect speed test** (Settings → Lights, shown when a light without built-in effects is paired): flashes the light
   at 500, 300, 200, 150 and 100 ms; pick the fastest that still looks clean, and simulated effects on that kind of
-  light never step faster. amaran lights start at 250 ms (the Ace 25c glides into each change, so faster steps blur).
+  light never step faster. amaran lights started at 250 ms (the Ace 25c glides into each change, so faster steps blur).
 
 ## [1.17.0] - 2026-11-02
+
+### Fixed
+- Simulated Cop Car looked pink/purple on the amaran Ace 25c: the light glides between colors by itself, so quick
+  red ↔ blue switches showed the in-between colors. Color changes in the simulated effects (Cop Car, Party, Disco,
+  Fireworks, Ambulance, Fire Engine) now happen while the light is dark, and each color is held longer.
+
+## [1.16.0] - 2026-11-02
 
 ### Added
 - **Supported lights** (Settings → Lights, Help, and the setup screen): each supported brand and model with a product
@@ -41,10 +65,9 @@ the minor version (see [CONTRIBUTING.md](CONTRIBUTING.md#versions-and-the-change
 
 ## [1.15.0] - 2026-11-02
 
+(This release's number was shown as 1.14.0 for one build that morning.)
+
 ### Added
-- **Edit show** (My show ▾ → Edit on the open show): rename the show and choose which effect tiles, App effects and
-  looks its Show tab offers, and their order (All / None / Default per list). Keys Q–Y and 1–9 follow the new order.
-  Each show keeps its own layout; it's in backups too. New looks and effects appear at the end unless hidden.
 - **amaran Ace 25c support (untested)**: pairing an amaran light that isn't set up asks first, then joins it to the
   app's own Bluetooth Mesh network (kept in this browser and in backups) and controls on/off, brightness, white
   (2300-10,000 K) and color. Built-in GVM effects are hidden for it. Not yet checked on a real light; the Debug log
@@ -56,6 +79,9 @@ the minor version (see [CONTRIBUTING.md](CONTRIBUTING.md#versions-and-the-change
   brightness, color temperature, cycle and color settings. Steps are at least 100 ms apart. A mixed selection runs the
   real effect on GVM lights and the simulation on the others. Mesh lights now get each look in one command.
 - Settings → Lights shows each light's brand and whether its support is verified.
+- **Edit show** (My show ▾ → Edit on the open show): rename the show and choose which effect tiles, App effects and
+  looks its Show tab offers, and their order (All / None / Default per list). Keys Q–Y and 1–9 follow the new order.
+  Each show keeps its own layout; it's in backups too. New looks and effects appear at the end unless hidden.
 - `tools/ble-probe.html`: a read-only page that lists what a Bluetooth light offers to the browser (services,
   characteristics, model and firmware strings), with a filter for Bluetooth Mesh lights and an optional scan. Never writes.
 
@@ -67,7 +93,7 @@ the minor version (see [CONTRIBUTING.md](CONTRIBUTING.md#versions-and-the-change
   sends every command through the light's driver, and controls follow the selected light's abilities. GVM is the only
   driver so far and works as before; saved lights are treated as GVM.
 
-## [1.15.0] - 2026-11-01
+## [1.14.0] - 2026-11-01
 
 ### Added
 - **Light groups**: name a set of lights (Settings → Lights → Groups, or double-click a group chip to edit). Each
@@ -83,13 +109,13 @@ the minor version (see [CONTRIBUTING.md](CONTRIBUTING.md#versions-and-the-change
 - **Shows**: **My show ▾** (top right) keeps several shows, each with its own looks, cues and Effects-tab effects.
   New, duplicate, rename, delete; opening one reloads the app. Lights, groups, effect settings and preferences are shared.
 
-## [1.14.0] - 2026-11-01
+## [1.13.0] - 2026-10-31
 
 ### Changed
 - Cue list: the **Auto-GO s** box is now **Next cue in s** (blank shows "GO": wait for the GO button), with a clearer
   tooltip; the countdown reads "next cue in 3.0 s".
 
-## [1.13.0] - 2026-10-31
+## [1.12.0] - 2026-10-31
 
 ### Added
 - **Backup export / import** (Settings → Backup): saves looks, cues, Effects-tab effects, effect settings and

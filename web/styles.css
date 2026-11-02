@@ -668,10 +668,14 @@ body.popout { overflow: hidden; height: 100vh; }
 @media (max-width: 1100px) { .effects-card > .row-between > .hint { display: none; } }
 
 /* What's new */
-.news-list { margin: 0; padding-left: 20px; display: grid; gap: 12px; }
-.news-list li b { font-size: 14px; }
-.news-list li p { margin: 2px 0 3px; color: var(--text); font-size: 13px; line-height: 1.4; }
-.news-list li .hint { font-size: 12px; }
+.news-list { display: flex; flex-direction: column; gap: 8px; }
+.news-ver { border: 1px solid var(--border); border-radius: 10px; padding: 8px 12px; margin: 0; }
+.news-ver summary { font-size: 15px; }
+.news-ver[open] summary { margin-bottom: 4px; }
+.news-tag { font-size: 11px; font-weight: 700; color: #111; background: var(--accent); border-radius: 999px; padding: 1px 7px; vertical-align: 1px; }
+.news-sec { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 8px 0 2px; }
+.news-ver ul { margin: 0; padding-left: 18px; display: grid; gap: 5px; }
+.news-ver li { font-size: 13px; line-height: 1.45; }
 .news-more a { color: var(--accent); }
 /* Taller effect tiles: long names wrap to a second line instead of being cut off. */
 .effects-card #effects .tile .nm { white-space: nowrap; line-height: 1.15; font-size: 12px; letter-spacing: -0.01em; }

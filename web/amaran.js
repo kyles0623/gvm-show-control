@@ -343,6 +343,10 @@ export class AmaranConnection extends EventTarget {
     if (m.type !== M.PROXY.NETWORK) return;
     const net = await M.decodeNetwork(this.keys, m.data);
     if (!net || net.dst !== SRC) return;
+    // The mesh relays every light's replies to 0x0001 through every proxy: only this light's elements count here
+    // (otherwise one light takes on another's color, seen with two Ace 25c lights).
+    const node = this.node;
+    if (!node || net.src < node.addr || net.src >= node.addr + Math.max(1, node.elements ?? 1)) return;
     const low = M.receiveLower(this._rx, net);
     if (!low) return;
     if (low.ack) await this._sendControl(net.src, M.segmentAck(low.ack));
