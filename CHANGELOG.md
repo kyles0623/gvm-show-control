@@ -10,6 +10,23 @@ the minor version (see [CONTRIBUTING.md](CONTRIBUTING.md#versions-and-the-change
 ## [Unreleased]
 
 ### Added
+- **Edit show** (My show ▾ → Edit on the open show): rename the show and choose which effect tiles, App effects and
+  looks its Show tab offers, and their order (All / None / Default per list). Keys Q–Y and 1–9 follow the new order.
+  Each show keeps its own layout; it's in backups too. New looks and effects appear at the end unless hidden.
+- `tools/ble-probe.html`: a read-only page that lists what a Bluetooth light offers to the browser (services,
+  characteristics, model and firmware strings), with a filter for Bluetooth Mesh lights and an optional scan. Never writes.
+
+### Changed
+- **Copy to…** opens a box: tick the lights (or All / a group) and what to copy: color, brightness, on/off.
+  The choice is remembered.
+- **Light drivers** (groundwork for other brands): each kind of light is now a driver (`web/drivers.js`) that says how
+  to find it, what it can do (color temperature range, color, built-in effects) and how to encode commands. The app
+  sends every command through the light's driver, and controls follow the selected light's abilities. GVM is the only
+  driver so far and works as before; saved lights are treated as GVM.
+
+## [1.15.0] - 2026-11-01
+
+### Added
 - **Light groups**: name a set of lights (Settings → Lights → Groups, or double-click a group chip to edit). Each
   group gets a chip at the top; click it to control those lights, Shift-click to add them to the selection. Groups are
   in backups (mapped onto your lights on import).

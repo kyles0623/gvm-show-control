@@ -4,6 +4,7 @@
 //             effects: null | [{id, params, lightIds}]   (several effects on different lights),
 //             lights: { [lightId]: {power, mode, cct, hue, sat, bri} } }
 import { LOOKS as DEFAULT_LOOKS } from './effects.js';
+import { APP_CAPS } from './drivers.js';
 
 const LOOKS_KEY = 'gvm.looks';
 const CUES_KEY = 'gvm.cues';
@@ -15,8 +16,10 @@ export const uid = () => Math.random().toString(36).slice(2, 10);
 /** Rounds a state to what the light can show. */
 export function normState(s) {
   const out = { mode: s.mode === 'hsi' ? 'hsi' : 'cct' };
-  out.cct = Math.min(5600, Math.max(3200, Math.round((s.cct ?? 5600) / 100) * 100));
-  out.hue = Math.min(360, Math.max(0, Math.round((s.hue ?? 0) / 5) * 5));
+  // Stored values cover every supported light; each light snaps them to its own range when they're sent.
+  const [lo, hi] = APP_CAPS.cct, cs = APP_CAPS.cctStep, hs = APP_CAPS.hueStep;
+  out.cct = Math.min(hi, Math.max(lo, Math.round((s.cct ?? 5600) / cs) * cs));
+  out.hue = Math.min(360, Math.max(0, Math.round((s.hue ?? 0) / hs) * hs));
   out.sat = Math.min(100, Math.max(0, Math.round(s.sat ?? 100)));
   out.bri = Math.min(100, Math.max(0, Math.round(s.bri ?? 50)));
   if (s.power != null) out.power = !!s.power;

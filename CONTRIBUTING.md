@@ -16,6 +16,11 @@ Or open an issue directly and pick a template. The most useful things to include
 If you have a different GVM model, open a **Light report** issue: whether it shows up as `BT_LED`, whether it
 connects, and which controls work. A filtered capture of the official app (only the light's frames) helps add support.
 
+## Other brands
+Support for another brand is a driver in `web/drivers.js` (see docs/TECHNICAL.md, Light drivers). Every command byte
+must come from a capture of the official app or be confirmed on the real light; a new driver starts as `untested`
+and becomes `verified` only after it's checked on hardware. Never write to firmware-update (OTA/DFU) characteristics.
+
 ## Development
 The app is plain HTML/CSS/JavaScript modules in `web/`; there is no build step.
 ```

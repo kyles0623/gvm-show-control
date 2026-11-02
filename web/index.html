@@ -416,6 +416,43 @@
   </form>
 </dialog>
 
+<!-- Edit show: name + which effects and looks the Show tab offers -->
+<dialog id="editShowDlg" class="dlg">
+  <form id="editShowForm" method="dialog">
+    <div class="dlg-head"><h2>Edit show</h2>
+      <span class="row"><button type="button" class="btn sm" data-close>Cancel</button><button type="submit" class="btn sm primary">Save</button></span></div>
+    <section>
+      <label class="field">Show name<input id="editShowName" type="text" maxlength="40" autocomplete="off" required></label>
+      <p class="hint">Tick what this show's Show tab offers and put it in order with ↑ ↓. The first six effect tiles get keys
+        Q–Y and the first nine looks get keys 1–9 (the board shows up to nine looks). New looks and effects appear at the end.</p>
+    </section>
+    <section><div class="row-between"><h3>Effect tiles (on the light)</h3><span class="row board-btns" data-part="tiles"></span></div><div class="board-list" data-part="tiles"></div></section>
+    <section><div class="row-between"><h3>App effects row</h3><span class="row board-btns" data-part="chips"></span></div><div class="board-list" data-part="chips"></div></section>
+    <section><div class="row-between"><h3>Looks</h3><span class="row board-btns" data-part="looks"></span></div><div class="board-list" data-part="looks"></div></section>
+  </form>
+</dialog>
+
+<!-- Copy one light to others -->
+<dialog id="copyDlg" class="dlg dlg-sm">
+  <form id="copyForm" method="dialog">
+    <div class="dlg-head"><h2 id="copyTitle">Copy</h2></div>
+    <section>
+      <div class="label">To</div>
+      <div id="copyTargets"></div>
+      <div id="copyGroups" class="row copy-groups"></div>
+      <div class="label">What</div>
+      <label class="switch"><input type="checkbox" data-prop="color"> Color (white/color mode, temperature, hue, saturation)</label>
+      <label class="switch"><input type="checkbox" data-prop="bri"> Brightness</label>
+      <label class="switch"><input type="checkbox" data-prop="power"> On / off</label>
+      <p class="hint">Uses the Fade time. A light that's off ignores color and brightness until it's turned on.</p>
+      <div class="row dlg-actions">
+        <button type="button" class="btn" data-close>Cancel</button>
+        <button type="submit" id="copyGo" class="btn primary">Copy</button>
+      </div>
+    </section>
+  </form>
+</dialog>
+
 <!-- Shows -->
 <dialog id="showsDlg" class="dlg">
   <div class="dlg-head"><h2>Shows</h2><button class="btn sm" data-close>Close</button></div>

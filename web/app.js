@@ -1,4 +1,4 @@
-import { GVMProtocol as P } from './gvm-protocol.js';
+import { unionCaps, snap } from './drivers.js';
 import { parseHex, toHex, shortUuid, sleep } from './ble.js';
 import { Rig } from './rig.js';
 import { Show, describeState, normState, stateAt, fmtNum } from './show.js';
@@ -45,6 +45,11 @@ const prefs = {
 };
 const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
 const each = (arr, fn) => Promise.all(arr.map(fn));
+/** A light's command encoder and capabilities (its driver, drivers.js). */
+const E = (l) => l.conn.driver.enc;
+const capsOf = (l) => l.conn.driver.caps;
+/** Caps for controls that act on several lights: the paired lights' widest range. */
+const uiCaps = () => unionCaps([...new Set(rig.lights.map((l) => l.conn.driver))]);
 
 // ---------- light helpers ----------
 
@@ -294,60 +299,77 @@ function renderSettingsGroups() {
 
 // ----- copy one light's look to others -----
 
-/** Small pop-up menu under `anchor`: items [{label, fn, disabled, sep}]. */
-function openMenu(anchor, items) {
-  closeMenu();
-  const m = document.createElement('div');
-  m.id = 'popMenu'; m.className = 'pop-menu'; m.setAttribute('role', 'menu');
-  for (const it of items) {
-    if (it.head) { const h = document.createElement('div'); h.className = 'pop-head'; h.textContent = it.head; m.appendChild(h); continue; }
-    const b = document.createElement('button');
-    b.className = 'pop-item'; b.textContent = it.label; b.disabled = !!it.disabled; b.setAttribute('role', 'menuitem');
-    b.addEventListener('click', () => { closeMenu(); it.fn(); });
-    m.appendChild(b);
-  }
-  document.body.appendChild(m);
-  const r = anchor.getBoundingClientRect();
-  m.style.left = `${clamp(r.left, 8, innerWidth - m.offsetWidth - 8)}px`;
-  m.style.top = `${r.bottom + 6}px`;
-  const outside = (ev) => { if (!m.contains(ev.target) && ev.target !== anchor) closeMenu(); };
-  const esc = (ev) => { if (ev.key === 'Escape') { ev.preventDefault(); ev.stopImmediatePropagation(); closeMenu(); } };
-  document.addEventListener('pointerdown', outside, true);
-  window.addEventListener('keydown', esc, true);
-  m._cleanup = () => { document.removeEventListener('pointerdown', outside, true); window.removeEventListener('keydown', esc, true); };
-}
-function closeMenu() { const m = $('popMenu'); if (m) { m._cleanup?.(); m.remove(); } }
 
-function openCopyMenu(anchor) {
-  if ($('popMenu')) { closeMenu(); return; }
+/** Copy to…: pick the lights and which parts (color, brightness, on/off) to copy from the selected light. */
+function openCopyMenu() {
   const src = primary();
   if (!src?.conn.connected) return;
   const others = rig.connected.filter((l) => l !== src);
-  const items = [{ head: `Copy ${src.label} (${describeState({ ...stateOf(src), power: src.conn.light.power })}) to` }];
-  for (const l of others) items.push({ label: l.label, fn: () => copyLightTo(src, [l]) });
-  for (const g of rig.groups) {
-    const ls = rig.groupLights(g).filter((l) => l !== src && l.conn.connected);
-    if (ls.length) items.push({ label: `Group: ${g.name}`, fn: () => copyLightTo(src, ls) });
+  $('copyTitle').textContent = `Copy ${src.label} (${describeState({ ...stateOf(src), power: src.conn.light.power })})`;
+  const box = $('copyTargets');
+  box.innerHTML = '';
+  for (const l of others) {
+    const lab = document.createElement('label'); lab.className = 'switch';
+    const c = document.createElement('input'); c.type = 'checkbox'; c.value = l.id; c.checked = others.length === 1;
+    lab.append(c, ' ', l.label);
+    box.appendChild(lab);
   }
-  if (others.length > 1) items.push({ label: 'All other lights', fn: () => copyLightTo(src, others) });
-  openMenu(anchor, items);
+  // Group / All buttons tick their lights.
+  const gb = $('copyGroups');
+  gb.innerHTML = '';
+  const tick = (ids) => { for (const c of box.querySelectorAll('input')) c.checked = ids.includes(c.value); syncCopyGo(); };
+  const mkb = (txt, ids) => { const b = document.createElement('button'); b.type = 'button'; b.className = 'btn sm'; b.textContent = txt; b.addEventListener('click', () => tick(ids)); gb.appendChild(b); };
+  if (others.length > 1) mkb('All', others.map((l) => l.id));
+  for (const g of rig.groups) {
+    const ids = rig.groupLights(g).filter((l) => l !== src && l.conn.connected).map((l) => l.id);
+    if (ids.length) mkb(g.name, ids);
+  }
+  gb.hidden = !gb.children.length;
+  const props = prefs.get('copyProps', { color: true, bri: true, power: true });
+  for (const c of $('copyForm').querySelectorAll('input[data-prop]')) c.checked = !!props[c.dataset.prop];
+  $('copyForm').onchange = syncCopyGo;
+  $('copyForm').onsubmit = (e) => {
+    e.preventDefault();
+    const lights = [...box.querySelectorAll('input:checked')].map((c) => rig.get(c.value)).filter(Boolean);
+    const what = {};
+    for (const c of $('copyForm').querySelectorAll('input[data-prop]')) what[c.dataset.prop] = c.checked;
+    if (!lights.length || !Object.values(what).some(Boolean)) return;
+    prefs.set('copyProps', what);
+    closeDialog($('copyDlg'));
+    copyLightTo(src, lights, what);
+  };
+  syncCopyGo();
+  openDialog('copyDlg');
+}
+function syncCopyGo() {
+  const f = $('copyForm');
+  $('copyGo').disabled = !f.querySelector('#copyTargets input:checked') || !f.querySelector('input[data-prop]:checked');
 }
 
-/** Gives `lights` the source light's color, brightness and power (fades with the Fade time). */
-async function copyLightTo(src, lights, { fadeMs = ui.fadeMs } = {}) {
+/** Gives `lights` the parts of the source light picked in `what` ({color, bri, power}), with the Fade time. */
+async function copyLightTo(src, lights, what = { color: true, bri: true, power: true }, { fadeMs = ui.fadeMs } = {}) {
   const st = stateOf(src);
   const on = src.conn.light.power !== false;
-  releaseFromEffect(lights);
-  clearFollow();
-  clearGel(lights);
-  for (const l of lights) { l.look = src.look ?? null; if (src.gel) { l.gel = src.gel; l.preGel = src.preGel; } }
+  const to = {};
+  if (what.color) Object.assign(to, { mode: st.mode, cct: st.cct, hue: st.hue, sat: st.sat });
+  if (what.bri) to.bri = st.bri;
+  if (what.color || what.bri) {
+    releaseFromEffect(lights);
+    clearFollow();
+    for (const l of lights) l.look = null;
+  }
+  if (what.color) {
+    clearGel(lights);
+    for (const l of lights) if (src.gel) { l.gel = src.gel; l.preGel = src.preGel; }
+  }
   renderPresets(); renderGel();
-  rig.logLine(`COPY ${src.label} → ${lights.map((l) => l.label).join(', ')}`);
-  if (on) await each(lights.filter((l) => l.conn.light.power === false), (l) => l.conn.sendFrames(P.power(true), 'copy: power on'));
-  await crossfade(lights.map((l) => ({ light: l, to: st })), fadeMs, { label: `COPY ${src.label}` });
-  if (!on) await each(lights, (l) => l.conn.sendFrames(P.power(false), 'copy: power off'));
+  const parts = [what.color && 'color', what.bri && 'brightness', what.power && 'on/off'].filter(Boolean).join(' + ');
+  rig.logLine(`COPY ${src.label} (${parts}) → ${lights.map((l) => l.label).join(', ')}`);
+  if (what.power && on) await each(lights.filter((l) => l.conn.light.power === false), (l) => l.conn.sendFrames(E(l).power(true), 'copy: power on'));
+  if (Object.keys(to).length) await crossfade(lights.map((l) => ({ light: l, to })), fadeMs, { label: `COPY ${src.label}` });
+  if (what.power && !on) await each(lights, (l) => l.conn.sendFrames(E(l).power(false), 'copy: power off'));
   syncFromLight();
-  toast({ level: 'ok', title: `Copied ${src.label}`, body: `→ ${lights.map((l) => l.label).join(', ')}` });
+  toast({ level: 'ok', title: `Copied ${src.label}: ${parts}`, body: `→ ${lights.map((l) => l.label).join(', ')}` });
 }
 
 /** "+ Add light" at the end of the chips: opens the Bluetooth chooser to pair one more light. */
@@ -420,12 +442,27 @@ function renderLight() {
   renderPreview();
 }
 
+/** Controls follow what the primary light can do (its driver's caps). */
+function applyCaps(p) {
+  const c = p ? capsOf(p) : uiCaps();
+  const cct = $('cct');
+  if (+cct.min !== c.cct[0] || +cct.max !== c.cct[1] || +cct.step !== c.cctStep) Object.assign(cct, { min: c.cct[0], max: c.cct[1], step: c.cctStep });
+  if (+$('hue').step !== c.hueStep) $('hue').step = c.hueStep;
+  const hsiBtn = document.querySelector('#modeSeg [data-mode="hsi"]');
+  if (hsiBtn) { hsiBtn.hidden = !c.hsi; }
+  // Built-in effect tiles only when some paired light has them.
+  const sc = uiCaps().scenes;
+  const card = $('effects')?.closest('.effects-card');
+  if (card) card.classList.toggle('no-scenes', !sc);
+}
+
 /** Sliders follow the primary light (first selected). */
 function syncFromLight(ev) {
   const p = primary();
   if (ev?.detail?.light && p && ev.detail.light !== p) { renderChipsSoon(); renderLight(); return; }
   const L = PL();
   if (L.brightness != null && !ui.fading && ui.dragging !== 'bri') $('bri').value = L.brightness;
+  applyCaps(p);
   if (L.cct != null && ui.dragging !== 'cct') $('cct').value = L.cct;
   if (L.hue != null && ui.dragging !== 'hue') $('hue').value = L.hue;
   if (L.saturation != null && ui.dragging !== 'sat') $('sat').value = L.saturation;
@@ -451,24 +488,24 @@ setInterval(() => {
 // ---------- sending ----------
 
 const FIELD = { bri: 'brightness', cct: 'cct', hue: 'hue', sat: 'saturation' };
-const ENC = { cct: P.cct, hue: P.hue, sat: P.saturation, bri: P.brightness };
-
-const encoders = {
-  bri: (v) => ({ frames: P.brightness(v), label: `brightness ${v}%` }),
-  cct: (v) => ({ frames: P.cct(v), label: `cct ${v}K`, mode: 'cct' }),
-  hue: (v) => ({ frames: P.hue(v), label: `hue ${v}°`, mode: 'hsi' }),
-  sat: (v) => ({ frames: P.saturation(v), label: `saturation ${v}%`, mode: 'hsi' }),
+/** The command for one control value on light l: [frames, label]. Values snap to what that light accepts. */
+const ENC = {
+  bri: (l, v) => [E(l).brightness(v), `brightness ${v}%`],
+  cct: (l, v) => [E(l).cct(snap(capsOf(l), 'cct', v)), `cct ${snap(capsOf(l), 'cct', v)}K`],
+  hue: (l, v) => [E(l).hue(snap(capsOf(l), 'hue', v)), `hue ${snap(capsOf(l), 'hue', v)}°`],
+  sat: (l, v) => [E(l).saturation(v), `saturation ${v}%`],
 };
+const MODE_OF = { cct: 'cct', hue: 'hsi', sat: 'hsi' };
 
 async function ensureModeOn(l, m, quiet = true) {
   if (l.conn.light.mode === m) return;
   l.conn.light.mode = m;
-  await l.conn.sendFrames(P.mode(m), `mode ${m}`, { quiet });
+  await l.conn.sendFrames(E(l).mode(m), `mode ${m}`, { quiet });
 }
 
 /** Sends one control value to every target light. */
 async function sendValue(id, v, { quiet = true } = {}) {
-  const e = encoders[id](v);
+  const e = { mode: MODE_OF[id] };
   // A light running a built-in effect: Brightness is the effect's own brightness (BRG), so it stays in the effect
   // and the effect's setting follows the slider.
   if (id === 'bri') {
@@ -479,28 +516,32 @@ async function sendValue(id, v, { quiet = true } = {}) {
   if (e.mode) setMode(e.mode);
   await each(targets(), async (l) => {
     if (id === 'bri' && isDarkLight(l)) l.blackoutPre = null;   // a level set while dark is what Restore returns to
+    if (e.mode === 'hsi' && !capsOf(l).hsi) return;          // a white-only light ignores color
     if (e.mode) await ensureModeOn(l, e.mode);
-    await l.conn.sendFrames(e.frames, e.label, { quiet });
+    const [frames, label] = ENC[id](l, v);
+    await l.conn.sendFrames(frames, label, { quiet });
   });
 }
 
 /** Sends only the params that differ from the light's known state: mode first, brightness last. */
 async function applyStateTo(l, s, { quiet = true, guard = () => true } = {}) {
   const L = l.conn.light;
+  if (s.mode === 'hsi' && !capsOf(l).hsi) s = { ...s, mode: 'cct' };   // white-only light: keep it white
   if (s.mode && L.mode !== s.mode) {
     if (!guard()) return;
-    await l.conn.sendFrames(P.mode(s.mode), `mode ${s.mode}`, { quiet });
+    await l.conn.sendFrames(E(l).mode(s.mode), `mode ${s.mode}`, { quiet });
     L.mode = s.mode;
   }
   for (const k of ['cct', 'hue', 'sat', 'bri']) {
     if (s[k] == null) continue;
     if (k === 'cct' && (s.mode ?? L.mode) === 'hsi') continue;          // color of the other mode is irrelevant
     if ((k === 'hue' || k === 'sat') && (s.mode ?? L.mode) === 'cct') continue;
-    const v = k === 'hue' ? clamp(Math.round(s[k] / 5) * 5, 0, 360) : k === 'cct' ? clamp(Math.round(s[k] / 100) * 100, 3200, 5600) : clamp(Math.round(s[k]), 0, 100);
+    const v = snap(capsOf(l), k, s[k]);
     if (L[FIELD[k]] === v) continue;
     if (!guard()) return;
     if (k === 'bri' && isDarkLight(l)) l.blackoutPre = null;
-    await l.conn.sendFrames(ENC[k](v), `${FIELD[k]} ${v}`, { quiet });
+    const [frames, label] = ENC[k](l, v);
+    await l.conn.sendFrames(frames, label, { quiet });
     L[FIELD[k]] = v;
   }
 }
@@ -526,7 +567,7 @@ function bindLiveSlider(id) {
   el.addEventListener('change', () => {
     clearTimeout(trailing);
     fire();
-    rig.logLine(`SET ${encoders[id](+el.value).label}${rig.lights.length > 1 ? ` → ${targets().map((l) => l.label).join(', ')}` : ''}`);
+    rig.logLine(`SET ${FIELD[id]} ${+el.value}${{ cct: 'K', hue: '°' }[id] ?? '%'}${rig.lights.length > 1 ? ` → ${targets().map((l) => l.label).join(', ')}` : ''}`);
     setTimeout(() => { if (ui.dragging === id) ui.dragging = null; }, 400);
   });
 }
@@ -600,7 +641,7 @@ async function blackout(lights = rig.connected, { label = 'BLACKOUT' } = {}) {
   renderLightBlackouts();
   try {
     if (ui.fadeMs > 0 && !(await crossfade(lights.map((l) => ({ light: l, to: { bri: 0 } })), ui.fadeMs, { label: `${label} fade` }))) return;
-    await each(lights, (l) => l.conn.sendFrames(P.power(false), label));
+    await each(lights, (l) => l.conn.sendFrames(E(l).power(false), label));
   } finally { for (const l of lights) l.busy = false; renderLightBlackouts(); }
 }
 
@@ -614,10 +655,10 @@ async function restore(lights = rig.connected, { label = 'RESTORE' } = {}) {
   renderLightBlackouts();
   try {
     await each(lights, async (l) => {
-      if (fade && l.conn.light.brightness !== 0) await l.conn.sendFrames(P.brightness(0), 'restore prep', { quiet: true });
-      await l.conn.sendFrames(P.power(true), label);
+      if (fade && l.conn.light.brightness !== 0) await l.conn.sendFrames(E(l).brightness(0), 'restore prep', { quiet: true });
+      await l.conn.sendFrames(E(l).power(true), label);
       if (fade) l.conn.light.brightness = 0;
-      else if (l.conn.light.brightness !== target.get(l)) await l.conn.sendFrames(P.brightness(target.get(l)), 'restore level');
+      else if (l.conn.light.brightness !== target.get(l)) await l.conn.sendFrames(E(l).brightness(target.get(l)), 'restore level');
     });
     if (fade && !(await crossfade(lights.map((l) => ({ light: l, to: { bri: target.get(l) } })), ui.fadeMs, { label: `${label} fade` }))) return;
     for (const l of lights) l.blackoutPre = null;
@@ -667,11 +708,11 @@ async function runPreShowCheck() {
     const dip = reported > 25 ? 10 : Math.min(100, reported + 40);
     const t0 = performance.now();
     const acked = c.waitAck(2, 1500);
-    await c.sendFrames(P.brightness(dip), 'check: flash', { quiet: true });
+    await c.sendFrames(c.driver.enc.brightness(dip), 'check: flash', { quiet: true });
     const ok = await acked;
     const ms = Math.round(performance.now() - t0);
     await sleep(350);
-    await c.sendFrames(P.brightness(cur), 'check: back', { quiet: true });
+    await c.sendFrames(c.driver.enc.brightness(cur), 'check: back', { quiet: true });
     chip?.classList.remove('flash');
     li.remove();
     if (ok) row(ms > 400 ? 'warn' : 'ok', l.label, `answered in ${ms} ms${ms > 400 ? ' (slow: check distance)' : ''}`);
@@ -781,7 +822,7 @@ function renderEffectEditor() {
     const val = mk('span', 'fxb-val');
     const n = (v, o, f, key) => { const x = numInput(document, v, o, (nv) => { if (nv != null) f(nv); }); x.dataset.focus = `${i}:${key}`; return x; };
     if (s.mode === 'cct') {
-      val.append(n(s.cct, { min: 3200, max: 5600, step: 100 }, (v) => set(i, { cct: v }), 'cct'), mk('small', '', 'K'));
+      val.append(n(s.cct, { min: uiCaps().cct[0], max: uiCaps().cct[1], step: uiCaps().cctStep }, (v) => set(i, { cct: v }), 'cct'), mk('small', '', 'K'));
     } else {
       val.append(n(s.hue, { min: 0, max: 360, step: 5 }, (v) => set(i, { hue: v }), 'hue'), mk('small', '', '°'),
         n(s.sat, { min: 0, max: 100, step: 1 }, (v) => set(i, { sat: v }), 'sat'), mk('small', '', '%'));
@@ -949,8 +990,9 @@ function openStepPicker(anchor, defId, i) {
   }
   g = cctCanvas.getContext('2d');
   const wg = g.createLinearGradient(0, 0, 256, 0);
-  wg.addColorStop(0, stepColor({ mode: 'cct', cct: 3200 }));
-  wg.addColorStop(1, stepColor({ mode: 'cct', cct: 5600 }));
+  const [k0, k1] = uiCaps().cct, kStep = uiCaps().cctStep;
+  wg.addColorStop(0, stepColor({ mode: 'cct', cct: k0 }));
+  wg.addColorStop(1, stepColor({ mode: 'cct', cct: k1 }));
   g.fillStyle = wg;
   g.fillRect(0, 0, 256, 20);
 
@@ -962,7 +1004,7 @@ function openStepPicker(anchor, defId, i) {
     dCct.hidden = cur.mode !== 'cct';
     dHs.style.left = `${(cur.hue / 360) * 100}%`;
     dHs.style.top = `${100 - cur.sat}%`;
-    dCct.style.left = `${((cur.cct - 3200) / 2400) * 100}%`;
+    dCct.style.left = `${((cur.cct - k0) / (k1 - k0)) * 100}%`;
     dCct.style.top = '50%';
   };
   const commit = () => {
@@ -984,7 +1026,7 @@ function openStepPicker(anchor, defId, i) {
     area.addEventListener('pointerup', (ev) => { at(ev); commit(); });
   };
   drag(pop.querySelector('.sp-hs'), (fx, fy) => ({ mode: 'hsi', hue: (Math.round((fx * 360) / 5) * 5) % 360, sat: Math.round((1 - fy) * 100) }));
-  drag(pop.querySelector('.sp-cct'), (fx) => ({ mode: 'cct', cct: Math.round((3200 + fx * 2400) / 100) * 100 }));
+  drag(pop.querySelector('.sp-cct'), (fx) => ({ mode: 'cct', cct: Math.round((k0 + fx * (k1 - k0)) / kStep) * kStep }));
   show();
 
   // Place it under the square, inside the window.
@@ -1100,9 +1142,9 @@ async function restoreAfterReconnect(l) {
   if (!l.conn.connected) return;
   const on = l.conn.light.power !== false;
   if (want.power === false) {
-    if (on) await l.conn.sendFrames(P.power(false), 'restore after reconnect: off');
+    if (on) await l.conn.sendFrames(E(l).power(false), 'restore after reconnect: off');
   } else {
-    if (!on) await l.conn.sendFrames(P.power(true), 'restore after reconnect: on');
+    if (!on) await l.conn.sendFrames(E(l).power(true), 'restore after reconnect: on');
     // A light running an effect is picked up by the effect itself; otherwise resend its look.
     if (!runOf(l)) await applyStateTo(l, want, { quiet: false });
   }
@@ -1281,7 +1323,7 @@ async function toggleEffect(e, { params = null, lights = targets(), fromCue = fa
   // While a light is off or mid blackout/restore fade, the effect skips it (the light ignores
   // changes while off) and picks up again at the current step once it is back on.
   const paused = (l) => isDarkLight(l) || !!l.busy;
-  await each(lights.filter(isDarkLight), (l) => { l.blackoutPre = null; return l.conn.sendFrames(P.power(true), 'power on (effect)'); });
+  await each(lights.filter(isDarkLight), (l) => { l.blackoutPre = null; return l.conn.sendFrames(E(l).power(true), 'power on (effect)'); });
 
   const loop = async (gen, group) => {
     for (const step of gen) {
@@ -1328,6 +1370,8 @@ function endRun(run) {
 async function runBuiltin(run, l) {
   const e = run.e, p = run.params;
   const live = () => !run.dead && run.lights.includes(l) && performance.now() < run.deadline;
+  if (!capsOf(l).scenes) { rig.logLine(`${l.label}: no built-in effects on this light, skipped`); return; }
+  const P = E(l);
   const send = { level: (v) => P.brightness(v), cct: (v) => P.cct(v), cycle: (v) => P.cycle(v), hue: (v) => P.hue(v), sat: (v) => P.saturation(v) };
   let sent = null;
   while (live()) {
@@ -1538,9 +1582,38 @@ function initFxSettings() {
 }
 
 /** App effects (Breathe and the ones built on the Effects tab) as a compact row of chips under the built-in tiles. */
+// ---------- show board: which effects and looks the Show tab offers, in what order (per show) ----------
+//   board = { tiles, chips, looks }, each { order: [ids], hidden: [ids] }. Items not in `order` follow in their
+//   usual order and are shown unless hidden, so new looks and effects appear without editing the board.
+
+const BOARD_KEY = 'gvm.board';
+const LOOK_SLOTS = LOOK_KEYS.length;
+function loadBoard() {
+  let b = null;
+  try { b = JSON.parse(localStorage.getItem(BOARD_KEY)); } catch {}
+  const part = (x) => ({ order: Array.isArray(x?.order) ? x.order : [], hidden: Array.isArray(x?.hidden) ? x.hidden : [] });
+  return { tiles: part(b?.tiles), chips: part(b?.chips), looks: part(b?.looks) };
+}
+let board = loadBoard();
+function saveBoard(b) {
+  board = b;
+  try { localStorage.setItem(BOARD_KEY, JSON.stringify(b)); } catch {}
+}
+/** All items in board order (hidden ones included). */
+function boardOrder(items, cfg) {
+  const by = new Map(items.map((x) => [x.id, x]));
+  const out = cfg.order.map((id) => by.get(id)).filter(Boolean);
+  for (const x of items) if (!cfg.order.includes(x.id)) out.push(x);
+  return out;
+}
+const arrange = (items, cfg) => boardOrder(items, cfg).filter((x) => !cfg.hidden.includes(x.id));
+const boardTiles = () => arrange(BUILTIN, board.tiles);
+const boardChips = () => arrange([...EFFECTS, ...customList], board.chips);
+const boardLooks = () => arrange(show.looks, board.looks).slice(0, LOOK_SLOTS);
+
 function renderCustomChips() {
   const box = $('customFx');
-  const list = [...EFFECTS, ...customList];
+  const list = boardChips();
   const key = list.map((e) => e.id + e.name + e.swatch).join('|');
   if (box.dataset.key !== key) {
     box.dataset.key = key;
@@ -1624,8 +1697,15 @@ function onCustomFxChange() {
 function renderPresets() {
   const looks = $('looks'), effects = $('effects');
   looks.innerHTML = '';
-  show.looks.slice(0, LOOK_KEYS.length).forEach((l, i) => looks.appendChild(tile(l, LOOK_KEYS[i], 'look')));
-  if (!effects.children.length) BUILTIN.forEach((e, i) => effects.appendChild(tile(e, EFFECT_KEYS[i], 'effect')));
+  boardLooks().forEach((l, i) => looks.appendChild(tile(l, LOOK_KEYS[i], 'look')));
+  if (!boardLooks().length) { const p = document.createElement('p'); p.className = 'hint'; p.textContent = 'No looks on this show’s board (My show ▾ → Edit show).'; looks.appendChild(p); }
+  const tiles = boardTiles();
+  const tkey = tiles.map((e) => e.id).join('|');
+  if (effects.dataset.key !== tkey) {
+    effects.dataset.key = tkey;
+    effects.innerHTML = '';
+    tiles.forEach((e, i) => effects.appendChild(tile(e, EFFECT_KEYS[i], 'effect')));
+  }
   renderCustomChips();
   renderGel();
   // The board shows the selected light(s): a tile is lit when every selected light has it,
@@ -1724,8 +1804,8 @@ async function goCue(i, { fade } = {}) {
 
   await each(entries.filter(([l, st]) => st.power !== false && isDarkLight(l)), async ([l]) => {
     l.blackoutPre = null;
-    if (fadeMs > 0) await l.conn.sendFrames(P.brightness(0), 'cue prep', { quiet: true });
-    await l.conn.sendFrames(P.power(true), `cue ${q} power on`);
+    if (fadeMs > 0) await l.conn.sendFrames(E(l).brightness(0), 'cue prep', { quiet: true });
+    await l.conn.sendFrames(E(l).power(true), `cue ${q} power on`);
     if (fadeMs > 0) l.conn.light.brightness = 0;
   });
   const jobs = entries.filter(([l, st]) => !(st.power === false && isDarkLight(l)))
@@ -1734,7 +1814,7 @@ async function goCue(i, { fade } = {}) {
   if (!ok || token !== cue.token) return;
   await each(entries.filter(([l, st]) => st.power === false && !isDarkLight(l)), ([l, st]) => {
     l.blackoutPre = st.bri || null;
-    return l.conn.sendFrames(P.power(false), `cue ${q} power off`);
+    return l.conn.sendFrames(E(l).power(false), `cue ${q} power off`);
   });
   for (const ce of cueEffects(c)) {
     const e = findEffect(ce.id);
@@ -2075,7 +2155,7 @@ function renderLookList() {
     const row = document.createElement('div');
     row.className = 'look-row';
     const sw = document.createElement('span'); sw.className = 'lsw big'; sw.style.background = stateColor(l.state, { full: true });
-    const key = document.createElement('span'); key.className = 'look-key'; key.textContent = LOOK_KEYS[i] ?? '';
+    const key = document.createElement('span'); key.className = 'look-key'; key.textContent = LOOK_KEYS[boardLooks().indexOf(l)] ?? '';
     const name = document.createElement('input');
     name.type = 'text'; name.value = l.name; name.className = 'cue-name';
     name.addEventListener('change', () => show.updateLook(l.id, { name: name.value }));
@@ -2144,8 +2224,8 @@ function onKeyDown(e) {
   if (k === 'l') { e.preventDefault(); setLocked(!ui.locked); return; }
   if (k === 'c') { e.preventDefault(); if (isPopped()) cuePanel.win.focus(); else { if ($('tab-show').hidden) showTab('show'); setCuePanel(!cuePanel.open); } return; }
   if ($('tab-show').hidden || ui.locked) return;
-  if (LOOK_KEYS.includes(k)) { const look = show.looks[LOOK_KEYS.indexOf(k)]; if (look) { e.preventDefault(); if (ui.lookPick) updateLookFromLight(look); else applyLook(look); } }
-  else if (EFFECT_KEYS.includes(k)) { e.preventDefault(); toggleEffect(BUILTIN[EFFECT_KEYS.indexOf(k)]); }
+  if (LOOK_KEYS.includes(k)) { const look = boardLooks()[LOOK_KEYS.indexOf(k)]; if (look) { e.preventDefault(); if (ui.lookPick) updateLookFromLight(look); else applyLook(look); } }
+  else if (EFFECT_KEYS.includes(k)) { e.preventDefault(); const e2 = boardTiles()[EFFECT_KEYS.indexOf(k)]; if (e2) toggleEffect(e2); }
   else if ((k === 'arrowup' || k === 'arrowdown') && !t.matches?.('input[type=range]')) {
     e.preventDefault();
     nudgeBrightness((k === 'arrowup' ? 1 : -1) * (e.shiftKey ? 1 : 5));
@@ -2512,7 +2592,7 @@ function initSettings() {
 
   $('setAddLight').addEventListener('click', () => rig.pair());
   $('setAddGroup').addEventListener('click', () => openGroupDialog(null));
-  $('copyBtn').addEventListener('click', () => openCopyMenu($('copyBtn')));
+  $('copyBtn').addEventListener('click', openCopyMenu);
   $('setAuto').addEventListener('change', () => prefs.set('autoConnect', $('setAuto').checked));
   $('wakeChk').checked = prefs.get('wake', true);
   $('wakeChk').addEventListener('change', () => { prefs.set('wake', $('wakeChk').checked); updateWakeLock(); });
@@ -2594,9 +2674,84 @@ function renderShows() {
     const del = b('Delete', open ? 'Open another show first' : 'Delete this show', () => {}, 'danger');
     del.disabled = open;
     if (!open) confirmButton(del, 'Sure?', () => { shows.remove(x.id); renderShows(); toast({ level: 'ok', title: `Deleted show “${x.name}”` }); });
-    row.append(name, info, openBtn, dup, del);
+    if (open) { const ed = b('Edit', 'Name, and which effects and looks the Show tab offers, in what order', openEditShow, 'primary'); row.append(name, info, ed, dup, del); }
+    else row.append(name, info, openBtn, dup, del);
     list.appendChild(row);
   }
+}
+
+// ----- Edit show: board editor -----
+
+const BOARD_PARTS = {
+  tiles: { items: () => BUILTIN, swatch: (e) => e.swatch, keys: EFFECT_KEYS },
+  chips: { items: () => [...EFFECTS, ...customList], swatch: (e) => e.swatch, keys: [] },
+  looks: { items: () => show.looks, swatch: (l) => stateColor(l.state, { full: true }), keys: LOOK_KEYS, max: LOOK_SLOTS },
+};
+let boardDraft = null;
+
+function openEditShow() {
+  boardDraft = {};
+  for (const [part, d] of Object.entries(BOARD_PARTS)) {
+    const all = boardOrder(d.items(), board[part]);
+    boardDraft[part] = { order: all.map((x) => x.id), hidden: board[part].hidden.filter((id) => all.some((x) => x.id === id)) };
+  }
+  $('editShowName').value = shows.current.name;
+  for (const part of Object.keys(BOARD_PARTS)) {
+    const box = document.querySelector(`.board-btns[data-part="${part}"]`);
+    box.innerHTML = '';
+    const ids = () => boardDraft[part].order;
+    const mk = (txt, title, fn) => { const b = document.createElement('button'); b.type = 'button'; b.className = 'btn sm'; b.textContent = txt; b.title = title; b.addEventListener('click', () => { fn(); renderBoardPart(part); }); box.appendChild(b); };
+    mk('All', 'Show every one', () => { boardDraft[part].hidden = []; });
+    mk('None', 'Hide every one', () => { boardDraft[part].hidden = [...ids()]; });
+    mk('Default', 'Every one, in the usual order', () => { boardDraft[part] = { order: BOARD_PARTS[part].items().map((x) => x.id), hidden: [] }; });
+    renderBoardPart(part);
+  }
+  $('editShowForm').onsubmit = (e) => {
+    e.preventDefault();
+    // Store only what differs from the usual order, so new items keep their place.
+    const b = {};
+    for (const part of Object.keys(BOARD_PARTS)) {
+      const usual = BOARD_PARTS[part].items().map((x) => x.id);
+      const same = boardDraft[part].order.join('|') === usual.join('|');
+      b[part] = { order: same ? [] : boardDraft[part].order, hidden: boardDraft[part].hidden };
+    }
+    saveBoard(b);
+    shows.rename(shows.current.id, $('editShowName').value);
+    closeDialog($('editShowDlg'));
+    renderPresets(); renderShows();
+    toast({ level: 'ok', title: `Saved “${shows.current.name}”` });
+  };
+  openDialog('editShowDlg');
+}
+
+function renderBoardPart(part) {
+  const d = BOARD_PARTS[part], draft = boardDraft[part];
+  const by = new Map(d.items().map((x) => [x.id, x]));
+  const list = document.querySelector(`.board-list[data-part="${part}"]`);
+  list.innerHTML = '';
+  let shown = 0;
+  draft.order.forEach((id, i) => {
+    const x = by.get(id);
+    if (!x) return;
+    const on = !draft.hidden.includes(id);
+    const pos = on ? shown++ : -1;
+    const over = on && d.max != null && pos >= d.max;
+    const row = document.createElement('div'); row.className = 'board-row' + (on && !over ? '' : ' off');
+    const c = document.createElement('input'); c.type = 'checkbox'; c.checked = on;
+    c.addEventListener('change', () => { draft.hidden = c.checked ? draft.hidden.filter((h) => h !== id) : [...draft.hidden, id]; renderBoardPart(part); });
+    const sw = document.createElement('span'); sw.className = 'lsw'; sw.style.background = d.swatch(x);
+    const nm = document.createElement('span'); nm.textContent = x.name;
+    if (over) nm.title = `Only the first ${d.max} fit on the board`;
+    const key = document.createElement('span'); key.className = 'bkey'; key.textContent = on ? (d.keys[pos]?.toUpperCase() ?? (over ? 'off' : '')) : '';
+    const mv = (txt, delta) => {
+      const b = document.createElement('button'); b.type = 'button'; b.className = 'btn sm'; b.textContent = txt;
+      const j = i + delta; b.disabled = j < 0 || j >= draft.order.length;
+      b.addEventListener('click', () => { [draft.order[i], draft.order[j]] = [draft.order[j], draft.order[i]]; renderBoardPart(part); });
+      return b;
+    };
+    row.append(c, sw, nm, key, mv('↑', -1), mv('↓', 1));
+    list.appendChild(row);
+  });
 }
 
 function openShow(id) {
@@ -2658,6 +2813,7 @@ async function openImport(file) {
   row('cues', `Cues (${n.cues})`, n.cues);
   row('customEffects', `Effects built on the Effects tab (${n.customEffects})`, n.customEffects);
   row('prefs', `Effect settings and preferences (${n.prefs})`, n.prefs);
+  row('board', 'Show-tab layout (which effects and looks, in what order)', n.board);
   row('groups', `Light groups (${n.groups})`, n.groups && rig.lights.length);
   row('lightNames', `Light names (${n.lights})`, n.lights && rig.lights.length, false);
   // Light map: only needed when the backup's lights aren't the ones here.
@@ -2702,7 +2858,7 @@ function initBackup() {
   const imp = prefs.get('imported', null);
   if (imp) {
     try { localStorage.removeItem('gvm.ui.imported'); } catch {}
-    const names = { looks: 'looks', cues: 'cues', customEffects: 'effects', prefs: 'settings', lightNames: 'light names', groups: 'groups' };
+    const names = { looks: 'looks', cues: 'cues', customEffects: 'effects', prefs: 'settings', lightNames: 'light names', groups: 'groups', board: 'board layout' };
     const body = Object.entries(imp.done ?? {}).map(([k, v]) => `${v} ${names[k] ?? k}`).join(', ');
     setTimeout(() => toast({ level: 'ok', title: 'Backup imported', body }), 300);
   }
@@ -2772,7 +2928,7 @@ function init() {
     clearLookMark(targets());
     cancelFade();
     const turnOn = isDark();
-    each(targets(), (l) => { l.blackoutPre = null; return l.conn.sendFrames(P.power(turnOn), turnOn ? 'power on' : 'power off'); });
+    each(targets(), (l) => { l.blackoutPre = null; return l.conn.sendFrames(E(l).power(turnOn), turnOn ? 'power on' : 'power off'); });
   });
   $('blackoutBtn').addEventListener('click', toggleBlackout);
 
@@ -2815,7 +2971,7 @@ function init() {
   };
   $('sendHexBtn').addEventListener('click', sendHex);
   $('hexInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') sendHex(); });
-  $('handshakeBtn').addEventListener('click', () => primary()?.conn.sendFrames(P.handshake(), 'handshake'));
+  $('handshakeBtn').addEventListener('click', () => { const p = primary(); if (p?.conn.driver.enc.handshake) p.conn.sendFrames(p.conn.driver.enc.handshake(), 'handshake'); });
   $('echoChk').addEventListener('change', () => { for (const l of rig.lights) l.conn.echoStatus = $('echoChk').checked; });
   $('quietChk').addEventListener('change', () => { for (const l of rig.lights) l.conn.quietStatus = $('quietChk').checked; });
   $('pairAnyBtn').addEventListener('click', () => rig.pair({ anyDevice: true, extraServices: parseServiceList($('extraServices').value) }));

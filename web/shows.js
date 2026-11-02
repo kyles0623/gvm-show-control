@@ -1,10 +1,11 @@
-// Several shows (productions) in one browser. A show = its looks, cues and Effects-tab effects.
+// Several shows (productions) in one browser. A show = its looks, cues, Effects-tab effects and Show-tab board
+// (which effects and looks the Show tab offers, in what order).
 // The open show lives in the usual keys (gvm.looks, gvm.cues, gvm.customfx), so the rest of the app is unchanged;
 // the others are parked in gvm.showdata.<id>. Effect settings, preferences, lights and groups are shared.
 
 const INDEX = 'gvm.shows';
 const DATA = 'gvm.showdata.';
-export const SHOW_KEYS = { looks: 'gvm.looks', cues: 'gvm.cues', customfx: 'gvm.customfx' };
+export const SHOW_KEYS = { looks: 'gvm.looks', cues: 'gvm.cues', customfx: 'gvm.customfx', board: 'gvm.board' };
 
 const parse = (s) => { try { return s == null ? null : JSON.parse(s); } catch { return null; } };
 const uid = () => Math.random().toString(36).slice(2, 10);

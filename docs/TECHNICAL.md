@@ -185,6 +185,17 @@ Default brightness: built-in fast effects 30 %, Candle/Fire 35 %, the others 50 
 Connection: remembers the light, auto-connects on open, sends the handshake, echoes status frames like
 the official app, and retries with backoff (1–30 s) after an unexpected drop.
 
+## Light drivers (`drivers.js`)
+Each kind of light is a driver: chooser filters and optional services, a `match(device)` test, `caps` (CCT range and
+step, color (HSI) and hue step, built-in scenes, green/magenta, one connection at a time), `create()` (a connection
+with the `LightConnection` interface: `connect`, `sendFrames`, `light` state, events) and `enc` (command encoder:
+`power`, `brightness`, `cct`, `hue`, `saturation`, `mode`; optionally `scene`, `cycle`, `handshake`). The app sends
+only through `l.conn.driver.enc` and `l.conn.sendFrames`, and each light snaps values to its own caps on send.
+Looks, cues and effects store values in the widest range of all drivers (`APP_CAPS`). Controls follow the selected
+light's caps (CCT range, Color button); built-in effect tiles show only if some paired light has scenes.
+Saved lights carry their driver id (`gvm` for lights saved before drivers existed). `status` per driver:
+`verified` (checked on real hardware), `reported`, `untested`. Only `gvm` exists so far.
+
 ## Protocol
 See the header of `web/gvm-protocol.js`. Source: an Apple PacketLogger trace of the official iOS app
 controlling the light; the extracted control frames (no other Bluetooth traffic) are in
@@ -215,6 +226,6 @@ controlling the light; the extracted control frames (no other Bluetooth traffic)
 | Status echo required? | unknown; sent by default |
 
 ## Files
-`web/index.html`, `styles.css`, `app.js` (UI), `ble.js` (connection), `gvm-protocol.js` (encoders/decoder),
+`web/index.html`, `styles.css`, `app.js` (UI), `drivers.js` (light types), `ble.js` (GVM connection), `gvm-protocol.js` (encoders/decoder),
 `effects.js` (looks/effects), `setup.js` (environment checks, messages), `sw.js` + `manifest.webmanifest` +
 `icons/` (installable, offline). `legacy/swift-explorer/` is the unused SwiftUI explorer.

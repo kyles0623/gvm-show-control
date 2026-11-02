@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BLE Probe</title>
+<style>
+  :root { --bg: #121214; --panel: #1b1b1f; --text: #ececf0; --muted: #9a9aa4; --accent: #e0a548; --border: #2c2c33; --bad: #ff8a7a; --ok: #7bd88f; }
+  @media (prefers-color-scheme: light) { :root:not([data-theme="dark"]) { --bg: #f6f6f8; --panel: #fff; --text: #17171a; --muted: #5d5d66; --border: #d9d9e0; --bad: #b3261e; --ok: #1e7a34; } }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+  main { max-width: 860px; margin: 0 auto; padding: 24px 16px 48px; }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  p { color: var(--muted); margin: 6px 0 14px; }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin: 12px 0; }
+  button { background: var(--accent); color: #111; border: 0; border-radius: 8px; padding: 9px 16px; font: 600 14px inherit; cursor: pointer; }
+  button.sec { background: var(--panel); color: var(--text); border: 1px solid var(--border); }
+  button:disabled { opacity: .5; cursor: default; }
+  pre { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 14px; overflow-x: auto;
+        font: 13px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; white-space: pre-wrap; word-break: break-word; min-height: 120px; }
+  .bad { color: var(--bad); } .ok { color: var(--ok); }
+  ul { color: var(--muted); padding-left: 20px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>BLE Probe (read-only)</h1>
+  <p>Lists what a Bluetooth light offers to a web browser: its name, its services and characteristics, and the
+    Device Information strings. <b>It never writes anything to the light.</b> Results stay on this page; copy them
+    yourself if you want to share them.</p>
+  <ul>
+    <li>Close the light's phone app first (or turn off Bluetooth on the phone): most lights accept one connection at a time.</li>
+    <li>Use Chrome or Edge on a Mac or PC.</li>
+    <li><b>Choose mesh light…</b> lists only devices that advertise Bluetooth Mesh (amaran / Sidus lights do), so the
+      list is short. <b>Choose any device…</b> lists everything nearby.</li>
+    <li><b>Scan for mesh lights</b> logs what nearby mesh devices advertise, without connecting. It needs
+      <code>chrome://flags/#enable-experimental-web-platform-features</code> turned on. Only devices advertising
+      Mesh are logged, so other nearby devices stay out of the results.</li>
+  </ul>
+  <div class="row">
+    <button id="goMesh">Choose mesh light…</button>
+    <button id="go" class="sec">Choose any device…</button>
+    <button id="scan" class="sec">Scan for mesh lights (15 s)</button>
+    <button id="copy" class="sec" disabled>Copy results</button>
+    <button id="disc" class="sec" disabled>Disconnect</button>
+  </div>
+  <pre id="out">Not started.</pre>
+</main>
+<script>
+// Services the browser may open (Web Bluetooth only exposes services listed here).
+// Bluetooth Mesh provisioning and proxy, Device Information, Battery, and the Telink vendor service seen on the GVM light.
+// No firmware-update (OTA/DFU) services are listed on purpose.
+const NAMES = {
+  '00001827-0000-1000-8000-00805f9b34fb': 'Mesh Provisioning (0x1827)',
+  '00001828-0000-1000-8000-00805f9b34fb': 'Mesh Proxy (0x1828)',
+  '0000180a-0000-1000-8000-00805f9b34fb': 'Device Information (0x180A)',
+  '0000180f-0000-1000-8000-00805f9b34fb': 'Battery (0x180F)',
+  '00010203-0405-0607-0809-0a0b0c0d1910': 'Telink vendor service',
+  '00002adb-0000-1000-8000-00805f9b34fb': 'Mesh Provisioning Data In (0x2ADB)',
+  '00002adc-0000-1000-8000-00805f9b34fb': 'Mesh Provisioning Data Out (0x2ADC)',
+  '00002add-0000-1000-8000-00805f9b34fb': 'Mesh Proxy Data In (0x2ADD)',
+  '00002ade-0000-1000-8000-00805f9b34fb': 'Mesh Proxy Data Out (0x2ADE)',
+  '00002a29-0000-1000-8000-00805f9b34fb': 'Manufacturer Name',
+  '00002a24-0000-1000-8000-00805f9b34fb': 'Model Number',
+  '00002a25-0000-1000-8000-00805f9b34fb': 'Serial Number',
+  '00002a26-0000-1000-8000-00805f9b34fb': 'Firmware Revision',
+  '00002a27-0000-1000-8000-00805f9b34fb': 'Hardware Revision',
+  '00002a28-0000-1000-8000-00805f9b34fb': 'Software Revision',
+  '00002a19-0000-1000-8000-00805f9b34fb': 'Battery Level',
+};
+const SERVICES = Object.keys(NAMES).filter((u) => /^0000(1827|1828|180a|180f)|^00010203/.test(u));
+// Reads are limited to Device Information strings and the battery level.
+const READ_OK = new Set(['00002a29', '00002a24', '00002a26', '00002a27', '00002a28', '00002a19'].map((s) => s + '-0000-1000-8000-00805f9b34fb'));
+
+const $ = (id) => document.getElementById(id);
+const out = $('out');
+let lines = [], device = null;
+const log = (s, cls) => { lines.push(s); const span = document.createElement('span'); if (cls) span.className = cls; span.textContent = s + '\n'; out.appendChild(span); };
+const name = (u) => NAMES[u] ?? u;
+const props = (p) => ['broadcast', 'read', 'writeWithoutResponse', 'write', 'notify', 'indicate', 'authenticatedSignedWrites', 'reliableWrite', 'writableAuxiliaries'].filter((k) => p[k]).join(', ') || 'none';
+
+const MESH = ['00001827-0000-1000-8000-00805f9b34fb', '00001828-0000-1000-8000-00805f9b34fb'];
+$('go').addEventListener('click', () => probe({ acceptAllDevices: true, optionalServices: SERVICES }));
+$('goMesh').addEventListener('click', () => probe({ filters: [{ services: [MESH[1]] }, { services: [MESH[0]] }, { namePrefix: 'amaran' }, { namePrefix: 'Ace' }], optionalServices: SERVICES }));
+
+const hex = (dv) => Array.from(new Uint8Array(dv.buffer, dv.byteOffset, dv.byteLength), (b) => b.toString(16).padStart(2, '0').toUpperCase()).join(' ');
+$('scan').addEventListener('click', async () => {
+  out.textContent = ''; lines = [];
+  if (!navigator.bluetooth?.requestLEScan) {
+    log('Scanning is off in this browser. In Chrome open chrome://flags/#enable-experimental-web-platform-features, set it to Enabled, relaunch, and try again. Or use "Choose mesh light…".', 'bad');
+    return;
+  }
+  log(`BLE Probe scan · ${new Date().toISOString()} · ${navigator.userAgent}`);
+  let scan;
+  try { scan = await navigator.bluetooth.requestLEScan({ filters: [{ services: [MESH[1]] }, { services: [MESH[0]] }], keepRepeatedDevices: false }); }
+  catch (e) { log(`Scan not started: ${e.name}: ${e.message}`, 'bad'); return; }
+  log('Scanning 15 s for devices that advertise Bluetooth Mesh (0x1827 provisioning = not set up yet, 0x1828 proxy = already in a network)…');
+  const seen = new Map();
+  const onAd = (ev) => {
+    const id = ev.device.id;
+    const svc = (ev.uuids ?? []).map(name).join(', ');
+    const sd = [...(ev.serviceData ?? new Map())].map(([u, v]) => `${name(u)}: ${hex(v)}`).join(' · ');
+    const md = [...(ev.manufacturerData ?? new Map())].map(([c, v]) => `company 0x${c.toString(16).padStart(4, '0').toUpperCase()}: ${hex(v)}`).join(' · ');
+    const key = `${id}|${svc}|${sd}|${md}|${ev.name ?? ''}`;
+    if (seen.get(id) === key) return;
+    seen.set(id, key);
+    log(`\n● device #${[...seen.keys()].indexOf(id) + 1}  name="${ev.name ?? ev.device.name ?? '(none)'}"  rssi=${ev.rssi ?? '?'} dBm`);
+    if (svc) log(`  services: ${svc}`);
+    if (sd) log(`  service data: ${sd}`);
+    if (md) log(`  manufacturer data: ${md}`);
+  };
+  navigator.bluetooth.addEventListener('advertisementreceived', onAd);
+  await new Promise((r) => setTimeout(r, 15000));
+  scan.stop();
+  navigator.bluetooth.removeEventListener('advertisementreceived', onAd);
+  log(`\nDone: ${seen.size} mesh device(s). Turn the light off and on during a scan to see which one it is.`, 'ok');
+  $('copy').disabled = false;
+});
+
+async function probe(opts) {
+  out.textContent = ''; lines = [];
+  if (!navigator.bluetooth) { log('This browser has no Web Bluetooth. Use Chrome or Edge.', 'bad'); return; }
+  log(`BLE Probe · ${new Date().toISOString()} · ${navigator.userAgent}`);
+  try {
+    device = await navigator.bluetooth.requestDevice(opts);
+  } catch (e) { log(`Chooser closed: ${e.name}: ${e.message}`, 'bad'); return; }
+  log(`Device: name="${device.name ?? '(none)'}"`);
+  device.addEventListener('gattserverdisconnected', () => { log('Disconnected.'); $('disc').disabled = true; });
+  let server;
+  try {
+    log('Connecting…');
+    server = await device.gatt.connect();
+    log('Connected.', 'ok');
+    $('disc').disabled = false;
+  } catch (e) { log(`Connect failed: ${e.name}: ${e.message}`, 'bad'); $('copy').disabled = false; return; }
+  let services = [];
+  try { services = await server.getPrimaryServices(); }
+  catch (e) { log(`No allowed services found: ${e.name}: ${e.message}`, 'bad'); }
+  log(`Services the browser can open: ${services.length}`);
+  for (const s of services) {
+    log(`\n● ${name(s.uuid)}  ${s.uuid}`);
+    let chars = [];
+    try { chars = await s.getCharacteristics(); } catch (e) { log(`  characteristics: ${e.name}: ${e.message}`, 'bad'); continue; }
+    for (const c of chars) {
+      let line = `  - ${name(c.uuid)}  ${c.uuid}  [${props(c.properties)}]`;
+      if (READ_OK.has(c.uuid) && c.properties.read) {
+        try {
+          const v = await c.readValue();
+          const bytes = new Uint8Array(v.buffer, v.byteOffset, v.byteLength);
+          const text = c.uuid.startsWith('00002a19') ? `${bytes[0]}%` : `"${new TextDecoder().decode(bytes).replace(/\0+$/, '')}"`;
+          line += `  = ${text}`;
+        } catch (e) { line += `  (read failed: ${e.name})`; }
+      }
+      log(line);
+    }
+  }
+  // Which of the asked-for services were missing (the browser blocks some, or the light doesn't have them).
+  const got = new Set(services.map((s) => s.uuid));
+  const missing = SERVICES.filter((u) => !got.has(u));
+  if (missing.length) log(`\nNot found or not allowed: ${missing.map(name).join(', ')}`);
+  log('\nDone. Nothing was written to the light.', 'ok');
+  $('copy').disabled = false;
+}
+
+$('copy').addEventListener('click', async () => {
+  try { await navigator.clipboard.writeText(lines.join('\n')); $('copy').textContent = 'Copied'; setTimeout(() => ($('copy').textContent = 'Copy results'), 1500); }
+  catch { log('Copy failed: select the text and copy it by hand.', 'bad'); }
+});
+$('disc').addEventListener('click', () => { device?.gatt.connected && device.gatt.disconnect(); });
+</script>
+</body>
+</html>

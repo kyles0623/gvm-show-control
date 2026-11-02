@@ -2,7 +2,8 @@
 // Each light has its own LightConnection (own write queue, reconnect, status), so lights are
 // driven in parallel. Events re-dispatched with detail.light = the light object:
 //   'status' | 'light' | 'gatt' | 'problem' (detail also has code/error), plus 'lights' and 'log'.
-import { LightConnection, chooseDevice } from './ble.js';
+import { chooseDevice } from './ble.js';
+import { driverOf, driverFor, chooserOptions, DEFAULT_DRIVER } from './drivers.js';
 
 const KEY = 'gvm.lights';
 const GROUPS_KEY = 'gvm.groups';
@@ -62,7 +63,7 @@ export class Rig extends EventTarget {
   }
 
   _save() {
-    store.set(KEY, this.lights.map(({ id, label, name }) => ({ id, label, name })));
+    store.set(KEY, this.lights.map(({ id, label, name, driver }) => ({ id, label, name, driver })));
     // Keep the legacy key pointing at the first light (older code paths and tests read it).
     try {
       if (this.lights[0]) { localStorage.setItem('gvm.deviceId', this.lights[0].id); localStorage.setItem('gvm.deviceName', this.lights[0].name); }
@@ -70,9 +71,11 @@ export class Rig extends EventTarget {
     } catch {}
   }
 
-  _add({ id, name, label }) {
-    const conn = new LightConnection({ id, name: label || name, logger: (m) => this.logLine(m) });
-    const light = { id, name: name || 'BT_LED', label: label || name || 'BT_LED', conn };
+  _add({ id, name, label, driver = DEFAULT_DRIVER }) {
+    const d = driverOf(driver);
+    const conn = d.create({ id, name: label || name, logger: (m) => this.logLine(m) });
+    conn.driver = d;                 // what the app uses to encode commands (conn.driver.enc) and gate controls (caps)
+    const light = { id, name: name || 'BT_LED', label: label || name || 'BT_LED', driver: d.id, conn };
     for (const type of ['status', 'light', 'gatt', 'problem']) {
       conn.addEventListener(type, (ev) => {
         this.dispatchEvent(new CustomEvent(type, { detail: { ...(ev.detail ?? {}), light } }));
@@ -172,7 +175,7 @@ export class Rig extends EventTarget {
   async pair(opts = {}) {
     if (!this.supported) return null;
     let device;
-    try { device = await chooseDevice(opts); }
+    try { device = await chooseDevice({ ...chooserOptions(), ...opts }); }
     catch (e) {
       this.logLine(`CHOOSER closed: ${e.name}: ${e.message}`);
       this.dispatchEvent(new CustomEvent('problem', { detail: { code: e.problem, error: e, light: null } }));
@@ -180,7 +183,8 @@ export class Rig extends EventTarget {
     }
     let light = this.get(device.id);
     if (!light) {
-      light = this._add({ id: device.id, name: device.name ?? 'BT_LED', label: this._uniqueLabel(device.name ?? 'BT_LED') });
+      const d = driverFor(device);
+      light = this._add({ id: device.id, name: device.name ?? 'BT_LED', label: this._uniqueLabel(device.name ?? 'BT_LED'), driver: d.id });
       this._save();
       this.dispatchEvent(new Event('lights'));
     }

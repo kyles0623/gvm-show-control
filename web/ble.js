@@ -37,14 +37,15 @@ const OTA_KEYWORDS = ['dfu', 'ota', 'oad', 'update', 'firmware', 'upgrade', 'boo
  * Opens the browser's device chooser (must run inside a user gesture).
  * Resolves the chosen device, or rejects with err.problem = 'chooser' | 'adapter'.
  */
-export async function chooseDevice({ anyDevice = false, extraServices = [] } = {}) {
+export async function chooseDevice({ anyDevice = false, extraServices = [], filters = null, optionalServices: extra = [] } = {}) {
   // requestDevice must be called synchronously in the click handler, so the availability
   // check runs in parallel and only adds context if the chooser fails.
   const available = navigator.bluetooth.getAvailability?.().catch(() => true) ?? Promise.resolve(true);
-  const optionalServices = [...new Set([...OPTIONAL_SERVICES, ...extraServices])];
+  // Drivers pass their own filters / services (drivers.js); the defaults are the GVM light's.
+  const optionalServices = [...new Set([...OPTIONAL_SERVICES, ...extra, ...extraServices])];
   const opts = anyDevice
     ? { acceptAllDevices: true, optionalServices }
-    : { filters: [{ namePrefix: 'BT_LED' }, { services: [SERVICE] }], optionalServices };
+    : { filters: filters ?? [{ namePrefix: 'BT_LED' }, { services: [SERVICE] }], optionalServices };
   try {
     return await navigator.bluetooth.requestDevice(opts);
   } catch (e) {
