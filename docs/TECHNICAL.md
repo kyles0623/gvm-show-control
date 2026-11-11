@@ -193,10 +193,11 @@ with the `LightConnection` interface: `connect`, `sendFrames`, `light` state, ev
 only through `l.conn.driver.enc` and `l.conn.sendFrames`, and each light snaps values to its own caps on send.
 Looks, cues and effects store values in the widest range of all drivers (`APP_CAPS`). Controls follow the selected
 light's caps (CCT range, Color button); built-in effect tiles show only if some paired light has scenes.
-Saved lights carry their driver id (`gvm` for lights saved before drivers existed). `status` per driver:
-`verified` (checked on real hardware), `reported`, `untested`. Drivers: `gvm` (verified), `amaran` (reported), and
-untested `neewer`, `godox`, `rgbstrip`, `govee`, `nanlite`, `yongnuo`.
-Drivers whose lights differ by model have `variants` (id → label, caps, protocol family) and `guessModel(name)`; each
+Saved lights carry their driver id (`gvm` for lights saved before drivers existed). `status` per driver, or per model
+when the model has one (`statusFor(driver, model)`): `verified` (checked on real hardware), `reported`, `untested`.
+Drivers: `gvm` (verified), `amaran` (Ace 25c reported; Halo models untested), and untested `neewer`, `godox`, `rgbstrip`, `govee`, `nanlite`, `yongnuo`.
+Drivers whose lights differ by model have `variants` (id → label, caps, protocol family, optional status and
+source) and `guessModel(name)`; each
 saved light stores `model`, and its connection gets `caps = capsFor(driver, model)` (the app's `capsOf(l)`). Settings →
 Lights shows a model picker for these; changing it makes a new connection (mesh lights keep theirs).
 A chosen device without a known name is identified by the services it offers (`detectDriver`, read-only).
@@ -213,6 +214,7 @@ access messages are Godox vendor frames (opcode F0 11 02) and the status request
 Detection: Govee shares GVM's service UUID and the ELK/LEDBLE services are generic, so those go by name only; Godox
 (`GD_LED`) and amaran share the mesh services and are told apart by name (amaran lights advertise none).
 First time a brand of untested light is added, the app says so (`rig.onUntested`, once per brand); chips show β.
+The same notice shows once per model when a light's model is changed to an untested one (amaran Halo).
 
 ### amaran (`amaran.js`, `mesh.js`, `telink.js`)
 **One connection for all amaran lights (mesh hub).** `MeshHub` connects to one light's Mesh Proxy service and every
@@ -230,7 +232,12 @@ White and color commands carry the intensity, so the connection keeps the wanted
 request goes out every 5 s; any reply with a valid 10-byte status payload updates the light's state. Undo on the
 light: Bluetooth menu → hold Press to Reset. `mesh.js` is tested against the Mesh Profile sample data (8.1) and
 Node's AES-CCM (`tests/mesh.test.mjs`); `telink.js` against the values documented by wesbos/amaran-BLE-control
-(`tests/telink.test.mjs`). Nothing here has been checked on a real light yet.
+(`tests/telink.test.mjs`). The Ace 25c is reported working.
+**Models.** `ace25c` (2300–10,000 K, color; default, since the Ace advertises no name) and `halo60x`…`halo600x`
+(2700–6500 K, white only, untested). Halo lights are Sidus Mesh (the amaran app pairs all Sidus Mesh lights), so
+they use the same setup and 0x26 commands; no new bytes. `guessModel` reads "Halo NNNx" from the name if there is
+one. For a white-only model `AmaranConnection` never sends the color command (0x81): color is sent as white
+(`tests/amaran-models.test.mjs`).
 Built-in effects on a light without them (`caps.scenes` false) are simulated by the app (`simfx.js`): one generator
 per GVM effect number, approximations based on the effect's name and its settings (brightness, color temperature,
 cycle, color), never faster than 100 ms per step. Mesh lights take a whole look in one message (`conn.applyState`),

@@ -83,6 +83,7 @@ that opens a pre-filled issue. Most of them send no replies, so the app shows wh
 
 | Brand | Models | Works | Source |
 |---|---|---|---|
+| amaran | Halo 60x, 100x, 200x, 300x, 600x (pick the model in Settings → Lights) — same mesh and commands as the Ace 25c, shares its connection | On/off, brightness, white 2700–6500 K (bi-color: no color) | [wesbos/amaran-BLE-control](https://github.com/wesbos/amaran-BLE-control) (MIT); [amaran app FAQ](https://help.amarancreators.com/en/amaran-mobile-app/faqs) (Sidus Mesh) |
 | Neewer | RGB660 PRO, RGB176 A1, RGB1, RGB168, TL60 RGB, GR18C, GL1C, RGB62, CB100C, CB60B, CB120B, TL40, and other lights using the older protocol (pick the model in Settings → Lights) | On/off, brightness, white, color on RGB models | [NeewerLite](https://github.com/keefo/NeewerLite) (MIT) |
 | Godox | 184 Bluetooth Mesh models (SL, ML, LA, UL, LC, P…; pick the model) — shares the one mesh connection with amaran lights | Brightness (off = 0 %), white over the model's range, color on RGB models | [ha-godox-mesh](https://github.com/binary-person/ha-godox-mesh) (MIT) |
 | RGB strips | ELK-BLEDOM and LEDBLE controllers | On/off, brightness, color; white approximate | facts from public notes |
@@ -97,7 +98,8 @@ Product photos are linked from each maker's website. In the app: Settings → Li
 
 amaran lights: pairing one that isn't set up asks first, then joins it to the app's own mesh network (kept in this
 browser and in backups). While it's there the amaran app can't control it; to undo, hold **Press to Reset** in the
-light's Bluetooth menu. The light commands come from [wesbos/amaran-BLE-control](https://github.com/wesbos/amaran-BLE-control)
+light's Bluetooth menu. A Halo may pair as an Ace 25c (neither name is confirmed): set its model in Settings →
+Lights to get its white range. The light commands come from [wesbos/amaran-BLE-control](https://github.com/wesbos/amaran-BLE-control)
 (MIT, see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)).
 
 ## Other lights
