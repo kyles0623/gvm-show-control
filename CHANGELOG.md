@@ -10,6 +10,9 @@ the minor version (see [CONTRIBUTING.md](CONTRIBUTING.md#versions-and-the-change
 ## [Unreleased]
 
 ### Added
+- **amaran Halo 300x (untested).** Also Halo 60x, 100x, 200x and 600x. They use the same mesh and commands as the
+  Ace 25c. Pick the model in Settings → Lights to get 2700–6500 K, white only. Each amaran model has its own
+  status: Ace 25c reported, Halo untested (β, notice, Report result).
 - **One Bluetooth connection for all amaran lights.** The app connects to one amaran light and reaches the others
   through the mesh (each light is still controlled on its own, by its address), so more amaran lights no longer use up
   the computer's Bluetooth connections. If that light goes off or out of range, the app switches to another amaran

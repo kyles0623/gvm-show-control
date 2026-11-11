@@ -1,4 +1,4 @@
-import { unionCaps, snap, DRIVERS } from './drivers.js';
+import { unionCaps, snap, DRIVERS, statusFor } from './drivers.js';
 import { simulatedSteps, SPEED_TEST_MS, NEEDS_MS } from './simfx.js';
 import { parseHex, toHex, shortUuid, sleep } from './ble.js';
 import { Rig } from './rig.js';
@@ -224,7 +224,7 @@ function renderChips() {
       const b = document.createElement('button');
       b.className = 'lchip';
       b.dataset.id = l.id;
-      if (l.conn.driver.status === 'untested') b.dataset.untested = '';   // β mark (styles.css)
+      if (statusFor(l.conn.driver, l.model) === 'untested') b.dataset.untested = '';   // β mark (styles.css)
       const dot = document.createElement('span');
       const sw = document.createElement('span'); sw.className = 'lsw';
       const name = document.createElement('span'); name.className = 'lchip-name';
@@ -268,7 +268,7 @@ function renderChips() {
     const l = rig.get(b.dataset.id);
     if (!l) continue;
     b.classList.toggle('sel', !!rig.selection && rig.isSelected(l.id));
-    b.title = `${l.label}${l.conn.driver.status === 'untested' ? ` (β: ${l.conn.driver.brand} support is untested)` : ''}: ${STATUS_TEXT[l.conn.status]}${l.conn.connected ? ` · ${describeState({ ...stateOf(l), power: l.conn.light.power })}` : ''}\nClick: control only this light · Shift/⌘-click: add or remove · Double-click: rename`;
+    b.title = `${l.label}${statusFor(l.conn.driver, l.model) === 'untested' ? ` (β: ${l.conn.driver.brand} support is untested)` : ''}: ${STATUS_TEXT[l.conn.status]}${l.conn.connected ? ` · ${describeState({ ...stateOf(l), power: l.conn.light.power })}` : ''}\nClick: control only this light · Shift/⌘-click: add or remove · Double-click: rename`;
     b.children[0].className = 'dot ' + l.conn.status;
     b.children[1].style.background = l.conn.connected ? stateColor({ ...stateOf(l), power: l.conn.light.power }) : '#222';
     b.children[2].textContent = l.label;
@@ -2821,10 +2821,10 @@ function renderSettingsLights() {
     name.type = 'text'; name.maxLength = 24; name.value = l.label; name.placeholder = l.name; name.className = 'light-name';
     name.setAttribute('aria-label', 'Light name');
     name.addEventListener('change', () => { rig.rename(l.id, name.value); renderConn(); });
-    const d = l.conn.driver;
+    const d = l.conn.driver, ds = statusFor(d, l.model);
     const st = document.createElement('span'); st.className = 'hint';
-    st.textContent = `${d.brand}${d.status === 'verified' ? '' : ` (${d.status})`} · ${STATUS_TEXT[l.conn.status]}`;
-    st.title = `${d.brand}: ${d.models}. ${d.status === 'verified' ? 'Checked on real hardware.' : 'Not yet checked on real hardware: some controls may not work.'}`;
+    st.textContent = `${d.brand}${ds === 'verified' ? '' : ` (${ds})`} · ${STATUS_TEXT[l.conn.status]}`;
+    st.title = `${d.brand}: ${d.models}. ${ds === 'verified' ? 'Checked on real hardware.' : 'Not yet checked on real hardware: some controls may not work.'}`;
     let model = null;
     if (d.variants) {
       // Lights that differ by model: the user says which one this is (it sets the white range and color).
@@ -2840,7 +2840,7 @@ function renderSettingsLights() {
     const fg = document.createElement('button'); fg.className = 'btn sm danger'; fg.textContent = 'Forget';
     confirmButton(fg, 'Click again', () => forgetLight(l));
     let rep = null;
-    if (d.status === 'untested') { rep = document.createElement('a'); rep.className = 'hint'; rep.href = reportUrl(d, l); rep.target = '_blank'; rep.rel = 'noopener'; rep.textContent = 'Report result'; rep.title = 'Tell us whether this light works (opens a pre-filled GitHub issue)'; }
+    if (ds === 'untested') { rep = document.createElement('a'); rep.className = 'hint'; rep.href = reportUrl(d, l); rep.target = '_blank'; rep.rel = 'noopener'; rep.textContent = 'Report result'; rep.title = 'Tell us whether this light works (opens a pre-filled GitHub issue)'; }
     row.append(dot, name, st, rc, fg);
     if (model || rep) { const ex = document.createElement('div'); ex.className = 'light-extra'; if (model) ex.append(model); if (rep) ex.append(rep); row.append(ex); }
     box.appendChild(row);
@@ -2934,15 +2934,16 @@ function renderSupportedLights() {
       } else { img = document.createElement('div'); img.className = 'ph'; img.textContent = d.brand; }
       const body = document.createElement('div');
       const h = document.createElement('h4'); h.textContent = p.model;
-      const b = document.createElement('span'); b.className = `badge ${d.status}`; b.textContent = STATUS_LABEL[d.status] ?? d.status; b.title = STATUS_TIP[d.status] ?? '';
+      const ps = p.status ?? d.status;   // a product can have its own status (amaran: Ace 25c reported, Halo untested)
+      const b = document.createElement('span'); b.className = `badge ${ps}`; b.textContent = STATUS_LABEL[ps] ?? ps; b.title = STATUS_TIP[ps] ?? '';
       h.appendChild(b);
       const dl = document.createElement('dl');
-      for (const [k, v] of [['Works', p.works], ['In the device list', p.listName], ['Before pairing', p.setup], ...(d.source ? [['Built from', d.source]] : [])]) {
+      for (const [k, v] of [['Works', p.works], ['In the device list', p.listName], ['Before pairing', p.setup], ...((p.source ?? d.source) ? [['Built from', p.source ?? d.source]] : [])]) {
         const dt = document.createElement('dt'); dt.textContent = k; const dd = document.createElement('dd'); dd.textContent = v; dl.append(dt, dd);
       }
       const pa = document.createElement('p'); pa.className = 'hint';
-      if (p.url) { const a = document.createElement('a'); a.href = p.url; a.target = '_blank'; a.rel = 'noopener'; a.textContent = `${d.status === 'untested' && !p.image ? 'Source' : 'Product page'} (${new URL(p.url).hostname}) →`; pa.appendChild(a); }
-      if (d.status === 'untested') {
+      if (p.url) { const a = document.createElement('a'); a.href = p.url; a.target = '_blank'; a.rel = 'noopener'; a.textContent = `${ps === 'untested' && !p.image ? 'Source' : 'Product page'} (${new URL(p.url).hostname}) →`; pa.appendChild(a); }
+      if (ps === 'untested') {
         const r = document.createElement('a'); r.href = reportUrl(d); r.target = '_blank'; r.rel = 'noopener'; r.textContent = 'Tried it? Report the result →';
         if (p.url) pa.append(' · ');
         pa.appendChild(r);

@@ -50,7 +50,7 @@ export const DRIVERS = {
   amaran: {
     id: 'amaran',
     brand: 'amaran',
-    models: 'Ace 25c (Bluetooth Mesh lights set up by this app)',
+    models: 'Ace 25c; Halo 60x/100x/200x/300x/600x untested (Bluetooth Mesh lights set up by this app)',
     status: 'reported',          // works on two Ace 25c lights (user report, 2026-11-02); the shared mesh connection isn't confirmed yet
     products: [{
       model: 'amaran Ace 25c',
@@ -59,11 +59,31 @@ export const DRIVERS = {
       listName: 'no name (Chrome may show “Unknown or Unsupported Device”)',
       works: 'On/off, brightness, white 2300–10,000 K, color; 9 slower effects simulated by the app (fast ones like Strobe and Cop Car aren’t offered: the light glides into each change)',
       setup: 'Close the amaran app. The first time, the app asks to set the light up in its own network (undo: hold Press to Reset in the light’s Bluetooth menu).',
+    }, {
+      model: 'amaran Halo 300x (also Halo 60x, 100x, 200x, 600x)',
+      status: 'untested',
+      source: 'wesbos/amaran-BLE-control (MIT): the same 0x26 commands as the Ace 25c',
+      url: 'https://amarancreators.com/pages/amaran-halo-300x',
+      listName: 'not confirmed (may show no name, like the Ace 25c)',
+      works: 'On/off, brightness, white 2700–6500 K. Bi-color: no color. Pick the model in Settings → Lights after pairing.',
+      setup: 'Close the amaran app and reset the light’s Bluetooth. Untested: not tried on a real Halo yet.',
     }],
     // Ace 25c: 2300-10,000 K and full color (amarancreators.com product page). Commands carry kelvin/10 and hue in 1°.
     // minStepMs: the light glides into each change by itself (seen on the Ace 25c), so simulated effects step no faster
     // than this. 500 ms looked cleanest on the Ace 25c (speed test, 2026-11-02); the speed test can change it.
     caps: { cct: [2300, 10000], cctStep: 100, hsi: true, hueStep: 1, scenes: false, gm: false, oneConnection: false, minStepMs: 500 },
+    // Models. Halo: Sidus Mesh (the amaran app pairs "all Sidus Mesh enabled lights", help.amarancreators.com FAQ), so the
+    // same mesh setup and 0x26 commands (telink.js; wesbos/amaran-BLE-control's example config controls a "Halo 100x").
+    // No new bytes. Ranges: 2700-6500 K, bi-color (amarancreators.com Halo comparison table). status: per model.
+    variants: {
+      ace25c: { label: 'Ace 25c (2300–10,000 K, color)', status: 'reported' },
+      ...Object.fromEntries(['60', '100', '200', '300', '600'].map((w) => [`halo${w}x`, {
+        label: `Halo ${w}x (2700–6500 K, white only)`, status: 'untested',
+        source: 'wesbos/amaran-BLE-control (MIT)', caps: { cct: [2700, 6500], hsi: false },
+      }])),
+    },
+    // The Ace 25c advertises no name; Halo names are unconfirmed. Default: Ace 25c (keeps lights saved before models).
+    guessModel: (name = '') => { const m = /halo\s*(60|100|200|300|600)\s*x/i.exec(name); return m ? `halo${m[1]}x` : 'ace25c'; },
     filters: [{ services: [MESH_UUIDS.PROV_SERVICE] }, { services: [MESH_UUIDS.PROXY_SERVICE] }, { namePrefix: 'amaran' }],
     optionalServices: [DEVICE_INFO, MESH_UUIDS.PROV_SERVICE, MESH_UUIDS.PROXY_SERVICE],
     match: (device) => /^(amaran|aputure|slck)/i.test(device.name ?? ''),
@@ -254,6 +274,11 @@ export function modelInfo(d, model) {
 export function capsFor(d, model) {
   const m = modelInfo(d, model);
   return m?.caps ? { ...d.caps, ...m.caps } : d.caps;
+}
+
+/** verified / reported / untested for a light: its model's status, else its driver's. */
+export function statusFor(d, model) {
+  return modelInfo(d, model)?.status ?? d.status;
 }
 
 export const driverOf = (id) => DRIVERS[id] ?? DRIVERS[DEFAULT_DRIVER];

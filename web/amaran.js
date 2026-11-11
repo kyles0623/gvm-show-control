@@ -502,14 +502,15 @@ export class AmaranConnection extends EventTarget {
   async sendFrames(cmds, label, { quiet = false } = {}) {
     if (!this.connected || !cmds) return false;
     const w = this._want;
+    const white = this.caps?.hsi === false;   // bi-color models (Halo): the color command is never sent
     let ok = true;
     for (const c of cmds) {
       let payload;
       if (c.t === 'power') { w.on = c.on; payload = T.onoff(c.on); }
       else if (c.t === 'bri') { w.bri = c.v; this.levelBri = c.v; payload = T.brightness(this._intensity()); }
       else if (c.t === 'cct') { w.kelvin = c.k; w.mode = 'cct'; payload = T.cct(w.kelvin, this._intensity()); }
-      else if (c.t === 'hue' || c.t === 'sat') { if (c.t === 'hue') w.hue = c.v; else w.sat = c.v; w.mode = 'hsi'; payload = T.hsi(w.hue, w.sat, this._intensity()); }
-      else if (c.t === 'mode') { w.mode = c.m === 'hsi' ? 'hsi' : 'cct'; payload = w.mode === 'hsi' ? T.hsi(w.hue, w.sat, this._intensity()) : T.cct(w.kelvin, this._intensity()); }
+      else if (c.t === 'hue' || c.t === 'sat') { if (white) continue; if (c.t === 'hue') w.hue = c.v; else w.sat = c.v; w.mode = 'hsi'; payload = T.hsi(w.hue, w.sat, this._intensity()); }
+      else if (c.t === 'mode') { w.mode = c.m === 'hsi' && !white ? 'hsi' : 'cct'; payload = w.mode === 'hsi' ? T.hsi(w.hue, w.sat, this._intensity()) : T.cct(w.kelvin, this._intensity()); }
       else if (c.t === 'status') payload = T.statusRequest();
       else continue;
       ok = (await meshHub.sendAccess(this.node.addr, new Uint8Array([T.OPCODE, ...payload]), { label: `${label} [${c.t}]`, quiet, from: this })) && ok;
@@ -527,7 +528,7 @@ export class AmaranConnection extends EventTarget {
     if (!this.connected) return false;
     const w = this._want;
     if (s.bri != null) { w.bri = s.bri; this.levelBri = s.bri; }
-    if (s.mode) w.mode = s.mode === 'hsi' ? 'hsi' : 'cct';
+    if (s.mode) w.mode = s.mode === 'hsi' && this.caps?.hsi !== false ? 'hsi' : 'cct';
     if (s.cct != null) w.kelvin = s.cct;
     if (s.hue != null) w.hue = s.hue;
     if (s.sat != null) w.sat = s.sat;

@@ -3,7 +3,7 @@
 // driven in parallel. Events re-dispatched with detail.light = the light object:
 //   'status' | 'light' | 'gatt' | 'problem' (detail also has code/error), plus 'lights' and 'log'.
 import { chooseDevice } from './ble.js';
-import { driverOf, detectDriver, chooserOptions, DEFAULT_DRIVER, capsFor, modelInfo } from './drivers.js';
+import { driverOf, detectDriver, chooserOptions, DEFAULT_DRIVER, capsFor, modelInfo, statusFor } from './drivers.js';
 
 const KEY = 'gvm.lights';
 const GROUPS_KEY = 'gvm.groups';
@@ -104,8 +104,14 @@ export class Rig extends EventTarget {
     const l = this.get(id);
     if (!l || l.model === model) return;
     const old = l.conn, device = old.device, was = old.connected || old.status === 'connecting' || old.status === 'reconnecting';
+    const d = driverOf(l.driver);
+    // Switching to an untested model: the one-time "untested" notice for that model (informational).
+    if (statusFor(d, model) === 'untested' && statusFor(d, l.model) !== 'untested') {
+      const m = modelInfo(d, model);
+      this.onUntested?.({ ...d, id: `${d.id}.${model}`, brand: `${d.brand} ${m.label.replace(/ \(.*/, '')}`, source: m.source ?? d.source });
+    }
     l.model = model;
-    if (driverOf(l.driver).mesh) {
+    if (d.mesh) {
       // Mesh lights keep their connection (it's shared): only the caps change.
       old.model = model; old.modelInfo = modelInfo(driverOf(l.driver), model); old.caps = capsFor(driverOf(l.driver), model);
     } else {
@@ -218,7 +224,7 @@ export class Rig extends EventTarget {
     const isNew = !light;
     if (!light) {
       const d = await detectDriver(device, (m) => this.logLine(m));
-      if (d.status === 'untested' && !(await this.onUntested?.(d, device) ?? true)) { try { device.gatt?.disconnect(); } catch {} return null; }
+      if (statusFor(d, d.guessModel?.(device.name ?? '')) === 'untested' && !(await this.onUntested?.(d, device) ?? true)) { try { device.gatt?.disconnect(); } catch {} return null; }
       const nm = device.name ?? (d.id === 'gvm' ? 'BT_LED' : d.brand);
       light = this._add({ id: device.id, name: nm, label: this._uniqueLabel(nm), driver: d.id });
       this._save();
