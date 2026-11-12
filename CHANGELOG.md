@@ -10,6 +10,9 @@ the minor version (see [CONTRIBUTING.md](CONTRIBUTING.md#versions-and-the-change
 ## [Unreleased]
 
 ### Added
+- **amaran Halo 300x: reported working.** White-only lights (Halo, bi-color Godox and Neewer models) no longer
+  offer color: color gels are disabled, color looks are greyed out, and effects that only show color (Party, Disco,
+  Hue Loop…) are marked "color only".
 - **amaran Halo 300x (untested).** Also Halo 60x, 100x, 200x and 600x. They use the same mesh and commands as the
   Ace 25c. Pick the model in Settings → Lights to get 2700–6500 K, white only. Each amaran model has its own
   status: Ace 25c reported, Halo untested (β, notice, Report result).

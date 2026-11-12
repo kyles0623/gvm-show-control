@@ -74,6 +74,7 @@ drivers are marked.
 |---|---|---|---|---|
 | <img src="https://shop.gvmled.com/cdn/shop/products/gvm-800d-40w-powerful-bi-color-and-rgb-video-panel-light-kit-908428.jpg?v=1773209171&width=600" alt="GVM 800D-RGB" width="120"> | [GVM 800D-RGB (800D-II)](https://shop.gvmled.com/products/gvm-800d-rgb-led-studio-video-light) | ✅ Verified on hardware | On/off, brightness, white 3200–5600 K, color, the light's 20 built-in effects | `BT_LED` |
 | <img src="https://cdn.sanity.io/images/7n7ckclh/production/73e66b2ec6ee19e1e477e431463f657d1e9a2442-960x960.png?w=600" alt="amaran Ace 25c" width="120"> | [amaran Ace 25c](https://amarancreators.com/pages/amaran-ace-25c) | 🟡 Reported working (shared mesh connection not yet confirmed) | On/off, brightness, white 2300–10,000 K, color; 9 slower effects simulated by the app (TV, Party, Disco, Explosion, Pulsing, Fireworks, CCT Loop, Hue Loop, SOS). Fast ones (Strobe, Cop Car, …) aren't offered: the light glides into each change | no name (may show as "Unknown or Unsupported Device") |
+| | [amaran Halo 300x](https://amarancreators.com/pages/amaran-halo-300x) | 🟡 Reported working | On/off, brightness, white 2700–6500 K. Bi-color: color controls, color gels, color looks and color-only effects are turned off. Set the model in Settings → Lights | not confirmed |
 
 ### Untested (β)
 
@@ -83,7 +84,7 @@ that opens a pre-filled issue. Most of them send no replies, so the app shows wh
 
 | Brand | Models | Works | Source |
 |---|---|---|---|
-| amaran | Halo 60x, 100x, 200x, 300x, 600x (pick the model in Settings → Lights) — same mesh and commands as the Ace 25c, shares its connection | On/off, brightness, white 2700–6500 K (bi-color: no color) | [wesbos/amaran-BLE-control](https://github.com/wesbos/amaran-BLE-control) (MIT); [amaran app FAQ](https://help.amarancreators.com/en/amaran-mobile-app/faqs) (Sidus Mesh) |
+| amaran | Halo 60x, 100x, 200x, 600x (pick the model in Settings → Lights) — same mesh and commands as the Ace 25c and Halo 300x, shares their connection | On/off, brightness, white 2700–6500 K (bi-color: no color) | [wesbos/amaran-BLE-control](https://github.com/wesbos/amaran-BLE-control) (MIT); [amaran app FAQ](https://help.amarancreators.com/en/amaran-mobile-app/faqs) (Sidus Mesh) |
 | Neewer | RGB660 PRO, RGB176 A1, RGB1, RGB168, TL60 RGB, GR18C, GL1C, RGB62, CB100C, CB60B, CB120B, TL40, and other lights using the older protocol (pick the model in Settings → Lights) | On/off, brightness, white, color on RGB models | [NeewerLite](https://github.com/keefo/NeewerLite) (MIT) |
 | Godox | 184 Bluetooth Mesh models (SL, ML, LA, UL, LC, P…; pick the model) — shares the one mesh connection with amaran lights | Brightness (off = 0 %), white over the model's range, color on RGB models | [ha-godox-mesh](https://github.com/binary-person/ha-godox-mesh) (MIT) |
 | RGB strips | ELK-BLEDOM and LEDBLE controllers | On/off, brightness, color; white approximate | facts from public notes |

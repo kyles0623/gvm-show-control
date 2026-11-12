@@ -92,6 +92,21 @@ export function* simulatedSteps(n, p, minMs = MIN_MS) {
 }
 
 /**
+ * True when simulated effect n only ever shows color (every step it yields is HSI, sampled from its generator): on a
+ * white-only light (caps.hsi false) it would show nothing, so the app doesn't offer it there.
+ */
+const colorOnlyMemo = {};
+export function colorOnly(n) {
+  if (!(n in colorOnlyMemo)) {
+    const it = (SIMULATED[n] ?? SIMULATED[10])({ level: 50, cycle: 1, cct: 5600, hue: 0, sat: 100 });
+    let all = true;
+    for (let i = 0; i < 200 && all; i++) all = it.next().value?.state?.mode === 'hsi';
+    colorOnlyMemo[n] = all;
+  }
+  return colorOnlyMemo[n];
+}
+
+/**
  * The fastest step each simulated effect needs to look like itself (ms). A light whose fastest clean step is slower
  * (minStepMs, or its speed-test result) doesn't offer the effect: e.g. on the Ace 25c (500 ms) Strobe, Cop Car,
  * Lightning, Fire and Candle would only be a blur.

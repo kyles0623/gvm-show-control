@@ -4,7 +4,8 @@
 > Yongnuo drivers are in the app, marked **untested (β)**. Their encoders are checked against the sources' examples
 > (`tests/drivers.test.mjs`) and the app was tested with simulated lights only. Next: reports from real lights.
 >
-> **11 Nov 2026:** amaran Halo 60x/100x/200x/300x/600x added as untested models of the amaran driver (candidate 2).
+> **11 Nov 2026:** amaran Halo 60x/100x/200x/300x/600x added as models of the amaran driver (candidate 2). The Halo 300x
+> is reported working (12 Nov); the other sizes are untested.
 
 GVM Show Control speaks to **GVM** (verified on hardware) and **amaran Ace 25c**
 (reported working). This plan lists the next brands, where their protocols
@@ -46,7 +47,7 @@ The driver `status` field already exists. For `untested` drivers we add:
 | # | Brand | Typical price | Source (license) | Transport | Effort |
 |---|---|---|---|---|---|
 | 1 | More GVM models | $60–250 | Our own captures | Same as today | Low: add products after a user confirms the model |
-| 2 | More amaran models (Halo series: done, untested; next: Ace 25x, 60x/60d S, 100/200 x S, PT tubes) | $70–400 | wesbos/amaran-BLE-control (MIT) | Same mesh as Ace 25c | Low: same driver, add products, mark `untested` per model |
+| 2 | More amaran models (Halo series: done, 300x reported, others untested; next: Ace 25x, 60x/60d S, 100/200 x S, PT tubes) | $70–400 | wesbos/amaran-BLE-control (MIT) | Same mesh as Ace 25c | Low: same driver, add products, mark `untested` per model |
 | 3 | **Neewer** (RGB660, RGB480, SL80, GL1, RGB1, TL60…) | $40–200 | keefo/NeewerLite (MIT) | Plain GATT, one write characteristic | Medium |
 | 4 | **Godox** mesh lights (SL, ML, LA, P, UL, LC… 186 models) | $100–1,000 | binary-person/ha-godox-mesh (MIT) | SIG Mesh, vendor opcode | Medium: reuse `mesh.js` + `MeshHub` |
 | 5 | **Generic "ELK-BLEDOM"/"LEDBLE" RGB strips and bulbs** | $10–25 | 8none1/ledble-ledlamp (GPL-3, facts only) | Plain GATT | Low, but RGB only |
@@ -67,7 +68,7 @@ daylight models do not).
 
 - Add product entries with per-model caps (CCT range, `hsi: false` for daylight models).
 - Status per product: `untested` until reported.
-- Done: per-model `variants` with their own `status` (Ace 25c `reported`; Halo 60x–600x `untested`,
+- Done: per-model `variants` with their own `status` (Ace 25c and Halo 300x `reported`; Halo 60x/100x/200x/600x `untested`,
   2700–6500 K, `hsi: false`). Adding another model is one `variants` entry plus a product card.
 
 ### 3. Neewer (MIT, port from NeewerLite)

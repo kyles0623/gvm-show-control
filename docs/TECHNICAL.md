@@ -234,10 +234,14 @@ light: Bluetooth menu → hold Press to Reset. `mesh.js` is tested against the M
 Node's AES-CCM (`tests/mesh.test.mjs`); `telink.js` against the values documented by wesbos/amaran-BLE-control
 (`tests/telink.test.mjs`). The Ace 25c is reported working.
 **Models.** `ace25c` (2300–10,000 K, color; default, since the Ace advertises no name) and `halo60x`…`halo600x`
-(2700–6500 K, white only, untested). Halo lights are Sidus Mesh (the amaran app pairs all Sidus Mesh lights), so
+(2700–6500 K, white only; Halo 300x reported working, 2026-11-12; the others untested). Halo lights are Sidus Mesh (the amaran app pairs all Sidus Mesh lights), so
 they use the same setup and 0x26 commands; no new bytes. `guessModel` reads "Halo NNNx" from the name if there is
 one. For a white-only model `AmaranConnection` never sends the color command (0x81): color is sent as white
 (`tests/amaran-models.test.mjs`).
+**White-only lights in the UI** (`caps.hsi` false, any driver): the Color button is hidden; color gels are disabled
+(CTO/CTB stay); color looks are greyed out and refuse when every selected light is white only; simulated effects
+that only show color (`simfx.colorOnly(n)`: every sampled step is HSI — Cop Car, Party, Disco, Fire, Fireworks,
+Welding, Hue Loop, Fire Engine, Strobe II) are greyed out as "color only" and skipped on those lights.
 Built-in effects on a light without them (`caps.scenes` false) are simulated by the app (`simfx.js`): one generator
 per GVM effect number, approximations based on the effect's name and its settings (brightness, color temperature,
 cycle, color), never faster than 100 ms per step. Mesh lights take a whole look in one message (`conn.applyState`),

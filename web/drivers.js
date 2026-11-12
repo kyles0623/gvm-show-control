@@ -50,7 +50,7 @@ export const DRIVERS = {
   amaran: {
     id: 'amaran',
     brand: 'amaran',
-    models: 'Ace 25c; Halo 60x/100x/200x/300x/600x untested (Bluetooth Mesh lights set up by this app)',
+    models: 'Ace 25c, Halo 300x; Halo 60x/100x/200x/600x untested (Bluetooth Mesh lights set up by this app)',
     status: 'reported',          // works on two Ace 25c lights (user report, 2026-11-02); the shared mesh connection isn't confirmed yet
     products: [{
       model: 'amaran Ace 25c',
@@ -61,12 +61,12 @@ export const DRIVERS = {
       setup: 'Close the amaran app. The first time, the app asks to set the light up in its own network (undo: hold Press to Reset in the light’s Bluetooth menu).',
     }, {
       model: 'amaran Halo 300x (also Halo 60x, 100x, 200x, 600x)',
-      status: 'untested',
+      status: 'reported',      // Halo 300x: user report, 2026-11-12. The other Halo sizes are still untested.
       source: 'wesbos/amaran-BLE-control (MIT): the same 0x26 commands as the Ace 25c',
       url: 'https://amarancreators.com/pages/amaran-halo-300x',
       listName: 'not confirmed (may show no name, like the Ace 25c)',
-      works: 'On/off, brightness, white 2700–6500 K. Bi-color: no color. Pick the model in Settings → Lights after pairing.',
-      setup: 'Close the amaran app and reset the light’s Bluetooth. Untested: not tried on a real Halo yet.',
+      works: 'On/off, brightness, white 2700–6500 K. Bi-color: color controls, color gels, color looks and color-only effects are turned off. Pick the model in Settings → Lights after pairing.',
+      setup: 'Close the amaran app and reset the light’s Bluetooth. Reported working on a Halo 300x; the 60x, 100x, 200x and 600x are untested.',
     }],
     // Ace 25c: 2300-10,000 K and full color (amarancreators.com product page). Commands carry kelvin/10 and hue in 1°.
     // minStepMs: the light glides into each change by itself (seen on the Ace 25c), so simulated effects step no faster
@@ -78,7 +78,7 @@ export const DRIVERS = {
     variants: {
       ace25c: { label: 'Ace 25c (2300–10,000 K, color)', status: 'reported' },
       ...Object.fromEntries(['60', '100', '200', '300', '600'].map((w) => [`halo${w}x`, {
-        label: `Halo ${w}x (2700–6500 K, white only)`, status: 'untested',
+        label: `Halo ${w}x (2700–6500 K, white only)`, status: w === '300' ? 'reported' : 'untested',   // 300x: user report, 2026-11-12
         source: 'wesbos/amaran-BLE-control (MIT)', caps: { cct: [2700, 6500], hsi: false },
       }])),
     },

@@ -1,5 +1,5 @@
 import { unionCaps, snap, DRIVERS, statusFor } from './drivers.js';
-import { simulatedSteps, SPEED_TEST_MS, NEEDS_MS } from './simfx.js';
+import { simulatedSteps, SPEED_TEST_MS, NEEDS_MS, colorOnly } from './simfx.js';
 import { parseHex, toHex, shortUuid, sleep } from './ble.js';
 import { Rig } from './rig.js';
 import { Show, describeState, normState, stateAt, fmtNum } from './show.js';
@@ -53,7 +53,12 @@ const capsOf = (l) => l.conn.caps ?? l.conn.driver.caps;   // narrowed by the li
 /** Fastest step for simulated effects on this light: the speed-test result for its kind of light, else its driver's default. */
 const minStepOf = (l) => prefs.get(`minStep.${l.conn.driver.id}`, capsOf(l).minStepMs ?? 100);
 /** Can light l show built-in effect e? Its own, or a simulation that isn't too fast for it. */
-const canRun = (l, e) => !e.builtin || capsOf(l).scenes || (NEEDS_MS[e.scene] ?? 500) >= minStepOf(l);
+const whiteOnly = (l) => capsOf(l).hsi === false;                // bi-color lights (amaran Halo, some Godox / Neewer)
+/** A simulated effect that only shows color: nothing to see on a white-only light. */
+const needsColor = (l, e) => whiteOnly(l) && e.builtin && !capsOf(l).scenes && colorOnly(e.scene);
+const canRun = (l, e) => !needsColor(l, e) && (!e.builtin || capsOf(l).scenes || (NEEDS_MS[e.scene] ?? 500) >= minStepOf(l));
+/** Why lights can't run e: 'color' when it's color-only for all of them, else 'fast'. */
+const naWhy = (ls, e) => (ls.length && ls.every((l) => needsColor(l, e)) ? 'color' : 'fast');
 const uiCaps = () => unionCaps(rig.lights.map(capsOf));
 
 // ---------- light helpers ----------
@@ -1145,6 +1150,9 @@ function renderGel() {
   sel.value = ids.length === 1 ? ids[0] : '';
   sel.options[0].textContent = ids.length > 1 && ids.some(Boolean) ? 'Mixed gels' : 'Gel… (approximate)';
   $('gelReset').disabled = !t.some((l) => l.gel) || !rig.anyConnected;
+  // White-only lights: only the white correction gels (CTO / CTB) apply.
+  const wo = t.length > 0 && t.every(whiteOnly);
+  for (const o of sel.options) { const g = GELS.find((x) => x.id === o.value); if (g) o.disabled = wo && g.state.mode === 'hsi'; }
 }
 
 /** A light's color changed some other way: it no longer has its gel. */
@@ -1280,6 +1288,10 @@ const EFFECT_KEYS = ['q', 'w', 'e', 'r', 't', 'y'];
 async function applyLook(look, { fadeMs = ui.fadeMs } = {}) {
   const lights = targets();
   if (!lights.length) return;
+  if (look.state?.mode === 'hsi' && lights.every(whiteOnly)) {
+    toast({ level: 'warn', title: `${look.name} is a color look`, body: 'The selected light is white only. Pick a white look, or select a color light.' });
+    return;
+  }
   releaseFromEffect(lights);
   clearFollow();
   for (const l of lights) { l.look = look.id; l.preset = null; }
@@ -1377,10 +1389,10 @@ async function toggleEffect(e, { params = null, lights = targets(), fromCue = fa
   // Lights that can't show this effect (too fast for them) are left out.
   const cant = lights.filter((l) => !canRun(l, e));
   if (cant.length) {
-    rig.logLine(`EFFECT ${e.name}: too fast for ${cant.map((l) => l.label).join(', ')}, skipped`);
+    rig.logLine(`EFFECT ${e.name}: ${naWhy(cant, e) === 'color' ? 'color only' : 'too fast'} for ${cant.map((l) => l.label).join(', ')}, skipped`);
     lights = lights.filter((l) => canRun(l, e));
     if (!lights.length) {
-      if (!fromCue) toast({ level: 'warn', title: `${e.name} isn’t available on ${[...new Set(cant.map((l) => l.conn.driver.brand))].join(', ')}`, body: `${e.name} needs faster flashes than this light can show: it fades into each change. Lights with the effect built in, like GVM, still run it.` });
+      if (!fromCue) toast({ level: 'warn', title: `${e.name} isn’t available on ${[...new Set(cant.map((l) => l.conn.driver.brand))].join(', ')}`, body: naWhy(cant, e) === 'color' ? `${e.name} only shows color, and this light is white only.` : `${e.name} needs faster flashes than this light can show: it fades into each change. Lights with the effect built in, like GVM, still run it.` });
       return;
     }
   }
@@ -1796,6 +1808,12 @@ function renderPresets() {
   // half-lit ("partial") when only some do.
   const sel = targets();
   for (const b of looks.children) {
+    // Color looks on white-only lights: greyed out (a mixed selection still sets the color lights).
+    const lk = boardLooks().find((x) => x.id === b.dataset.id);
+    const naL = !!lk && lk.state?.mode === 'hsi' && sel.length > 0 && sel.every(whiteOnly);
+    b.classList.toggle('na', naL);
+    b.setAttribute('aria-disabled', naL ? 'true' : 'false');
+    if (naL) b.dataset.tip = `${lk.name} is a color look: the selected light is white only.`; else delete b.dataset.tip;
     const n = sel.filter((l) => l.look === b.dataset.id).length;
     b.classList.toggle('active', !!sel.length && n === sel.length);
     b.classList.toggle('partial', n > 0 && n < sel.length);
@@ -1810,7 +1828,9 @@ function renderPresets() {
     const brands = [...new Set(sel.map((l) => l.conn.driver.brand))].join(', ');
     b.setAttribute('aria-disabled', na ? 'true' : 'false');
     b.title = na ? '' : item0.desc;
-    if (na) b.dataset.tip = `Not available on ${brands}: ${item0.name} needs faster flashes than this light can show (it fades into each change). Lights with the effect built in, like GVM, still run it.`;
+    const why = na ? naWhy(sel, item0) : null;
+    if (why === 'color') b.dataset.tip = `Not available on ${brands}: ${item0.name} only shows color, and this light is white only.`;
+    else if (na) b.dataset.tip = `Not available on ${brands}: ${item0.name} needs faster flashes than this light can show (it fades into each change). Lights with the effect built in, like GVM, still run it.`;
     else delete b.dataset.tip;
     b.classList.toggle('running', st === 'all');
     b.classList.toggle('partial', st === 'some');
@@ -1820,7 +1840,7 @@ function renderPresets() {
     nm.append(item.name);
     if (na) {
       const s = document.createElement('span'); s.className = 'sub na-why';
-      s.textContent = 'too fast';
+      s.textContent = why === 'color' ? 'color only' : 'too fast';
       nm.append(s);
     } else if (st !== 'none') {
       const s = document.createElement('span'); s.className = 'sub';
