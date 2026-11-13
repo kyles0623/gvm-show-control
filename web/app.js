@@ -498,7 +498,7 @@ function syncFromLight(ev) {
   if (L.cct != null && ui.dragging !== 'cct') $('cct').value = L.cct;
   if (L.hue != null && ui.dragging !== 'hue') $('hue').value = L.hue;
   if (L.saturation != null && ui.dragging !== 'sat') $('sat').value = L.saturation;
-  if (L.mode && !ui.dragging) setMode(L.mode);
+  if (L.mode && !ui.dragging) setMode(p && !capsOf(p).hsi ? 'cct' : L.mode);   // white-only light: never the color panel
   renderValues();
   renderLight();
   renderChipsSoon();
